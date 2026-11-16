@@ -187,8 +187,8 @@ function applyHC(){for(const side of ['left','right']){const hr=hands[side];if(!
 // CUERPO DEL JUGADOR: piernas que caminan y brazos que llegan a tus manos (IK)
 // =====================================================================
 let body=null;
-function setupBody(){const tpl=TPL.rpm||CHAR_TPLS[0];if(!tpl)return;const h=newRec(tpl);H_.pop();charSlot--;body=h;h.type='player';h.gp={lean:0,droop:0,tilt:0,arms:'swing',limp:0,sway:1,twitch:0,speedMul:1};
-  h.s=1;h.pr={};for(const k in tpl.pr){const v=tpl.pr[k];h.pr[k]=v.isVector3?v.clone():v;}for(let k=0;k<STICKS.length;k++)h.rest[k]=tpl.CB[STICKS[k][0]].distanceTo(tpl.CB[STICKS[k][1]]);h.kp.fill(1);h.kl.fill(1);h.inner.quaternion.copy(tpl.qFix);h.inner.position.set(0,-tpl.minY,0);for(const m of h.meshes)m.material=charMat(m.userData.base,'good',0,1);
+function setupBody(){const tpl=TPL.p_m2||TPL_M[0]||CHAR_TPLS[0];if(!tpl)return;const h=newRec(tpl);H_.pop();charSlot--;body=h;h.type='player';h.gp={lean:0,droop:0,tilt:0,arms:'swing',limp:0,sway:1,twitch:0,speedMul:1};
+  h.s=1;h.pr={};for(const k in tpl.pr){const v=tpl.pr[k];h.pr[k]=v.isVector3?v.clone():v;}for(let k=0;k<STICKS.length;k++)h.rest[k]=tpl.CB[STICKS[k][0]].distanceTo(tpl.CB[STICKS[k][1]]);h.kp.fill(1);h.kl.fill(1);h.inner.quaternion.copy(tpl.qFix);h.inner.position.set(0,-tpl.minY,0);for(const m of h.meshes)m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,'good',0,tpl)):charMat(m.userData.base,'good',0,tpl);
   h.y=0;h.bones.Head.scale.setScalar(0.001);h.bones.LeftHand.scale.setScalar(0.001);h.bones.RightHand.scale.setScalar(0.001);h.holder.visible=false;h.phase=0;h.mode='kin';h.k=1;h.yawB=0;}
 const _bw=new V3(),_bh=new V3();
 function updateBody(dt){if(!body)return;const show=!P.inCar&&P.alive&&!P.sleeping;body.holder.visible=show;if(!show)return;const h=body;
