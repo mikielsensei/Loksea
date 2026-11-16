@@ -13,9 +13,16 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 - Mobiliario rehecho en `20_props.js`: contenedores grises con franja de color, Bicing rojo, banco de listones, pilona C-42P, semáforo amarillo, marquesina TMB, papelera, fuente, jardinera, alcorque circular; materiales con foto de detalle (`detMat`).
 - Menos parpadeo a distancia (near 0.07, polygonOffset, alphaToCoverage, foveation 0.5).
 
+## Hecho en v6 (17-nov, Opus)
+- Heridas pintadas sobre la malla (uniform `uW` por personaje, `addWound` con raycast); gotas de sangre (`spray`), charco nítido que no flota en bordillos.
+- Ragdoll: rodillas bisagra, `segSep` (miembros no se atraviesan), `sepBodies` (cuerpos entre sí).
+- Recolocar altura y vista: mantener joystick izquierdo o V (`recenter`).
+- Flechas de carril macizas (`arrowPaint`), pintura limpia, señales en el xamfrà (`signOn`), semáforos orientados al tráfico, placas de mármol en el pilar del xamfrà.
+- Coche nuevo (`CARGEO` lofted, lunas, interior con relojes), física con agarre, derrape, balanceo y cabeceo (`moveCar`), volante que se agarra con los grips (`steerByHands`); en VR se baja con A.
+
 ## Pendiente (por orden)
 1. Probar en las Quest lo anterior (no verificado en el visor): manos contra paredes, agarre de puertas con grip, agacharse, HUD.
-2. Coche: balanceo y derrape tipo GTA 4, volante que se agarra con las manos (`driveCar`, `makeCar` en `60_game.js`); mejor modelo e interior.
+2. Coche: probar en las gafas el volante y la física; afinar `grip` y el interior.
 3. Bicing montable (manillar con los dos grips).
 4. Señales del suelo de Barcelona (flechas macizas, pintura limpia): `arrowPaint`, `texPaint` en `30_streets.js`.
 5. Rótulos con más variedad y tipografías; placas de calle de mármol en la pared; escaparates y bares por dentro; mercado tipo Boqueria.
