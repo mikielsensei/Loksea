@@ -1,0 +1,276 @@
+
+// =====================================================================
+// MODELOS EXTERNOS
+// =====================================================================
+const gl=new GLTFLoader();
+const TJS=['assets/models/'];
+const HAND_BASE=['assets/models/hand_'];
+async function loadAny(urls){for(const u of urls){try{return await gl.loadAsync(u);}catch(e){console.warn('No carga',u);}}return null;}
+const HEAD=0,CHEST=1,PELVIS=2,LSH=3,RSH=4,LHIP=5,RHIP=6,LELB=7,LHAND=8,RELB=9,RHAND=10,LKNEE=11,LFOOT=12,RKNEE=13,RFOOT=14,NP=15;
+const BN=['Head','Neck','Hips','LeftArm','RightArm','LeftUpLeg','RightUpLeg','LeftForeArm','LeftHand','RightForeArm','RightHand','LeftLeg','LeftFoot','RightLeg','RightFoot'];
+const EXTRA=['Spine','Spine1','Spine2','LeftShoulder','RightShoulder'];
+const cleanName=n=>n.replace(/^mixamorig[:_]?/i,'');
+const TPL={};let CHAR_TPLS=[];let ferrariTpl=null;const HANDTPL={};
+const _fx=new V3(),_fy=new V3(),_fz=new V3(),_fm=new M4();
+function frameQ(up,side,out){_fy.copy(up).normalize();_fx.copy(side).addScaledVector(_fy,-side.dot(_fy));if(_fx.lengthSq()<1e-8)_fx.set(1,0,0);_fx.normalize();_fz.crossVectors(_fx,_fy);_fm.makeBasis(_fx,_fy,_fz);return out.setFromRotationMatrix(_fm);}
+function prepTpl(gltf,name){if(!gltf)return null;const root=gltf.scene;root.updateMatrixWorld(true);const bones={};
+  root.traverse(o=>{if(o.isBone)bones[cleanName(o.name)]=o;if(o.isMesh)o.frustumCulled=false;});
+  for(const b of BN.concat(EXTRA))if(!bones[b])return null;
+  const par=(c,p)=>bones[c].parent===bones[p];
+  if(!(par('Spine','Hips')&&par('Spine1','Spine')&&par('Spine2','Spine1')&&par('Neck','Spine2')&&par('LeftShoulder','Spine2')&&par('LeftArm','LeftShoulder')&&par('LeftForeArm','LeftArm')&&par('LeftUpLeg','Hips')&&par('LeftLeg','LeftUpLeg')&&par('LeftFoot','LeftLeg')))return null;
+  const inv=new M4().copy(root.matrixWorld).invert();const bp={},bq={},lq={};
+  for(const n of BN.concat(EXTRA,['Head'])){const b=bones[n];const m=new M4().multiplyMatrices(inv,b.matrixWorld);const p=new V3(),q=new Q4(),s=new V3();m.decompose(p,q,s);bp[n]=p;bq[n]=q;lq[n]=b.quaternion.clone();}
+  const arm=bones.Hips.parent;const armM=new M4().multiplyMatrices(inv,arm.matrixWorld);const armQ=new Q4();armM.decompose(_v,armQ,_s);
+  const minY=Math.min(bp.LeftFoot.y,bp.RightFoot.y)-0.08;const height=bp.Head.y-minY+0.14;if(!(height>0.8&&height<3))return null;
+  const Lv=bp.LeftUpLeg.clone().sub(bp.RightUpLeg);const f=new V3().crossVectors(Lv,UP);const yawFix=-Math.atan2(f.x,f.z);const qFix=new Q4().setFromAxisAngle(UP,yawFix);
+  const CB=BN.map(n=>bp[n].clone().applyQuaternion(qFix));const pel=CB[PELVIS].clone();for(const p of CB){p.x-=pel.x;p.z-=pel.z;p.y-=minY;}
+  const d=(a,b)=>CB[a].distanceTo(CB[b]);
+  const pr={thigh:d(LHIP,LKNEE),shin:d(LKNEE,LFOOT),upper:d(LSH,LELB),fore:d(LELB,LHAND),pelH:CB[PELVIS].y,footH:Math.max(0.05,CB[LFOOT].y),
+    hipOff:CB[LHIP].clone().sub(CB[PELVIS]),chestOff:CB[CHEST].clone().sub(CB[PELVIS]),shOff:CB[LSH].clone().sub(CB[PELVIS]),headOff:CB[HEAD].clone().sub(CB[CHEST])};
+  pr.hipOff.x=Math.abs(pr.hipOff.x);pr.shOff.x=Math.abs(pr.shOff.x);pr.stride=(pr.thigh+pr.shin)*0.75;
+  const inv2=q=>q.clone().invert();
+  const dirB=(par,a,b)=>bp[b].clone().sub(bp[a]).applyQuaternion(inv2(bq[par])).normalize();
+  const Fh=frameQ(bp.Neck.clone().sub(bp.Hips),bp.LeftUpLeg.clone().sub(bp.RightUpLeg),new Q4());const Fs=frameQ(bp.Neck.clone().sub(bp.Hips),bp.LeftArm.clone().sub(bp.RightArm),new Q4());
+  const T={name,scene:root,height,minY,yawFix,qFix,CB,pr,armM,armQ,bq,lq,
+    C_hips:inv2(Fh).multiply(bq.Hips),C_sp2:inv2(Fs).multiply(bq.Spine2),
+    dNeck:dirB('Spine2','Neck','Head'),dLA:dirB('LeftShoulder','LeftArm','LeftForeArm'),dLF:dirB('LeftArm','LeftForeArm','LeftHand'),dRA:dirB('RightShoulder','RightArm','RightForeArm'),dRF:dirB('RightArm','RightForeArm','RightHand'),
+    dLU:dirB('Hips','LeftUpLeg','LeftLeg'),dLL:dirB('LeftUpLeg','LeftLeg','LeftFoot'),dRU:dirB('Hips','RightUpLeg','RightLeg'),dRL:dirB('RightUpLeg','RightLeg','RightFoot'),rootQ:root.quaternion.clone()};
+  return T;}
+function prepFerrari(g){if(!g)return null;const root=g.scene;const wn=['wheel_fl','wheel_fr','wheel_rl','wheel_rr'];const w=wn.map(n=>root.getObjectByName(n));if(w.some(x=>!x))return null;
+  root.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(root);const sz=box.getSize(new V3());
+  const fr=w[0].getWorldPosition(new V3()).add(w[1].getWorldPosition(new V3())).multiplyScalar(0.5);const re=w[2].getWorldPosition(new V3()).add(w[3].getWorldPosition(new V3())).multiplyScalar(0.5);
+  const f=fr.sub(re);return{root,yawFix:-Math.atan2(f.x,f.z),scale:4.5/Math.max(sz.x,sz.z),minY:box.min.y};}
+let modelsReady=false;
+async function loadModels(){setLoad('m','Descargando personajes…');
+  const list=[['rpm','readyplayer.me.glb','hombre'],['michelle','Michelle.glb','mujer'],['soldier','Soldier.glb','soldado']];
+  for(const [key,file,label] of list){const g=await loadAny(TJS.map(b=>b+file));const t=prepTpl(g,key);if(t){TPL[key]=t;}setLoad('m',`Personajes: ${Object.keys(TPL).length} (${Object.keys(TPL).join(', ')})`);}
+  CHAR_TPLS=['rpm','michelle'].filter(k=>TPL[k]).map(k=>TPL[k]);if(!CHAR_TPLS.length&&TPL.soldier)CHAR_TPLS=[TPL.soldier];
+  if(!CHAR_TPLS.length){setLoad('m','❌ No se han podido descargar los personajes. Revisa la conexión de las gafas y recarga.');return;}
+  setLoad('m',`✔ Personajes listos: ${CHAR_TPLS.map(t=>({rpm:'hombre',michelle:'mujer',soldier:'soldado'})[t.name]).join(' y ')}`);
+  setLoad('h','Descargando manos…');for(const side of ['left','right']){const g=await loadAny(HAND_BASE.map(b=>b+side+'.glb'));HANDTPL[side]=g?g.scene:null;}
+  setupHands();setLoad('h',HANDTPL.left&&HANDTPL.right?'✔ Manos realistas listas':'⚠ Manos sencillas');
+  for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
+  modelsReady=true;enableStart();}
+
+// =====================================================================
+// PIEL ZOMBI (shader: piel grisácea, suciedad y sangre seca)
+// =====================================================================
+const NOISE_GLSL=`float zh(vec3 p){p=fract(p*0.3183099+0.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float zn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(zh(i),zh(i+vec3(1,0,0)),f.x),mix(zh(i+vec3(0,1,0)),zh(i+vec3(1,1,0)),f.x),f.y),mix(mix(zh(i+vec3(0,0,1)),zh(i+vec3(1,0,1)),f.x),mix(zh(i+vec3(0,1,1)),zh(i+vec3(1,1,1)),f.x),f.y),f.z);}`;
+const matCache=new Map();
+function charMat(base,type,variant,unit,cloth){const key=base.uuid+type+variant+'_'+(cloth||0);let m=matCache.get(key);if(m)return m;m=base.clone();pbr(m);
+  const tint={zombie:[[0.78,0.86,0.72],[0.82,0.8,0.74],[0.72,0.78,0.7],[0.86,0.82,0.78]],bandit:[[0.75,0.5,0.48],[0.55,0.52,0.5]],good:[[1,1,1],[0.92,0.98,1],[1,0.96,0.9]],wanderer:[[0.92,0.88,0.8],[0.85,0.88,0.92]]}[type]||[[1,1,1]];
+  const t=tint[variant%tint.length];m.color.setRGB(t[0],t[1],t[2]);if(cloth){const c=new THREE.Color(cloth);m.color.multiply(c).multiplyScalar(1.6);}
+  if(type==='zombie'){m.roughness=0.9;const gore=S.gore;m.onBeforeCompile=sh=>{sh.uniforms.uUnit={value:unit};sh.uniforms.uSeed={value:variant*3.7};sh.uniforms.uGore={value:gore/2};
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uUnit;uniform float uSeed;uniform float uGore;\n'+NOISE_GLSL)
+      .replace('#include <map_fragment>',`#include <map_fragment>
+        vec3 zp=vZP*uUnit+uSeed;float l=dot(diffuseColor.rgb,vec3(0.3,0.59,0.11));vec3 zc=mix(vec3(l)*vec3(0.8,0.92,0.74),diffuseColor.rgb,0.3)*0.82;
+        float d=zn(zp*3.0);zc=mix(zc,zc*vec3(0.55,0.5,0.45),smoothstep(0.45,0.85,d)*0.8);
+        float v=zn(zp*14.0);zc=mix(zc,vec3(0.25,0.3,0.32)*l,smoothstep(0.72,0.78,v)*0.35);
+        float b=zn(zp*6.0+11.0)*0.7+zn(zp*20.0)*0.3;zc=mix(zc,vec3(0.22,0.015,0.01),smoothstep(0.62,0.72,b)*uGore);
+        float b2=zn(zp*2.0+5.0);zc=mix(zc,vec3(0.3,0.03,0.02),smoothstep(0.7,0.8,b2)*uGore*0.8);
+        diffuseColor.rgb=zc;`);};m.customProgramCacheKey=()=>'zomb'+gore;}
+  matCache.set(key,m);return m;}
+
+// =====================================================================
+// PERSONAJES
+// =====================================================================
+const STICKS=[[HEAD,CHEST],[HEAD,LSH],[HEAD,RSH],[HEAD,PELVIS],[CHEST,LSH],[CHEST,RSH],[LSH,RSH],[CHEST,PELVIS],[CHEST,LHIP],[CHEST,RHIP],
+  [LSH,LHIP],[RSH,RHIP],[LSH,RHIP],[RSH,LHIP],[LHIP,RHIP],[PELVIS,LHIP],[PELVIS,RHIP],[PELVIS,LSH],[PELVIS,RSH],
+  [LSH,LELB],[LELB,LHAND],[RSH,RELB],[RELB,RHAND],[LHIP,LKNEE],[LKNEE,LFOOT],[RHIP,RKNEE],[RKNEE,RFOOT]];
+const PR=[0.12,0.1,0.11,0.08,0.08,0.09,0.09,0.05,0.045,0.05,0.045,0.06,0.05,0.06,0.05];
+const NBW=[];{const adj=[...Array(NP)].map(()=>[]);for(const [a,b] of STICKS){adj[a].push(b);adj[b].push(a);}
+  for(let s=0;s<NP;s++){const d=new Array(NP).fill(9);d[s]=0;const q=[s];while(q.length){const u=q.shift();for(const v of adj[u])if(d[v]>d[u]+1){d[v]=d[u]+1;q.push(v);}}NBW[s]=Float32Array.from(d.map(x=>x===0?1:x===1?0.45:x===2?0.15:0.04));}
+  // brazos y piernas: el golpe se queda en la extremidad
+  for(const [a,b,c] of [[LSH,LELB,LHAND],[RSH,RELB,RHAND],[LHIP,LKNEE,LFOOT],[RHIP,RKNEE,RFOOT]]){NBW[c][b]=0.6;NBW[c][a]=0.2;NBW[b][c]=0.7;NBW[b][a]=0.4;}
+  NBW[HEAD].fill(0.03);NBW[HEAD][HEAD]=1;NBW[HEAD][CHEST]=0.3;NBW[HEAD][LSH]=NBW[HEAD][RSH]=0.12;}
+const HIT_SEGS=[[CHEST,PELVIS,0.19,'body'],[LSH,LELB,0.07,'lArm'],[LELB,LHAND,0.06,'lArm'],[RSH,RELB,0.07,'rArm'],[RELB,RHAND,0.06,'rArm'],
+  [LHIP,LKNEE,0.09,'lLeg'],[LKNEE,LFOOT,0.075,'lLeg'],[RHIP,RKNEE,0.09,'rLeg'],[RKNEE,RFOOT,0.075,'rLeg']];
+const LIMB_PTS={lArm:[LELB,LHAND],rArm:[RELB,RHAND],lLeg:[LKNEE,LFOOT],rLeg:[RKNEE,RFOOT]};
+const PART_BONE={head:'Head',body:'Spine1',lArm:'LeftForeArm',rArm:'RightForeArm',lLeg:'LeftLeg',rLeg:'RightLeg'};
+const NAMES_M=['Jordi','Pau','Marc','Sergi','Toni','Xavi','Manel','Joan','Carles','Albert','Rafa','Dani','Ramon','Íker','Hassan','Óscar'],NAMES_F=['Montse','Laia','Núria','Marta','Anna','Carme','Rosa','Mireia','Fàtima','Sílvia','Júlia','Lucía'];
+const H_=[];const MAXC=90;let charSlot=0;
+function newRec(tpl){const model=SkeletonUtils.clone(tpl.scene);const inner=new THREE.Group();inner.add(model);const holder=new THREE.Group();holder.add(inner);scene.add(holder);
+  const bones={},meshes=[];model.traverse(o=>{if(o.isBone)bones[cleanName(o.name)]=o;if(o.isMesh){o.frustumCulled=false;o.userData.base=o.material;meshes.push(o);}});
+  const h={tpl,holder,inner,model,bones,meshes,arm:bones.Hips.parent,sim:[],prev:[],tgt:[],rest:new Float32Array(STICKS.length),kp:new Float32Array(NP),kl:new Float32Array(NP),slot:charSlot++,active:false,wounds:[],prop:null};
+  for(let i=0;i<NP;i++){h.sim.push(new V3());h.prev.push(new V3());h.tgt.push(new V3());}H_.push(h);return h;}
+function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=o.female!==undefined?o.female:Math.random()<0.45;
+  let tpl=female&&TPL.michelle?TPL.michelle:(TPL.rpm||CHAR_TPLS[0]);if(type==='bandit'&&TPL.soldier&&Math.random()<0.5)tpl=TPL.soldier;
+  let h=H_.find(q=>!q.active&&q.tpl===tpl);if(!h){if(H_.length<MAXC)h=newRec(tpl);else return null;}
+  const height=(tpl===TPL.michelle?R(1.6,1.74):R(1.7,1.88));const s=height/tpl.height;h.s=s;h.inner.scale.setScalar(s);h.inner.quaternion.copy(tpl.qFix);h.inner.position.set(0,-tpl.minY*s,0);
+  const variant=(Math.random()*4)|0;const unit=1/tpl.height;
+  // ropa variada: cada prenda se tiñe con un color de ropa corriente (camisetas, tejanos, sudaderas...)
+  const SHIRT=[0xffffff,0x2b4a7a,0x7a2b2b,0x3a5a3a,0x222222,0xc8b890,0x6a6a72,0xd88a3a,0x4a7ab8,0xe8e0d0,0x8a3a6a];const PANTS=[0x2a3a5a,0x3a3a3a,0x6a5a4a,0x1e2430,0x5a6a7a,0xb8a888,0x2a2a2a];const SHOES=[0x111111,0xf0f0f0,0x5a3a20,0x2a2a3a];
+  const cl={top:pick(SHIRT),bot:pick(PANTS),shoe:pick(SHOES)};
+  for(const m of h.meshes){const nm=(m.name||'')+' '+((m.userData.base&&m.userData.base.name)||'');m.visible=!/Headwear/i.test(nm)&&!(/Beard/i.test(nm)&&Math.random()<0.5);
+    const part=/Outfit_Top/i.test(nm)?'top':/Outfit_Bottom/i.test(nm)?'bot':/Footwear/i.test(nm)?'shoe':null;
+    m.material=charMat(m.userData.base,type,variant,unit,part?cl[part]:null);}
+  const zt=type==='zombie';h.pr={};for(const k in tpl.pr){const v=tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(s):v*s;}
+  for(let k=0;k<STICKS.length;k++)h.rest[k]=tpl.CB[STICKS[k][0]].distanceTo(tpl.CB[STICKS[k][1]])*s;
+  Object.assign(h,{active:true,type,x,z,y:surfY(x,z),yaw:Math.random()*6.28,vx:0,vz:0,speed:0,phase:Math.random()*6,mode:'kin',k:1,down:0,dead:false,deadT:0,getup:-1,permPhys:false,crawler:false,sleep:0,
+    headHp:zt?100*S.zTough:60,bodyHp:zt?200*S.zTough:110,limb:{lArm:60,rArm:60,lLeg:60,rLeg:60},broken:{},think:Math.random()*0.3,target:null,goal:null,atk:0,atkAnim:0,
+    shootT:R(0.5,1.5),runner:false,base:null,role:null,hostile:false,angry:false,reanimate:false,lastHitT:-9,idle:0,groanT:R(3,12),aim:0,searched:false,acc:0,lod:0,crawlT:0,wd:null,stepT:0,
+    act:'stand',actT:0,look:0,eatT:0,name:female?pick(NAMES_F):pick(NAMES_M),female,armed:!zt&&type!=='wanderer'?true:Math.random()<0.5,lastMoveT:0,
+    gp:{lean:zt?R(0.14,0.38):R(0,0.06),droop:zt?R(0.2,0.55):0,tilt:zt?R(-0.35,0.35):0,arms:zt?(Math.random()<0.55?'forward':Math.random()<0.6?'hang':'mixed'):'swing',limp:zt&&Math.random()<0.55?R(0.2,0.75)*(Math.random()<0.5?1:-1):0,sway:zt?R(1.4,2.6):1,twitch:zt?R(0.3,1):0,speedMul:zt?R(0.75,1.15):1}},o);
+  h.kp.fill(1);h.kl.fill(1);h.holder.visible=true;for(const w of h.wounds)w.parent&&w.parent.remove(w);h.wounds=[];
+  if(h.prop){h.prop.visible=h.armed;}else if(h.armed){h.prop=makeRifle();scene.add(h.prop);}
+  poseTargets(h,0);for(let i=0;i<NP;i++){h.sim[i].copy(h.tgt[i]);h.prev[i].copy(h.tgt[i]);}driveBones(h);return h;}
+function despawn(h){h.active=false;h.holder.visible=false;if(h.prop)h.prop.visible=false;for(const w of h.wounds)w.parent&&w.parent.remove(w);h.wounds=[];if(h.base){const i=h.base.members.indexOf(h);if(i>=0)h.base.members.splice(i,1);}}
+function makeRifle(){const g=mkG([[bx(0.05,0.07,0.75,0,0,0.2),0x222426],[bx(0.045,0.12,0.25,0,-0.03,-0.25),0x4a3424],[bx(0.03,0.12,0.05,0,-0.08,0.05),0x1a1a1a],[cy(0.012,0.012,0.35,0,0.015,0.7,6,Math.PI/2),0x111111]]);return new THREE.Mesh(g,metalMat);}
+
+// ---------- IK y poses procedurales ----------
+const _ia=new V3(),_ib=new V3(),_ic=new V3(),_id=new V3();
+function ik2(A,T,l1,l2,pole,outM,outT){_ia.subVectors(T,A);let d=_ia.length();const mx=l1+l2-0.002,mn=Math.abs(l1-l2)+0.01;if(d<1e-5){_ia.set(0,-1,0);d=mn;}_ia.divideScalar(d);d=clamp(d,mn,mx);
+  outT.copy(A).addScaledVector(_ia,d);const a=(l1*l1-l2*l2+d*d)/(2*d);const hh=Math.sqrt(Math.max(0,l1*l1-a*a));
+  _ib.copy(pole).addScaledVector(_ia,-pole.dot(_ia));if(_ib.lengthSq()<1e-8)_ib.set(0,0,1).addScaledVector(_ia,-_ia.z);_ib.normalize();outM.copy(A).addScaledVector(_ia,a).addScaledVector(_ib,hh);}
+const LP=Array.from({length:NP},()=>new V3());const _e1=new THREE.Euler(),_qt1=new Q4(),_tmpA=new V3(),_tmpB=new V3(),_pole=new V3();
+// cuerpo local a partir de parámetros (pelvis, inclinación, pies y manos)
+function bodyLocal(pr,o){const L=LP;L[PELVIS].copy(o.pel);_e1.set(o.pitch||0,o.twist||0,o.roll||0,'YXZ');_qt1.setFromEuler(_e1);
+  L[CHEST].copy(pr.chestOff).applyQuaternion(_qt1).add(o.pel);
+  L[LSH].set(pr.shOff.x,pr.shOff.y,pr.shOff.z).applyQuaternion(_qt1).add(o.pel);L[RSH].set(-pr.shOff.x,pr.shOff.y,pr.shOff.z).applyQuaternion(_qt1).add(o.pel);
+  _e1.set((o.pitch||0)+(o.headPitch||0),(o.twist||0)+(o.headYaw||0),(o.roll||0)+(o.headRoll||0),'YXZ');_qt1.setFromEuler(_e1);L[HEAD].copy(pr.headOff).applyQuaternion(_qt1).add(L[CHEST]);
+  _e1.set((o.pelPitch||0),(o.twist||0)*0.4,(o.roll||0)*0.4,'YXZ');_qt1.setFromEuler(_e1);
+  L[LHIP].set(pr.hipOff.x,pr.hipOff.y,pr.hipOff.z).applyQuaternion(_qt1).add(o.pel);L[RHIP].set(-pr.hipOff.x,pr.hipOff.y,pr.hipOff.z).applyQuaternion(_qt1).add(o.pel);
+  ik2(L[LHIP],o.lf,pr.thigh,pr.shin,o.kpL||_pole.set(0,0,1),L[LKNEE],L[LFOOT]);ik2(L[RHIP],o.rf,pr.thigh,pr.shin,o.kpR||_pole.set(0,0,1),L[RKNEE],L[RFOOT]);
+  ik2(L[LSH],o.lh,pr.upper,pr.fore,o.epL||_tmpA.set(0.2,-0.4,-1),L[LELB],L[LHAND]);ik2(L[RSH],o.rh,pr.upper,pr.fore,o.epR||_tmpB.set(-0.2,-0.4,-1),L[RELB],L[RHAND]);}
+const _o={pel:new V3(),lf:new V3(),rf:new V3(),lh:new V3(),rh:new V3()};
+function armTarget(pr,side,mode,ph,amp,sh,out,h){const s=side>0?1:-1;const al=(pr.upper+pr.fore);
+  if(mode==='forward'){out.set(sh.x*0.8+s*0.03,sh.y-0.22+Math.sin(ph*0.5+side)*0.06,sh.z+al*0.82);}
+  else if(mode==='hang'){out.set(sh.x+s*0.08,sh.y-al*0.97,sh.z+0.08+Math.sin(ph+side)*0.05);}
+  else if(mode==='reach'){out.set(sh.x*0.6,sh.y+0.08,sh.z+al*0.96);}
+  else if(mode==='aim'){out.set(s>0?0.05:-0.12,sh.y-0.12,sh.z+(s>0?0.55:0.3));}
+  else{const sw=-Math.sin(ph+(side>0?Math.PI:0))*0.45*amp;out.set(sh.x+s*0.05,sh.y-al*0.95*Math.cos(sw),sh.z+al*0.95*Math.sin(sw));}
+  return out;}
+function poseTargets(h,dt){const pr=h.pr,g=h.gp,o=_o;const v=h.speed;const amp=clamp(v/1.3,0,1.5);const z=h.type==='zombie';
+  if(v>0.03)h.phase+=dt*v/pr.stride*Math.PI*(z?1.15:1);else h.phase+=dt*0.6;const ph=h.phase;h.actT+=dt;
+  const act=h.act;let lean=g.lean,headP=g.droop,headR=g.tilt+(z?Math.sin(clockT*0.7*g.twitch+h.slot)*0.1*g.twitch:0),headY=z?Math.sin(clockT*0.4+h.slot)*0.2:Math.sin(clockT*0.3+h.slot)*0.5*(v<0.1?1:0.2);
+  if(act==='lie'||act==='sleep'){// tumbado boca arriba
+    o.pel.set(0,0.14,0);bodyLocal(pr,Object.assign(o,{pitch:-Math.PI/2,roll:0,twist:0,headPitch:-0.2,headRoll:0,headYaw:0,pelPitch:-Math.PI/2}));
+    o.lf.set(pr.hipOff.x,0.1,-(pr.thigh+pr.shin));o.rf.set(-pr.hipOff.x,0.1,-(pr.thigh+pr.shin));o.lh.set(0.35,0.08,0.1);o.rh.set(-0.35,0.08,0.1);bodyLocal(pr,o);}
+  else if(act==='squat'||act==='eat'||act==='loot'){const d=act==='eat'?0.9:0.55;o.pel.set(0,pr.pelH*0.46,-0.05);o.lf.set(pr.hipOff.x+0.06,pr.footH,0.18);o.rf.set(-pr.hipOff.x-0.06,pr.footH,act==='eat'?-0.25:0.12);
+    const sh=_tmpA.copy(pr.shOff);sh.y+=o.pel.y;const hy=act==='eat'?0.12+Math.abs(Math.sin(clockT*6+h.slot))*0.08:0.45+Math.sin(clockT*3+h.slot)*0.05;
+    o.lh.set(0.18,hy,0.45);o.rh.set(-0.18,hy+0.03,0.42);bodyLocal(pr,Object.assign(o,{pitch:d,roll:0,twist:0,headPitch:act==='eat'?0.5+Math.sin(clockT*7)*0.15:0.3,headRoll:0,headYaw:0,pelPitch:0.3,kpL:_pole.set(0,0.3,1),kpR:_tmpB.set(0,0.3,1)}));}
+  else if(act==='sit'){o.pel.set(0,0.18,0);o.lf.set(pr.hipOff.x+0.08,pr.footH,0.55);o.rf.set(-pr.hipOff.x-0.08,pr.footH,0.5);o.lh.set(0.25,0.2,0.3);o.rh.set(-0.25,0.2,0.3);
+    bodyLocal(pr,Object.assign(o,{pitch:0.15,roll:0,twist:0,headPitch:0.1,headRoll:0,headYaw:headY,pelPitch:0,kpL:_pole.set(0,1,0.3),kpR:_tmpB.set(0,1,0.3)}));}
+  else if(act==='getup'){getupLocal(h,clamp(h.getup,0,1));}
+  else if(act==='crawl'){const t=ph;o.pel.set(Math.sin(t)*0.06,0.16,-0.55);o.lf.set(pr.hipOff.x,0.08,-0.55-pr.thigh-pr.shin+0.1);o.rf.set(-pr.hipOff.x,0.08,-0.5-pr.thigh-pr.shin+0.1);
+    o.lh.set(0.25,0.06,0.45+Math.sin(t)*0.25);o.rh.set(-0.25,0.06,0.45-Math.sin(t)*0.25);bodyLocal(pr,Object.assign(o,{pitch:Math.PI/2-0.25,roll:Math.sin(t)*0.12,twist:0,headPitch:-1.0,headRoll:0,headYaw:Math.sin(t*0.5)*0.3,pelPitch:Math.PI/2,
+      kpL:_pole.set(0,-1,0),kpR:_tmpB.set(0,-1,0),epL:_v3.set(0.5,-0.5,0),epR:_v4.set(-0.5,-0.5,0)}));}
+  else{// de pie / caminando (gait)
+    const bob=Math.abs(Math.cos(ph))*0.035*amp,sway=Math.sin(ph)*0.025*amp*g.sway;let pelY=pr.pelH-0.025-0.03*amp-bob;
+    if(h.atkAnim>0){lean+=0.25;headP-=0.2;}if(act==='aim')lean=0.08;
+    o.pel.set(sway,pelY,0);
+    for(const side of [1,-1]){const lp=ph+(side>0?0:Math.PI);const limp=g.limp*side>0?Math.abs(g.limp):0;const st=pr.stride*0.5*amp*(1-limp*0.6);
+      const lift=Math.max(0,Math.cos(lp))*0.12*amp*(1-limp*0.85)*(z?0.75:1);const f=side>0?o.lf:o.rf;f.set(side*(pr.hipOff.x+0.02)+(z?side*0.04:0),pr.footH+lift,Math.sin(lp)*st);
+      if(limp>0&&Math.cos(lp)>0)pelY-=0.04*limp;}
+    o.pel.y=pelY;
+    const shL=_tmpA.set(pr.shOff.x,pr.shOff.y+pelY,pr.shOff.z),shR=_tmpB.set(-pr.shOff.x,pr.shOff.y+pelY,pr.shOff.z);
+    let am=g.arms;if(h.atkAnim>0)am='reach';if(act==='aim'||(h.aim&&h.armed))am='aim';
+    armTarget(pr,1,am==='mixed'?'forward':am,ph,amp,shL,o.lh,h);armTarget(pr,-1,am==='mixed'?'hang':am,ph,amp,shR,o.rh,h);
+    if(z&&g.twitch){o.lh.x+=Math.sin(clockT*9+h.slot)*0.02*g.twitch;o.rh.y+=Math.sin(clockT*7.3+h.slot*2)*0.03*g.twitch;}
+    bodyLocal(pr,Object.assign(o,{pitch:lean+Math.cos(ph*2)*0.02*amp,roll:Math.sin(ph)*0.03*amp*g.sway+(z?g.tilt*0.2:0),twist:Math.sin(ph)*0.08*amp,headPitch:headP,headRoll:headR,headYaw:headY,pelPitch:0,kpL:null,kpR:null,epL:null,epR:null}));}
+  // a mundo
+  const c=Math.cos(h.yaw),s=Math.sin(h.yaw);const gy=surfY(h.x,h.z,h.y+0.5);h.y=gy;
+  for(let i=0;i<NP;i++){const l=LP[i];h.tgt[i].set(h.x+l.x*c+l.z*s,gy+l.y,h.z-l.x*s+l.z*c);}}
+// levantarse: boca abajo → manos al suelo → rodilla → de pie (con torpeza zombi)
+function getupLocal(h,t){const pr=h.pr,o=_o;const leg=pr.thigh+pr.shin;const z=h.type==='zombie';const wob=z?Math.sin(clockT*5+h.slot)*0.05:0;
+  if(t<0.33){const u=t/0.33;const th=lerp(0.05,0.9,u*u);o.pel.set(0,0.14+u*0.06,-0.15);o.lf.set(pr.hipOff.x,0.08,-leg*0.95);o.rf.set(-pr.hipOff.x,0.08,-leg*0.95);
+    o.lh.set(0.24,0.06,0.25+0.2*(1-u));o.rh.set(-0.24,0.06,0.25+0.2*(1-u));bodyLocal(pr,Object.assign(o,{pitch:Math.PI/2-th,roll:wob,twist:0,headPitch:-0.9+u*0.5,headRoll:0,headYaw:0,pelPitch:Math.PI/2-th*0.3,kpL:_pole.set(0,-1,0.2),kpR:_tmpB.set(0,-1,0.2),epL:_v3.set(0.6,0,-0.3),epR:_v4.set(-0.6,0,-0.3)}));}
+  else if(t<0.66){const u=(t-0.33)/0.33;o.pel.set(0,lerp(0.2,pr.thigh+0.12,u),lerp(-0.15,-0.05,u));o.lf.set(pr.hipOff.x,0.08,lerp(-leg*0.95,0.35,clamp(u*1.6-0.4,0,1)));o.rf.set(-pr.hipOff.x,0.06,lerp(-leg*0.95,-pr.shin,u));
+    o.lh.set(0.24,lerp(0.06,0.45,u),lerp(0.35,0.4,u));o.rh.set(-0.24,0.06+u*0.1,0.4);bodyLocal(pr,Object.assign(o,{pitch:lerp(0.7,0.45,u),roll:wob,twist:0,headPitch:-0.2,headRoll:0,headYaw:0,pelPitch:lerp(0.9,0.2,u),kpL:_pole.set(0,0.4,1),kpR:_tmpB.set(0,-0.6,1),epL:null,epR:null}));}
+  else{const u=(t-0.66)/0.34;const e=u*u*(3-2*u);o.pel.set(0,lerp(pr.thigh+0.12,pr.pelH-0.03,e),0);o.lf.set(pr.hipOff.x,pr.footH,lerp(0.35,0.05,e));o.rf.set(-pr.hipOff.x,pr.footH,lerp(-pr.shin*0.7,0,e));
+    o.lh.set(0.24,lerp(0.45,pr.pelH-0.1,e),lerp(0.4,0.1,e));o.rh.set(-0.24,lerp(0.3,pr.pelH-0.15,e),lerp(0.35,0.1,e));bodyLocal(pr,Object.assign(o,{pitch:lerp(0.45,h.gp.lean,e),roll:wob,twist:0,headPitch:h.gp.droop*e,headRoll:h.gp.tilt*e,headYaw:0,pelPitch:lerp(0.2,0,e),kpL:null,kpR:null}));}}
+
+// ---------- huesos a partir de los puntos ----------
+const _Mq=new Q4(),_Wh=new Q4(),_Ws1=new Q4(),_Ws2=new Q4(),_Wn=new Q4(),_Wls=new Q4(),_Wla=new Q4(),_Wrs=new Q4(),_Wra=new Q4(),_Wlu=new Q4(),_Wru=new Q4(),_Wll=new Q4(),_Wrl=new Q4(),_Fq=new Q4(),_ql=new Q4(),_qi=new Q4(),_dv=new V3(),_yawQ=new Q4();
+const _Mh=new M4(),_Mi=new M4(),_Ma=new M4();
+function limbLocal(W_par,dB,a,b,lq,out){_qi.copy(W_par).invert();_dv.subVectors(b,a).applyQuaternion(_qi).normalize();_ql.setFromUnitVectors(dB,_dv);return out.copy(_ql).multiply(lq);}
+function driveBones(h){const T=h.tpl,s=h.sim,B=h.bones;_yawQ.setFromAxisAngle(UP,h.yaw);_Mq.copy(_yawQ).multiply(T.qFix).multiply(h.model.quaternion);
+  frameQ(_v1.subVectors(s[CHEST],s[PELVIS]),_v2.subVectors(s[LHIP],s[RHIP]),_Fq);_Wh.copy(_Fq).multiply(T.C_hips);
+  _qi.copy(_Mq).multiply(T.armQ).invert();B.Hips.quaternion.copy(_qi).multiply(_Wh);
+  B.Spine.quaternion.copy(T.lq.Spine);B.Spine1.quaternion.copy(T.lq.Spine1);_Ws1.copy(_Wh).multiply(T.lq.Spine).multiply(T.lq.Spine1);
+  frameQ(_v1.subVectors(s[CHEST],s[PELVIS]),_v2.subVectors(s[LSH],s[RSH]),_Fq);_Ws2.copy(_Fq).multiply(T.C_sp2);B.Spine2.quaternion.copy(_Ws1).invert().multiply(_Ws2);
+  limbLocal(_Ws2,T.dNeck,s[CHEST],s[HEAD],T.lq.Neck,B.Neck.quaternion);_Wn.copy(_Ws2).multiply(B.Neck.quaternion);B.Head.quaternion.copy(T.lq.Head);
+  B.LeftShoulder.quaternion.copy(T.lq.LeftShoulder);_Wls.copy(_Ws2).multiply(T.lq.LeftShoulder);limbLocal(_Wls,T.dLA,s[LSH],s[LELB],T.lq.LeftArm,B.LeftArm.quaternion);_Wla.copy(_Wls).multiply(B.LeftArm.quaternion);
+  limbLocal(_Wla,T.dLF,s[LELB],s[LHAND],T.lq.LeftForeArm,B.LeftForeArm.quaternion);
+  B.RightShoulder.quaternion.copy(T.lq.RightShoulder);_Wrs.copy(_Ws2).multiply(T.lq.RightShoulder);limbLocal(_Wrs,T.dRA,s[RSH],s[RELB],T.lq.RightArm,B.RightArm.quaternion);_Wra.copy(_Wrs).multiply(B.RightArm.quaternion);
+  limbLocal(_Wra,T.dRF,s[RELB],s[RHAND],T.lq.RightForeArm,B.RightForeArm.quaternion);
+  limbLocal(_Wh,T.dLU,s[LHIP],s[LKNEE],T.lq.LeftUpLeg,B.LeftUpLeg.quaternion);_Wlu.copy(_Wh).multiply(B.LeftUpLeg.quaternion);limbLocal(_Wlu,T.dLL,s[LKNEE],s[LFOOT],T.lq.LeftLeg,B.LeftLeg.quaternion);
+  limbLocal(_Wh,T.dRU,s[RHIP],s[RKNEE],T.lq.RightUpLeg,B.RightUpLeg.quaternion);_Wru.copy(_Wh).multiply(B.RightUpLeg.quaternion);limbLocal(_Wru,T.dRL,s[RKNEE],s[RFOOT],T.lq.RightLeg,B.RightLeg.quaternion);
+  if(h.mode==='kin'||h.k>0.5){_Wll.copy(_Wlu).multiply(B.LeftLeg.quaternion);_Wrl.copy(_Wru).multiply(B.RightLeg.quaternion);
+    B.LeftFoot.quaternion.copy(_Wll).invert().multiply(_ql.copy(_Mq).multiply(T.bq.LeftFoot));B.RightFoot.quaternion.copy(_Wrl).invert().multiply(_ql.copy(_Mq).multiply(T.bq.RightFoot));}
+  // posición de la cadera
+  h.holder.position.set(h.x,h.y,h.z);h.holder.quaternion.copy(_yawQ);_Mh.compose(h.holder.position,_yawQ,_s.set(1,1,1));_Mi.compose(h.inner.position,h.inner.quaternion,h.inner.scale);
+  _Ma.multiplyMatrices(_Mh,_Mi).multiply(h.model.matrix).multiply(T.armM).invert();B.Hips.position.copy(s[PELVIS]).applyMatrix4(_Ma);
+  if(h.prop&&h.prop.visible){const aiming=h.aim||h.act==='aim';h.prop.position.copy(s[RHAND]);if(aiming)_dv.subVectors(s[LHAND],s[RHAND]);else _dv.set(Math.sin(h.yaw)*0.4,-1,Math.cos(h.yaw)*0.4);if(_dv.lengthSq()>1e-6)h.prop.quaternion.setFromUnitVectors(_v.set(0,0,1),_dv.normalize());}}
+
+// ---------- física (ragdoll activo con límites articulares) ----------
+const FDT=1/60;
+const MINC=[[LHIP,LFOOT,0.42],[RHIP,RFOOT,0.42],[LSH,LHAND,0.3],[RSH,RHAND,0.3],[LFOOT,RFOOT,0.14],[LKNEE,RKNEE,0.11],[HEAD,PELVIS,0.82],[LHAND,RHAND,0.08],[HEAD,LKNEE,0.5],[HEAD,RKNEE,0.5],[CHEST,LKNEE,0.3],[CHEST,RKNEE,0.3]];
+function enterPhys(h){if(h.mode==='phys')return;for(let i=0;i<NP;i++){h.prev[i].copy(h.sim[i]);h.prev[i].x-=h.vx*FDT;h.prev[i].z-=h.vz*FDT;}h.mode='phys';h.k=1;h.acc=0;h.sleep=0;}
+function applyImp(h,imp,pi){if(!imp)return;const w=NBW[pi<0?CHEST:pi];for(let i=0;i<NP;i++)h.prev[i].addScaledVector(imp,-FDT*w[i]);h.sleep=0;}
+const _cp={x:0,z:0},_kf=new V3(),_km=new V3();
+function verlet(h){const p=h.sim,q=h.prev,t=h.tgt;const k=h.dead?0:h.k;const damp=k>0.05?0.93:0.985;const legL=h.pr.thigh+h.pr.shin;
+  for(let i=0;i<NP;i++){const a=p[i],b=q[i];const vx=(a.x-b.x)*damp,vy=(a.y-b.y)*damp,vz=(a.z-b.z)*damp;b.copy(a);a.x+=vx;a.y+=vy-9.81*FDT*FDT;a.z+=vz;}
+  const brace=h.brace>0&&!h.dead;if(k>0||brace)for(let i=0;i<NP;i++){const s=brace?(ARMPT[i]?0.42*h.kp[i]:0):k*h.kp[i]*h.kl[i]*0.3;if(s>0){p[i].x+=(t[i].x-p[i].x)*s;p[i].y+=(t[i].y-p[i].y)*s;p[i].z+=(t[i].z-p[i].z)*s;}}
+  for(let it=0;it<5;it++){for(let s=0;s<STICKS.length;s++){const a=p[STICKS[s][0]],b=p[STICKS[s][1]];const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;const d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1e-4;const f=(d-h.rest[s])/d*0.5;
+      a.x+=dx*f;a.y+=dy*f;a.z+=dz*f;b.x-=dx*f;b.y-=dy*f;b.z-=dz*f;}
+    for(const [ia,ib,fr] of MINC){const a=p[ia],b=p[ib];const mn=fr*(ia===HEAD&&ib===PELVIS?h.rest[3]:legL*(ia===LSH||ia===RSH?0.75:1));const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;const d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1e-4;
+      if(d<mn){const f=(d-mn)/d*0.5;a.x+=dx*f;a.y+=dy*f;a.z+=dz*f;b.x-=dx*f;b.y-=dy*f;b.z-=dz*f;}}
+    // rodillas hacia delante, codos hacia atrás
+    _fx.subVectors(p[LHIP],p[RHIP]);_fy.subVectors(p[CHEST],p[PELVIS]);_kf.crossVectors(_fx,_fy).normalize();
+    for(const [hp,kn,ft,sg] of [[LHIP,LKNEE,LFOOT,1],[RHIP,RKNEE,RFOOT,1],[LSH,LELB,LHAND,-1],[RSH,RELB,RHAND,-1]]){_km.addVectors(p[hp],p[ft]).multiplyScalar(0.5);const dd=_v.subVectors(p[kn],_km).dot(_kf)*sg;
+      if(dd<-0.01){p[kn].addScaledVector(_kf,-dd*sg*0.6);p[ft].addScaledVector(_kf,dd*sg*0.2);}}
+    for(let i=0;i<NP;i++){const gy=surfY(p[i].x,p[i].z,p[i].y)+PR[i];if(p[i].y<gy)p[i].y=gy;}}
+  let mv=0;for(let i=0;i<NP;i++){const a=p[i],b=q[i];const gy=surfY(a.x,a.z,a.y)+PR[i];
+    if(a.y<=gy+0.005){b.x=a.x-(a.x-b.x)*0.5;b.z=a.z-(a.z-b.z)*0.5;if(b.y<a.y)b.y=a.y-(a.y-b.y)*0.15;}
+    _cp.x=a.x;_cp.z=a.z;if(collide(_cp,PR[i],a.y)){b.x+=_cp.x-a.x;b.z+=_cp.z-a.z;a.x=_cp.x;a.z=_cp.z;}mv+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y)+Math.abs(a.z-b.z);}
+  return mv;}
+function physStep(h,dt){h.acc+=dt;let n=0,mv=0;while(h.acc>=FDT&&n<3){h.acc-=FDT;n++;mv=verlet(h);}if(h.acc>FDT*3)h.acc=0;return mv;}
+function startGetUp(h){const s=h.sim;h.x=s[PELVIS].x;h.z=s[PELVIS].z;_cp.x=h.x;_cp.z=h.z;collide(_cp,0.3,h.y+0.3);h.x=_cp.x;h.z=_cp.z;
+  _v.subVectors(s[HEAD],s[PELVIS]);if(Math.abs(_v.x)+Math.abs(_v.z)>0.2)h.yaw=Math.atan2(_v.x,_v.z);h.down=0;h.act='getup';h.getup=0;h.k=0.25;}
+// ---------- heridas visibles (calcomanías de sangre pegadas al hueso) ----------
+const woundMat=new THREE.MeshLambertMaterial({map:texBlood,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4});const woundGeo=new THREE.PlaneGeometry(1,1);
+const poolMat=new THREE.MeshLambertMaterial({map:texBlood,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});
+function addWound(h,part,pos,dir,size){if(!S.gore)return;const bone=h.bones[PART_BONE[part]||'Spine1'];if(!bone)return;let w;
+  if(h.wounds.length>=10){w=h.wounds.shift();w.parent&&w.parent.remove(w);}else w=new THREE.Mesh(woundGeo,woundMat);
+  bone.updateWorldMatrix(true,false);const inv=_m.copy(bone.matrixWorld).invert();w.position.copy(pos).addScaledVector(dir,-0.015).applyMatrix4(inv);
+  bone.getWorldQuaternion(_q);_q.invert();_v.copy(dir).negate().applyQuaternion(_q);w.quaternion.setFromUnitVectors(_v1.set(0,0,1),_v.normalize());
+  bone.getWorldScale(_s);const k=size*(S.gore===2?1:0.6)/_s.x;w.scale.set(k,k,k);w.rotateZ(R(0,6.28));bone.add(w);h.wounds.push(w);}
+const pools=[];function bloodPool(x,z,y){if(S.gore<2||pools.length>40)return;const m=new THREE.Mesh(woundGeo,poolMat);m.rotation.x=-Math.PI/2;m.rotation.z=R(0,6);m.position.set(x,y+0.015,z);m.scale.setScalar(0.2);scene.add(m);pools.push({m,s:0.2,max:R(1.2,2),t:180});}
+
+// ---------- daño por zonas y reacciones ----------
+function anger(h){if(h.type==='zombie')return;if(h.base){if(!h.base.angry&&h.base.type==='good')toast(`¡Has atacado a ${h.base.name}! Ahora son hostiles.`);h.base.angry=true;}else h.angry=true;}
+const ARMPT=[0,0,0,0,0,0,0,1,1,1,1,0,0,0,0];
+// pierna rota: cae apoyando las manos, se levanta y cojea arrastrándola; con las dos rotas, se arrastra
+function breakLimb(h,part){h.broken[part]=true;
+  if(part==='lLeg'||part==='rLeg'){const other=part==='lLeg'?'rLeg':'lLeg';
+    if(h.broken[other]){for(const i of LIMB_PTS[part])h.kp[i]=0.02;h.permPhys=true;h.crawler=true;h.down=1e9;h.act='crawl';return;}
+    h.gp.limp=(part==='lLeg'?1:-1)*1.0;h.gp.speedMul*=0.45;h.gp.drag=part;knockDown(h,null,R(2.5,4));return;}
+  for(const i of LIMB_PTS[part])h.kp[i]=0.02;h.permPhys=true;}
+function knockDown(h,imp,t){h.k=0;h.down=t||R(1.4,3);h.act='stand';h.brace=0.75;const c=h.sim[CHEST],pv=h.prev[CHEST];let dx=imp?imp.x:c.x-pv.x,dz=imp?imp.z:c.z-pv.z;const l=Math.hypot(dx,dz);
+  if(l<1e-4){dx=Math.sin(h.yaw);dz=Math.cos(h.yaw);}else{dx/=l;dz/=l;}h.braceDir=[dx,dz];}
+// manos por delante al caer
+function braceTargets(h){const p=h.sim,t=h.tgt;const d=h.braceDir||[Math.sin(h.yaw),Math.cos(h.yaw)];const g=surfY(p[PELVIS].x,p[PELVIS].z,p[PELVIS].y)+0.06;
+  for(const [sh,el,ha,sd] of [[LSH,LELB,LHAND,1],[RSH,RELB,RHAND,-1]]){const s=p[sh];const px=-d[1]*sd*0.18,pz=d[0]*sd*0.18;
+    t[ha].set(s.x+d[0]*0.55+px,Math.max(g,s.y-0.75),s.z+d[1]*0.55+pz);t[el].set((s.x+t[ha].x)/2+px*0.5,(s.y+t[ha].y)/2,(s.z+t[ha].z)/2+pz*0.5);}}
+function die(h,by){h.dead=true;h.deadT=0;h.k=0;h.sleep=0;h.reanimate=!!S.reanimate&&by==='zombie'&&h.type!=='zombie';h.aim=0;
+  if(h.type==='zombie'&&by==='player')P.kills++;if(h.type!=='zombie'){h.searched=false;if(h.base){const i=h.base.members.indexOf(h);if(i>=0)h.base.members.splice(i,1);}}
+  if(h.prop&&h.prop.visible){const pr=h.prop;h.prop=null;dropObj(pr,pr.position.clone(),_v.set(R(-1,1),1,R(-1,1)),true);}
+  setTimeout(()=>{if(h.active&&h.dead)bloodPool(h.sim[CHEST].x,h.sim[CHEST].z,h.sim[CHEST].y-0.1);},1500);}
+function hitChar(h,part,dmg,imp,pi,by,pos,dir){if(!h.active)return;if(by==='player')anger(h);
+  enterPhys(h);applyImp(h,imp,pi);if(pos&&dir)addWound(h,part,pos,dir,part==='head'?R(0.1,0.16):R(0.12,0.22));if(h.dead)return;h.lastHitT=clockT;
+  if(part==='head')h.headHp-=dmg;else if(part==='body')h.bodyHp-=dmg;
+  else if(h.limb[part]!==undefined){h.limb[part]-=dmg;h.bodyHp=Math.max(1,h.bodyHp-dmg*0.1);if(h.limb[part]<=0&&!h.broken[part])breakLimb(h,part);}
+  if(h.headHp<=0||h.bodyHp<=0){die(h,by);return;}
+  const mag=imp?imp.length():0;// golpes flojos: solo cede la zona golpeada; golpes fuertes: tambaleo; muy fuertes: al suelo
+  const loc=clamp(mag/5,0.35,1);const w=NBW[pi<0?CHEST:pi];for(let i=0;i<NP;i++)h.kl[i]=Math.min(h.kl[i],1-w[i]*loc);
+  h.k=Math.max(0,h.k-Math.max(0,(mag-3.2)/(h.type==='zombie'?7:5.5)));
+  if(h.k<0.12&&h.down<=0&&!h.crawler)knockDown(h,imp,R(1.4,3)*(h.type==='zombie'?1:1.3));
+  // golpe en una pierna sin romperla: cojea más y puede tropezar
+  if((part==='lLeg'||part==='rLeg')&&!h.broken[part]&&!h.dead){const sg=part==='lLeg'?1:-1;h.gp.limp=clamp((Math.sign(h.gp.limp)===sg?Math.abs(h.gp.limp):0)+dmg/70,0,0.9)*sg;h.gp.speedMul=Math.max(0.35,h.gp.speedMul*0.9);
+    if(h.down<=0&&Math.random()<clamp(dmg/90,0.15,0.6))knockDown(h,imp,R(1.2,2.2));}
+  if(h.type!=='zombie'&&by==='player'&&!h.target)h.target='player';}
+const charPoints=h=>h.sim;
+const headC=(pts,out)=>out.subVectors(pts[HEAD],pts[CHEST]).normalize().multiplyScalar(0.09).add(pts[HEAD]);
