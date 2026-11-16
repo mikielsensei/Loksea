@@ -21,9 +21,12 @@ const TEXM={asphalt:5,asphalt_cracked:5,panot4:0.8,panotflor:0.8,panotbotons:0.8
   shutter:2.2,shutter_rust:2.2,wood_dark:1.2,wood_door:1.5,rust:1.5,floor_hidraulic:1.6,floor_terrazo:1.6,floor_super:2.4,floor_wood:2,concrete:3,concrete_wall:3,bark_platanus:1.4,bark_palm:1.2,llambordes:1.6};
 const US=k=>1/(TEXM[k]||1);
 // texturas de detalle (siempre procedurales)
-const texBlood=cTex(128,128,(g,w,h)=>{g.clearRect(0,0,w,h);for(let i=0;i<26;i++){const r=R(4,22),x=64+R(-30,30),y=64+R(-30,30);const gr=g.createRadialGradient(x,y,0,x,y,r);
-    gr.addColorStop(0,`rgba(${R(70,110)|0},0,0,0.95)`);gr.addColorStop(0.7,`rgba(${R(50,80)|0},0,0,0.8)`);gr.addColorStop(1,'rgba(40,0,0,0)');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();}
-  for(let i=0;i<40;i++){g.fillStyle='rgba(90,0,0,.85)';g.beginPath();g.arc(64+R(-56,56),64+R(-56,56),R(1,3),0,7);g.fill();}},{});
+// charco de sangre: borde nítido e irregular (lóbulos) con gotas sueltas alrededor
+const texBlood=cTex(256,256,(g,w,h)=>{g.clearRect(0,0,w,h);const c=128;g.fillStyle='rgb(70,4,3)';g.beginPath();const N=40,ph=[R(0,6),R(0,6),R(0,6)];
+  for(let i=0;i<=N;i++){const a=i/N*6.283;const r=62+Math.sin(a*3+ph[0])*12+Math.sin(a*5+ph[1])*8+Math.sin(a*9+ph[2])*4;g.lineTo(c+Math.cos(a)*r,c+Math.sin(a)*r);}g.fill();
+  for(let i=0;i<7;i++){const a=R(0,6.28),d=R(55,80);g.beginPath();g.arc(c+Math.cos(a)*d,c+Math.sin(a)*d,R(10,22),0,7);g.fill();}
+  for(let i=0;i<40;i++){const a=R(0,6.28),d=R(85,122);g.beginPath();g.arc(c+Math.cos(a)*d,c+Math.sin(a)*d,R(1.5,5),0,7);g.fill();}
+  const gr=g.createRadialGradient(c-20,c-20,4,c,c,90);gr.addColorStop(0,'rgba(0,0,0,0.35)');gr.addColorStop(1,'rgba(0,0,0,0)');g.globalCompositeOperation='source-atop';g.fillStyle=gr;g.fillRect(0,0,w,h);g.globalCompositeOperation='source-over';},{});
 texBlood.wrapS=texBlood.wrapT=THREE.ClampToEdgeWrapping;
 const texShadow=cTex(64,64,(g)=>{const gr=g.createRadialGradient(32,32,2,32,32,30);gr.addColorStop(0,'rgba(0,0,0,.55)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);});
 

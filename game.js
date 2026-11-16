@@ -168,9 +168,12 @@ const TEXM={asphalt:5,asphalt_cracked:5,panot4:0.8,panotflor:0.8,panotbotons:0.8
   shutter:2.2,shutter_rust:2.2,wood_dark:1.2,wood_door:1.5,rust:1.5,floor_hidraulic:1.6,floor_terrazo:1.6,floor_super:2.4,floor_wood:2,concrete:3,concrete_wall:3,bark_platanus:1.4,bark_palm:1.2,llambordes:1.6};
 const US=k=>1/(TEXM[k]||1);
 // texturas de detalle (siempre procedurales)
-const texBlood=cTex(128,128,(g,w,h)=>{g.clearRect(0,0,w,h);for(let i=0;i<26;i++){const r=R(4,22),x=64+R(-30,30),y=64+R(-30,30);const gr=g.createRadialGradient(x,y,0,x,y,r);
-    gr.addColorStop(0,`rgba(${R(70,110)|0},0,0,0.95)`);gr.addColorStop(0.7,`rgba(${R(50,80)|0},0,0,0.8)`);gr.addColorStop(1,'rgba(40,0,0,0)');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();}
-  for(let i=0;i<40;i++){g.fillStyle='rgba(90,0,0,.85)';g.beginPath();g.arc(64+R(-56,56),64+R(-56,56),R(1,3),0,7);g.fill();}},{});
+// charco de sangre: borde nítido e irregular (lóbulos) con gotas sueltas alrededor
+const texBlood=cTex(256,256,(g,w,h)=>{g.clearRect(0,0,w,h);const c=128;g.fillStyle='rgb(70,4,3)';g.beginPath();const N=40,ph=[R(0,6),R(0,6),R(0,6)];
+  for(let i=0;i<=N;i++){const a=i/N*6.283;const r=62+Math.sin(a*3+ph[0])*12+Math.sin(a*5+ph[1])*8+Math.sin(a*9+ph[2])*4;g.lineTo(c+Math.cos(a)*r,c+Math.sin(a)*r);}g.fill();
+  for(let i=0;i<7;i++){const a=R(0,6.28),d=R(55,80);g.beginPath();g.arc(c+Math.cos(a)*d,c+Math.sin(a)*d,R(10,22),0,7);g.fill();}
+  for(let i=0;i<40;i++){const a=R(0,6.28),d=R(85,122);g.beginPath();g.arc(c+Math.cos(a)*d,c+Math.sin(a)*d,R(1.5,5),0,7);g.fill();}
+  const gr=g.createRadialGradient(c-20,c-20,4,c,c,90);gr.addColorStop(0,'rgba(0,0,0,0.35)');gr.addColorStop(1,'rgba(0,0,0,0)');g.globalCompositeOperation='source-atop';g.fillStyle=gr;g.fillRect(0,0,w,h);g.globalCompositeOperation='source-over';},{});
 texBlood.wrapS=texBlood.wrapT=THREE.ClampToEdgeWrapping;
 const texShadow=cTex(64,64,(g)=>{const gr=g.createRadialGradient(32,32,2,32,32,30);gr.addColorStop(0,'rgba(0,0,0,.55)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);});
 
@@ -1323,30 +1326,40 @@ async function loadModels(){setLoad('m','Descargando personajes…');
 const NOISE_GLSL=`float zh(vec3 p){p=fract(p*0.3183099+0.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float zn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix(zh(i),zh(i+vec3(1,0,0)),f.x),mix(zh(i+vec3(0,1,0)),zh(i+vec3(1,1,0)),f.x),f.y),mix(mix(zh(i+vec3(0,0,1)),zh(i+vec3(1,0,1)),f.x),mix(zh(i+vec3(0,1,1)),zh(i+vec3(1,1,1)),f.x),f.y),f.z);}`;
 const matCache=new Map();
-function charMat(base,type,variant,tpl){const key=base.uuid+type+variant;let m=matCache.get(key);if(m)return m;m=base.clone();m.metalness=0;m.roughness=0.95;m.envMapIntensity=0.25;
+// Material por personaje: los zombis con piel cadavérica; todos con heridas pintadas sobre la propia piel (sin calcomanías flotando)
+const WOUND_GLSL=`
+        for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w<=0.0)continue;vec3 dv=(vZP-W.xyz)*uFU;float dd=length(dv);if(dd>W.w*7.0)continue;
+          float n=zn(zp*34.0+float(i)*7.3),n2=zn(zp*9.0+float(i)*3.1);
+          float stain=smoothstep(W.w*1.1,W.w*0.7,dd+(n2-0.5)*W.w*1.1+(n-0.5)*W.w*0.35);
+          float core=smoothstep(W.w*0.24,W.w*0.17,dd);
+          float dy=dot(dv,uUp);vec3 lt=dv-uUp*dy;float lat=length(lt+uSd*(n2-0.5)*W.w*0.6);float L=W.w*(3.0+n2*3.0);
+          float wd=W.w*0.32*clamp(1.0+dy/L,0.15,1.0);
+          float drip=step(dy,0.0)*smoothstep(-L,-L*0.6,dy)*smoothstep(wd,wd*0.35,lat);
+          float b=max(max(stain*0.92,drip*0.85),core);
+          zc=mix(zc,mix(vec3(0.13,0.008,0.006)*(0.55+l*0.8),vec3(0.03,0.0,0.0),core)*(0.8+n*0.4),b*uGore);}`;
+function charMat(base,type,variant,tpl,h){const key=base.uuid+type+variant+(h?'_'+h.slot:'');let m=matCache.get(key);if(m)return m;m=base.clone();m.metalness=0;m.roughness=0.95;m.envMapIntensity=0.25;
   const tint={zombie:[[1,1,1]],bandit:[[0.82,0.74,0.7],[0.7,0.7,0.72]],good:[[1,1,1],[0.94,0.98,1],[1,0.96,0.92]],wanderer:[[0.95,0.92,0.86],[0.9,0.92,0.95]]}[type]||[[1,1,1]];
   const t=tint[variant%tint.length];m.color.setRGB(t[0],t[1],t[2]);
-  const F=tpl&&tpl.face;
-  if(type==='zombie'&&F){const gore=S.gore;const isHead=/head/i.test(base.name)?1:0;m.onBeforeCompile=sh=>{
+  const F=tpl&&tpl.face;const zom=type==='zombie';
+  if(F&&(zom||h)){const gore=S.gore;const isHead=/head/i.test(base.name)?1:0;m.onBeforeCompile=sh=>{
     Object.assign(sh.uniforms,{uFU:{value:F.fu},uSeed:{value:variant*3.7+1.3},uGore:{value:gore/2},uEL:{value:F.eyeL},uER:{value:F.eyeR},uMo:{value:F.mouth},uHL:{value:F.hl},uHR:{value:F.hr},uUp:{value:F.up},uFw:{value:F.fwd},uSd:{value:F.side},
-      uHead:{value:isHead},uMK:{value:[1,0.55,1,0.2][variant%4]},uHK:{value:[1,0.2,0.7,1][variant%4]}});
+      uHead:{value:isHead},uMK:{value:[1,0.55,1,0.2][variant%4]},uHK:{value:[1,0.2,0.7,1][variant%4]},uW:{value:h?h.woundU:WOUND0}});
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;');
-    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uFU,uSeed,uGore,uHead,uMK,uHK;uniform vec3 uEL,uER,uMo,uHL,uHR,uUp,uFw,uSd;\n'+NOISE_GLSL)
-      .replace('#include <map_fragment>',`#include <map_fragment>
-        vec3 c0=diffuseColor.rgb;vec3 zp=vZP*uFU*1.75+uSeed;float l=dot(c0,vec3(0.3,0.59,0.11));
-        // ¿piel? (tono cálido) → palidez cadavérica; la ropa solo se apaga y se ensucia
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uFU,uSeed,uGore,uHead,uMK,uHK;uniform vec3 uEL,uER,uMo,uHL,uHR,uUp,uFw,uSd;uniform vec4 uW[8];\n'+NOISE_GLSL)
+      .replace('#include <map_fragment>','#include <map_fragment>\n        vec3 c0=diffuseColor.rgb;vec3 zp=vZP*uFU*1.75+uSeed;float l=dot(c0,vec3(0.3,0.59,0.11));vec3 zc=c0;\n'+(zom?ZOMBIE_GLSL:'')+WOUND_GLSL+'\n        diffuseColor.rgb=zc;');};
+    m.customProgramCacheKey=()=>(zom?'zomb5_':'wnd5_')+gore;}
+  matCache.set(key,m);return m;}
+const WOUND0=Array.from({length:8},()=>new THREE.Vector4());
+const ZOMBIE_GLSL=`
         float sk=smoothstep(0.015,0.09,c0.r-c0.g)*smoothstep(-0.01,0.05,c0.g-c0.b)*smoothstep(0.2,0.38,c0.r);sk=max(sk,uHead*0.55*smoothstep(0.12,0.3,l));
         vec3 cloth=mix(vec3(l),c0,0.5)*vec3(0.84,0.86,0.80);
         vec3 skin=vec3(l)*vec3(0.86,0.90,0.78)*1.08;skin=mix(skin,c0,0.14);
         float nec=zn(zp*9.0)*0.6+zn(zp*23.0)*0.4;skin*=mix(vec3(1.0),vec3(0.60,0.50,0.58),smoothstep(0.52,0.72,nec));
-        vec3 zc=mix(cloth,skin,sk);
-        // mugre a manchas grandes
+        zc=mix(cloth,skin,sk);
         float d=zn(zp*2.6)*0.65+zn(zp*7.0)*0.35;zc*=mix(1.0,0.55,smoothstep(0.5,0.8,d));
-        // ojos velados y cuencas hundidas
         float de=min(length(vZP-uEL),length(vZP-uER))*uFU;
         zc*=mix(vec3(0.34,0.26,0.30),vec3(1.0),smoothstep(0.009,0.027,de));
         zc=mix(vec3(0.80,0.80,0.74),zc,smoothstep(0.0062,0.0082,de));
-        // sangre: boca, barbilla y chorreo por el pecho; manos
         vec3 dm=(vZP-uMo)*uFU;float dy=dot(dm,uUp),dx=dot(dm,uSd),dz=dot(dm,uFw);
         float nb=zn(zp*14.0+5.0)*0.6+zn(zp*38.0)*0.4;
         float lips=smoothstep(0.024,0.009,length(vec3(dx*0.75,dy*1.25,dz*0.5)));
@@ -1356,9 +1369,7 @@ function charMat(base,type,variant,tpl){const key=base.uuid+type+variant;let m=m
         float dh=min(length(vZP-uHL),length(vZP-uHR))*uFU;float hb=smoothstep(0.085,0.03,dh)*smoothstep(0.3,0.6,nb+0.2)*uHK;
         float b=zn(zp*3.1+17.0)*0.6+zn(zp*9.0+3.0)*0.25+nb*0.15;float bm=smoothstep(0.66,0.72,b)*smoothstep(0.2,0.5,nb+0.2);
         float blood=clamp(max(max(mb,hb),bm),0.0,1.0)*uGore;
-        zc=mix(zc,vec3(0.105,0.012,0.008)*(0.5+l*0.7)*(0.75+nb*0.5),blood*0.94);
-        diffuseColor.rgb=zc;`);};m.customProgramCacheKey=()=>'zomb4_'+gore;}
-  matCache.set(key,m);return m;}
+        zc=mix(zc,vec3(0.105,0.012,0.008)*(0.5+l*0.7)*(0.75+nb*0.5),blood*0.94);`;
 
 // =====================================================================
 // PERSONAJES
@@ -1387,7 +1398,8 @@ function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=
   let h=H_.find(q=>!q.active&&q.tpl===tpl);if(!h){if(H_.length<MAXC)h=newRec(tpl);else{h=H_.find(q=>!q.active);if(!h)return null;}}
   const height=(female?R(1.58,1.72):R(1.68,1.86));const s=height/h.tpl.height;h.s=s;h.inner.scale.setScalar(s);h.inner.quaternion.copy(h.tpl.qFix);h.inner.position.set(0,-h.tpl.minY*s,0);
   const variant=o.variant!==undefined?o.variant:(Math.random()*4)|0;
-  for(const m of h.meshes){m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,type,variant,h.tpl)):charMat(m.userData.base,type,variant,h.tpl);}
+  if(!h.woundU)h.woundU=Array.from({length:8},()=>new THREE.Vector4());for(const w of h.woundU)w.set(0,0,0,0);h.woundI=0;
+  for(const m of h.meshes){m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,type,variant,h.tpl,h)):charMat(m.userData.base,type,variant,h.tpl,h);}
   {const jb=h.bones.bip_MJaw;if(jb&&h.tpl.jawAx){jb.quaternion.copy(h.tpl.jawRest);if(type==='zombie')jb.quaternion.multiply(_q.setFromAxisAngle(h.tpl.jawAx,h.tpl.jawSign*R(0.1,0.42)));}}
   const zt=type==='zombie';h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(s):v*s;}
   for(let k=0;k<STICKS.length;k++)h.rest[k]=h.tpl.CB[STICKS[k][0]].distanceTo(h.tpl.CB[STICKS[k][1]])*s;
@@ -1496,6 +1508,23 @@ const MINC=[[LHIP,LFOOT,0.42,0.9],[RHIP,RFOOT,0.42,0.9],[LSH,LHAND,0.3,0.56],[RS
 function enterPhys(h){if(h.mode==='phys')return;for(let i=0;i<NP;i++){h.prev[i].copy(h.sim[i]);h.prev[i].x-=h.vx*FDT;h.prev[i].z-=h.vz*FDT;}h.mode='phys';h.k=1;h.acc=0;h.sleep=0;}
 function applyImp(h,imp,pi){if(!imp)return;const w=NBW[pi<0?CHEST:pi];for(let i=0;i<NP;i++)h.prev[i].addScaledVector(imp,-FDT*w[i]);h.sleep=0;}
 const _cp={x:0,z:0},_kf=new V3(),_km=new V3();
+// pares de segmentos (muslos, espinillas, brazos y tronco) que no pueden atravesarse: [a0,a1,b0,b1,distancia mínima]
+const LIMBX=[[LHIP,LKNEE,RHIP,RKNEE,0.15],[LKNEE,LFOOT,RKNEE,RFOOT,0.13],[LHIP,LKNEE,RKNEE,RFOOT,0.14],[LKNEE,LFOOT,RHIP,RKNEE,0.14],
+  [LSH,LELB,CHEST,PELVIS,0.16],[LELB,LHAND,CHEST,PELVIS,0.15],[RSH,RELB,CHEST,PELVIS,0.16],[RELB,RHAND,CHEST,PELVIS,0.15],[LELB,LHAND,LHIP,LKNEE,0.12],[RELB,RHAND,RHIP,RKNEE,0.12]];
+const _sideN=new V3();
+// cuerpos caídos que no se atraviesan entre sí
+function sepBodies(){const L=[];for(const h of H_)if(h.active&&h.mode==='phys')L.push(h);
+  for(let a=0;a<L.length;a++)for(let b=a+1;b<L.length;b++){const A=L[a].sim,B=L[b].sim;if(Math.abs(A[PELVIS].x-B[PELVIS].x)>2||Math.abs(A[PELVIS].z-B[PELVIS].z)>2)continue;
+    for(let i=0;i<NP;i++)for(let j=0;j<NP;j++){const p=A[i],q=B[j];const r=PR[i]+PR[j];const dx=q.x-p.x,dy=q.y-p.y,dz=q.z-p.z;const d2=dx*dx+dy*dy+dz*dz;if(d2>=r*r||d2<1e-8)continue;const d=Math.sqrt(d2),k=(r-d)/d*0.5;
+      p.x-=dx*k;p.y-=dy*k*0.5;p.z-=dz*k;q.x+=dx*k;q.y+=dy*k*0.5;q.z+=dz*k;L[a].sleep=0;L[b].sleep=0;}}}
+function segSep(a0,a1,b0,b1,mn){const ux=a1.x-a0.x,uy=a1.y-a0.y,uz=a1.z-a0.z,vx=b1.x-b0.x,vy=b1.y-b0.y,vz=b1.z-b0.z,wx=a0.x-b0.x,wy=a0.y-b0.y,wz=a0.z-b0.z;
+  const A=ux*ux+uy*uy+uz*uz,B=ux*vx+uy*vy+uz*vz,C=vx*vx+vy*vy+vz*vz,D=ux*wx+uy*wy+uz*wz,E=vx*wx+vy*wy+vz*wz;const den=A*C-B*B;
+  let s=den>1e-9?clamp((B*E-C*D)/den,0,1):0;let t=C>1e-9?clamp((B*s+E)/C,0,1):0;s=A>1e-9?clamp((B*t-D)/A,0,1):0;
+  const dx=(a0.x+ux*s)-(b0.x+vx*t),dy=(a0.y+uy*s)-(b0.y+vy*t),dz=(a0.z+uz*s)-(b0.z+vz*t);const d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>=mn)return;
+  let nx,ny,nz;if(d<1e-5){nx=uy*vz-uz*vy;ny=uz*vx-ux*vz;nz=ux*vy-uy*vx;const l=Math.hypot(nx,ny,nz)||1;nx/=l;ny/=l;nz/=l;}else{nx=dx/d;ny=dy/d;nz=dz/d;}
+  const c=(mn-d)*0.5;const wa0=1-s,wa1=s,wb0=1-t,wb1=t;const ka=c/(wa0*wa0+wa1*wa1),kb=c/(wb0*wb0+wb1*wb1);
+  a0.x+=nx*ka*wa0;a0.y+=ny*ka*wa0;a0.z+=nz*ka*wa0;a1.x+=nx*ka*wa1;a1.y+=ny*ka*wa1;a1.z+=nz*ka*wa1;
+  b0.x-=nx*kb*wb0;b0.y-=ny*kb*wb0;b0.z-=nz*kb*wb0;b1.x-=nx*kb*wb1;b1.y-=ny*kb*wb1;b1.z-=nz*kb*wb1;}
 function verlet(h){const p=h.sim,q=h.prev,t=h.tgt;const k=h.dead?0:h.k;if(h.dead)h.rig=Math.max(0.5,h.rig-FDT*0.5);const rg=h.dead?h.rig:Math.max(0.55,k);const damp=k>0.05?0.93:0.985;const legL=h.pr.thigh+h.pr.shin;
   for(let i=0;i<NP;i++){const a=p[i],b=q[i];const vx=(a.x-b.x)*damp,vy=(a.y-b.y)*damp,vz=(a.z-b.z)*damp;b.copy(a);a.x+=vx;a.y+=vy-9.81*FDT*FDT;a.z+=vz;}
   const brace=h.brace>0&&!h.dead;if(k>0||brace)for(let i=0;i<NP;i++){const s=brace?(ARMPT[i]?0.42*h.kp[i]:0):k*h.kp[i]*h.kl[i]*0.3;if(s>0){p[i].x+=(t[i].x-p[i].x)*s;p[i].y+=(t[i].y-p[i].y)*s;p[i].z+=(t[i].z-p[i].z)*s;}}
@@ -1504,9 +1533,11 @@ function verlet(h){const p=h.sim,q=h.prev,t=h.tgt;const k=h.dead?0:h.k;if(h.dead
     for(const [ia,ib,f0,f1] of MINC){const a=p[ia],b=p[ib];const mn=(f0+(f1-f0)*rg)*(ia===HEAD&&ib===PELVIS?h.rest[3]:legL*(ia===LSH||ia===RSH?0.75:1));const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;const d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1e-4;
       if(d<mn){const f=(d-mn)/d*0.5;a.x+=dx*f;a.y+=dy*f;a.z+=dz*f;b.x-=dx*f;b.y-=dy*f;b.z-=dz*f;}}
     // rodillas hacia delante, codos hacia atrás
-    _fx.subVectors(p[LHIP],p[RHIP]);_fy.subVectors(p[CHEST],p[PELVIS]);_kf.crossVectors(_fx,_fy).normalize();
+    _fx.subVectors(p[LHIP],p[RHIP]);_fy.subVectors(p[CHEST],p[PELVIS]);_kf.crossVectors(_fx,_fy).normalize();_sideN.copy(_fx).normalize();
     for(const [hp,kn,ft,sg] of [[LHIP,LKNEE,LFOOT,1],[RHIP,RKNEE,RFOOT,1],[LSH,LELB,LHAND,-1],[RSH,RELB,RHAND,-1]]){_km.addVectors(p[hp],p[ft]).multiplyScalar(0.5);const dd=_v.subVectors(p[kn],_km).dot(_kf)*sg;
-      if(dd<-0.01){p[kn].addScaledVector(_kf,-dd*sg*0.6);p[ft].addScaledVector(_kf,dd*sg*0.2);}}
+      if(dd<-0.01){p[kn].addScaledVector(_kf,-dd*sg*0.6);p[ft].addScaledVector(_kf,dd*sg*0.2);}
+      if(sg>0){_v.subVectors(p[kn],_km);const lat=_v.dot(_sideN);p[kn].addScaledVector(_sideN,-lat*0.75);}}
+    for(const [a0,a1,b0,b1,rr] of LIMBX)segSep(p[a0],p[a1],p[b0],p[b1],rr);
     for(let i=0;i<NP;i++){const gy=surfY(p[i].x,p[i].z,p[i].y)+PR[i];if(p[i].y<gy)p[i].y=gy;}}
   let mv=0;for(let i=0;i<NP;i++){const a=p[i],b=q[i];const gy=surfY(a.x,a.z,a.y)+PR[i];
     if(a.y<=gy+0.005){b.x=a.x-(a.x-b.x)*0.5;b.z=a.z-(a.z-b.z)*0.5;if(b.y<a.y)b.y=a.y-(a.y-b.y)*0.15;}
@@ -1517,13 +1548,15 @@ function startGetUp(h){const s=h.sim;h.x=s[PELVIS].x;h.z=s[PELVIS].z;_cp.x=h.x;_
   _v.subVectors(s[HEAD],s[PELVIS]);if(Math.abs(_v.x)+Math.abs(_v.z)>0.2)h.yaw=Math.atan2(_v.x,_v.z);h.down=0;h.act='getup';h.getup=0;h.k=0.25;}
 // ---------- heridas visibles (calcomanías de sangre pegadas al hueso) ----------
 const woundMat=new THREE.MeshLambertMaterial({map:texBlood,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4});const woundGeo=new THREE.PlaneGeometry(1,1);
-const poolMat=new THREE.MeshLambertMaterial({map:texBlood,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});
-function addWound(h,part,pos,dir,size){if(!S.gore)return;const bone=h.bones[PART_BONE[part]||'Spine1'];if(!bone)return;let w;
-  if(h.wounds.length>=10){w=h.wounds.shift();w.parent&&w.parent.remove(w);}else w=new THREE.Mesh(woundGeo,woundMat);
-  bone.updateWorldMatrix(true,false);const inv=_m.copy(bone.matrixWorld).invert();w.position.copy(pos).addScaledVector(dir,-0.015).applyMatrix4(inv);
-  bone.getWorldQuaternion(_q);_q.invert();_v.copy(dir).negate().applyQuaternion(_q);w.quaternion.setFromUnitVectors(_v1.set(0,0,1),_v.normalize());
-  bone.getWorldScale(_s);const k=size*(S.gore===2?1:0.6)/_s.x;w.scale.set(k,k,k);w.rotateZ(R(0,6.28));bone.add(w);h.wounds.push(w);}
-const pools=[];function bloodPool(x,z,y){if(S.gore<2||pools.length>40)return;const m=new THREE.Mesh(woundGeo,poolMat);m.rotation.x=-Math.PI/2;m.rotation.z=R(0,6);m.position.set(x,y+0.015,z);m.scale.setScalar(0.2);scene.add(m);pools.push({m,s:0.2,max:R(1.2,2),t:180});}
+const poolMat=pbr(new THREE.MeshStandardMaterial({map:texBlood,transparent:true,alphaTest:0.4,roughness:0.12,metalness:0,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));
+const _wr=new THREE.Raycaster(),_wa=new V3(),_wb=new V3(),_wc=new V3(),_wl=new V3(),_wbc=new V3();
+// la herida se busca sobre la malla tal y como está ahora y se guarda en la pose de reposo: así se queda pegada a la piel y se mueve con ella
+function addWound(h,part,pos,dir,size){if(!S.gore||!h.woundU)return;h.holder.updateMatrixWorld(true);for(const m of h.meshes)m.boundingSphere=null;
+  _wr.set(_v.copy(pos).addScaledVector(dir,-0.7),dir);_wr.far=1.6;const hit=_wr.intersectObjects(h.meshes,false)[0];if(!hit||!hit.face)return;const m=hit.object,f=hit.face;
+  m.getVertexPosition(f.a,_wa);m.getVertexPosition(f.b,_wb);m.getVertexPosition(f.c,_wc);m.worldToLocal(_wl.copy(hit.point));THREE.Triangle.getBarycoord(_wl,_wa,_wb,_wc,_wbc);
+  const P=m.geometry.attributes.position;const x=P.getX(f.a)*_wbc.x+P.getX(f.b)*_wbc.y+P.getX(f.c)*_wbc.z,y=P.getY(f.a)*_wbc.x+P.getY(f.b)*_wbc.y+P.getY(f.c)*_wbc.z,z=P.getZ(f.a)*_wbc.x+P.getZ(f.b)*_wbc.y+P.getZ(f.c)*_wbc.z;
+  h.woundU[h.woundI++%8].set(x,y,z,size*0.35/(h.tpl.height*h.s));}
+const pools=[];function bloodPool(x,z,y){if(S.gore<2||pools.length>40)return;y=surfY(x,z,y+0.3);let mx=0;for(let k=0;k<8;k++){const a=k*0.785;for(const r of [0.4,0.8,1.2]){if(Math.abs(surfY(x+Math.cos(a)*r,z+Math.sin(a)*r,y+0.3)-y)>0.04){mx=mx?Math.min(mx,r):r;break;}}}const m=new THREE.Mesh(woundGeo,poolMat);m.rotation.x=-Math.PI/2;m.rotation.z=R(0,6);m.position.set(x,y+0.015,z);m.scale.setScalar(0.2);scene.add(m);pools.push({m,s:0.2,max:mx?Math.max(0.3,mx*1.4):R(1.2,2),t:180});}
 
 // ---------- daño por zonas y reacciones ----------
 function anger(h){if(h.type==='zombie')return;if(h.base){if(!h.base.angry&&h.base.type==='good')toast(`¡Has atacado a ${h.base.name}! Ahora son hostiles.`);h.base.angry=true;}else h.angry=true;}
@@ -1950,8 +1983,11 @@ let blackT=0;const fadeBlack=t=>{blackT=t;};
 // =====================================================================
 // EFECTOS
 // =====================================================================
-const blood=new THREE.InstancedMesh(new THREE.BoxGeometry(0.035,0.035,0.035),new THREE.MeshBasicMaterial({color:0x6a0000}),220);blood.frustumCulled=false;for(let i=0;i<220;i++)blood.setMatrixAt(i,ZM);scene.add(blood);
-const parts=[];let partI=0;function spray(pos,dir,n=10){if(!S.gore)n=0;for(let k=0;k<n;k++){const i=partI++%220;parts[i]={p:pos.clone(),v:new V3(dir.x*R(1,3)+R(-1.5,1.5),R(0.5,3),dir.z*R(1,3)+R(-1.5,1.5)),life:R(0.5,0.9),c:0};}}
+// gotas de sangre: esferas que se estiran con la velocidad y, al tocar el suelo, quedan como una salpicadura plana
+const NBL=420;const blood=new THREE.InstancedMesh(new THREE.SphereGeometry(1,7,5),pbr(new THREE.MeshStandardMaterial({color:0x4a0303,roughness:0.22,metalness:0,envMapIntensity:0.8})),NBL);blood.frustumCulled=false;for(let i=0;i<NBL;i++)blood.setMatrixAt(i,ZM);scene.add(blood);
+const parts=[];let partI=0;function spray(pos,dir,n=10){if(!S.gore)n=0;n=Math.round(n*2.2);for(let k=0;k<n;k++){const i=partI++%NBL;const sp=R(0.6,1)*(k<n*0.3?3.5:1.8);
+    parts[i]={p:pos.clone().addScaledVector(dir,0.03),v:new V3(dir.x*sp*R(0.6,1.4)+R(-0.9,0.9),dir.y*sp+R(-0.3,1.6),dir.z*sp*R(0.6,1.4)+R(-0.9,0.9)),life:R(0.6,1.2),r:R(0.0025,k<n*0.3?0.005:0.008),ground:false};}}
+const _bq=new Q4(),_bs=new V3(),_bv=new V3();
 const dust=new THREE.InstancedMesh(new THREE.BoxGeometry(0.03,0.03,0.03),new THREE.MeshBasicMaterial({color:0x9a948a}),60);dust.frustumCulled=false;for(let i=0;i<60;i++)dust.setMatrixAt(i,ZM);scene.add(dust);const dps=[];let dpi=0;
 function impactPuff(p){for(let k=0;k<6;k++){const i=dpi++%60;dps[i]={p:p.clone(),v:new V3(R(-1,1),R(0.5,2),R(-1,1)),life:R(0.3,0.6)};}}
 const tracers=[];for(let i=0;i<16;i++){const g=new THREE.BufferGeometry().setFromPoints([new V3(),new V3()]);const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:0xffe28a,transparent:true,opacity:0}));l.frustumCulled=false;scene.add(l);tracers.push({l,t:0});}
@@ -1986,12 +2022,12 @@ tbtn('t_up',()=>pressed.add('ArrowUp'));tbtn('t_down',()=>pressed.add('ArrowDown
 let padL=null,padR=null,srcL=null,srcR=null;const prevB={},BS={};const IN={};
 function edge(name,now){const was=prevB[name];prevB[name]=now;return now&&!was;}
 function press(name,down,dt){const s=BS[name]||(BS[name]={d:false,t:0,f:false});let ev=null;if(down){if(!s.d){s.d=true;s.t=0;s.f=false;}else{s.t+=dt;if(!s.f&&s.t>0.5){s.f=true;ev='hold';}}}else if(s.d){s.d=false;if(!s.f)ev='tap';}return ev;}
-function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,attackP:false,use:false,weapon:false,eject:false,light:false,pee:false,inv:false,menu:false,map:false,status:false,crouch:false,reload:false,hud:false,
+function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,attackP:false,use:false,weapon:false,eject:false,light:false,pee:false,inv:false,menu:false,map:false,status:false,crouch:false,reload:false,hud:false,recenter:false,
     back:false,up:false,down:false,left:false,right:false,ok:false,gas:0,brake:0,steer:0,snap:0,lgDown:false,lgHeld:false});
   const pk=c=>pressed.has(c);
   if(keys.KeyW)IN.my+=1;if(keys.KeyS)IN.my-=1;if(keys.KeyA)IN.mx-=1;if(keys.KeyD)IN.mx+=1;IN.my+=tjy;IN.mx+=tjx;
   IN.sprint=!!keys.ShiftLeft||!!keys.ShiftRight||tRun;IN.attack=mouseDown||tAtk;IN.attackP=pk('Mouse0');IN.use=pk('KeyE');IN.weapon=pk('KeyQ');IN.light=pk('KeyF');IN.pee=pk('KeyP');
-  IN.inv=pk('KeyI');IN.menu=pk('KeyM')||pk('Tab');IN.map=pk('KeyN');IN.status=pk('KeyH');IN.crouch=pk('KeyC');IN.reload=pk('KeyR');
+  IN.inv=pk('KeyI');IN.menu=pk('KeyM')||pk('Tab');IN.map=pk('KeyN');IN.status=pk('KeyH');IN.crouch=pk('KeyC');IN.recenter=pk('KeyV');IN.reload=pk('KeyR');
   IN.up=pk('ArrowUp');IN.down=pk('ArrowDown');IN.left=pk('ArrowLeft');IN.right=pk('ArrowRight');IN.ok=pk('Enter')||pk('Space');IN.back=pk('Backspace')||pk('Escape');
   IN.gas=Math.max(0,IN.my);IN.brake=Math.max(0,-IN.my);IN.steer=-IN.mx;pressed.clear();
   padL=padR=srcL=srcR=null;const ses=renderer.xr.getSession();
@@ -2004,7 +2040,7 @@ function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,att
     const a=press('A',bt(padR,4),dt),b=press('B',bt(padR,5),dt),x=press('X',bt(padL,4),dt),y=press('Y',bt(padL,5),dt);
     if(panel){if(x==='tap'||b==='tap')IN.back=true;}
     else{if(a==='tap')IN.weapon=true;if(a==='hold')IN.eject=true;if(b==='tap')IN.light=true;if(b==='hold')IN.pee=true;if(x==='tap')IN.inv=true;if(x==='hold')IN.menu=true;if(y==='tap')IN.map=true;if(y==='hold')IN.status=true;}
-    if(edge('rs',bt(padR,3)))IN.crouch=true;if(edge('ls',bt(padL,3)))IN.hud=true;
+    if(edge('rs',bt(padR,3)))IN.crouch=true;{const ls=press('LS',bt(padL,3),dt);if(ls==='tap')IN.hud=true;if(ls==='hold')IN.recenter=true;}
     IN.up=IN.up||edge('lsu',ly<-0.6);IN.down=IN.down||edge('lsd',ly>0.6);IN.left=IN.left||edge('lsl',lx<-0.6);IN.right=IN.right||edge('lsr',lx>0.6);
     if(edge('snapR',rx>0.7))IN.snap=1;if(edge('snapL',rx<-0.7))IN.snap=-1;
     IN.gas=Math.max(IN.gas,bv(padR,0));IN.brake=Math.max(IN.brake,bv(padL,0));IN.steer+=-dz(lx);if(panel){IN.mx=0;IN.my=0;IN.gas=0;IN.steer=0;}}
@@ -2054,7 +2090,10 @@ function talkTo(h){const b=h.base,day=dayNum();
   else if(r==='scavenger')toast(`${h.name}: «${h.lastLoot?'Vengo de '+h.lastLoot+'. Está casi vacío.':'Ahora salgo a buscar comida por el barrio.'}»`,4);
   else toast(`${h.name}: «${pick(['¿Has visto a mi hermano? Se llama Pere.','Echo de menos el ruido del metro.','Dicen que en Montjuïc hay gente armada.'])}»`,4);}
 function exitCar(){const c=P.inCar;if(!c)return;if(Math.abs(c.speed)>3)return toast('Vas demasiado rápido para bajar');P.inCar=null;c.speed=0;headlight.intensity=0;
-  const s=Math.sin(c.yaw),co=Math.cos(c.yaw);const pt={x:c.x+co*2.3,z:c.z-s*2.3};collide(pt,0.4,surfY(pt.x,pt.z)+0.2,surfY(pt.x,pt.z)+1.7);rig.position.set(pt.x,surfY(pt.x,pt.z),pt.z);P.yaw=c.yaw+Math.PI;toast('Bajas del coche');}
+  const s=Math.sin(c.yaw),co=Math.cos(c.yaw);const pt={x:c.x+co*2.3,z:c.z-s*2.3};collide(pt,0.4,surfY(pt.x,pt.z)+0.2,surfY(pt.x,pt.z)+1.7);rig.position.set(pt.x,surfY(pt.x,pt.z),pt.z);P.feetY=rig.position.y;P.yaw=c.yaw+Math.PI;toast('Bajas del coche');}
+// recolocar altura y vista (mantener pulsado el joystick izquierdo, o V)
+function recenter(){camera.getWorldPosition(_v);P.feetY=surfY(_v.x,_v.z,_v.y+0.2);P.crouchToggle=false;P.crouchOff=0;P.hOff=inVR?clamp(1.62-camera.position.y,-0.4,1.1):0;P.standEye=1.6;
+  if(inVR){camera.getWorldDirection(_v1);const look=Math.atan2(-_v1.x,-_v1.z);P.yaw+=-(look-P.yaw)*0+0;}rig.position.y=P.feetY+(P.hOff||0);toast('Altura y vista recolocadas',1.5);}
 
 // =====================================================================
 // IA: zombis y supervivientes con roles
@@ -2316,17 +2355,17 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   if(P.alive&&!P.sleeping&&!panel){if(IN.use&&!(inVR&&(doorGrab.right||doorGrab.left)))doInteract();
     if(IN.weapon&&!P.inCar){P.weapon=P.weapon==='manos'?'bate':P.weapon==='bate'?'pistola':'manos';toast({manos:'Manos libres',bate:'Bate',pistola:'Pistola'}[P.weapon],1.5);}
     if(IN.eject&&P.weapon==='pistola')ejectMag(true);if(IN.reload&&P.weapon==='pistola')reloadFlat();if(IN.light){P.light=!P.light;sfx('click');}if(IN.pee)doPee();
-    if(IN.crouch){P.crouchToggle=!P.crouchToggle;toast(P.crouchToggle?'Te agachas':'Te levantas',1.2);}if(IN.hud){hudOn=!hudOn;sfx('click');}
+    if(IN.crouch){P.crouchToggle=!P.crouchToggle;toast(P.crouchToggle?'Te agachas':'Te levantas',1.2);}if(IN.hud){hudOn=!hudOn;sfx('click');}if(IN.recenter&&!P.inCar)recenter();
     if(!P.inCar&&IN.attackP){if(P.weapon==='pistola'){if(inVR&&gripBySide.right){vrGun.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrGun.getWorldQuaternion(_q));fireGun(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireGun(_o2,_d2);}}else meleeFlat();}}
   P.crouchOff+=((inVR&&P.crouchToggle&&!P.inCar?0.75:0)-P.crouchOff)*Math.min(1,dt*7);if(P.crouchOff<0.004)P.crouchOff=0;P.crouch=P.crouchToggle||(inVR&&camera.position.y<1.12);
   if(P.alive&&!P.sleeping){if(P.inCar)driveCar(P.inCar,panel?0:dt);
     else if(!panel){camera.getWorldDirection(_d2);_d2.y=0;if(_d2.lengthSq()<1e-6)_d2.set(0,0,-1);_d2.normalize();const rx=-_d2.z,rz=_d2.x;let mx=IN.mx,my=IN.my;const ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;}
       const spr=IN.sprint&&P.energy>5&&my>0.3&&!P.crouch;P.sprinting=spr&&ml>0.2;const sp=(spr?4.8:P.crouch?1.2:2.3)*(P.energy<12?0.6:1)*(P.hp<25?0.75:1)*(invWeight()>invCap()?0.65:1);
-      const fy=rig.position.y+P.crouchOff;P.vx=(_d2.x*my+rx*mx)*sp;P.vz=(_d2.z*my+rz*mx)*sp;const pt={x:p.x+P.vx*dt,z:p.z+P.vz*dt};collide(pt,0.3,fy+0.35,fy+(inVR?clamp(p.y-fy+0.08,0.6,1.95):(P.crouch?1.0:1.75)));
+      const fy=P.feetY!==undefined?P.feetY:rig.position.y;P.vx=(_d2.x*my+rx*mx)*sp;P.vz=(_d2.z*my+rz*mx)*sp;const pt={x:p.x+P.vx*dt,z:p.z+P.vz*dt};collide(pt,0.3,fy+0.35,fy+(inVR?clamp(p.y-fy+0.08,0.6,1.95):(P.crouch?1.0:1.75)));
       for(const c of cars){const ex=pt.x-c.x,ez=pt.z-c.z,d=Math.hypot(ex,ez);if(d<c.halfW+1&&d>0){pt.x=c.x+ex/d*(c.halfW+1);pt.z=c.z+ez/d*(c.halfW+1);}}
       rig.position.x+=pt.x-p.x;rig.position.z+=pt.z-p.z;if(ml>0.2){P.stepT-=dt*sp;if(P.stepT<=0){P.stepT=0.8;makeNoise(p.x,p.z,P.crouch?2:P.sprinting?14:6);}}}}
   if(P.inCar){const c=P.inCar;const s=Math.sin(c.yaw),co=Math.cos(c.yaw);const lx=c.seat.x,lz=c.seat.z;const camY=inVR?camera.position.y:1.2;rig.position.set(c.x+lx*co+lz*s,c.y+c.eye-camY,c.z-lx*s+lz*co);rig.rotation.y=c.yaw+Math.PI+P.carYaw;}
-  else{rig.rotation.y=P.yaw;let fy=P.feetY===undefined?rig.position.y:P.feetY;const gy=surfY(p.x,p.z,fy);if(gy-fy<0.7)fy+=(gy-fy)*Math.min(1,dt*12);P.feetY=fy;rig.position.y=fy-P.crouchOff;if(engine)engine.g.gain.value*=0.9;
+  else{rig.rotation.y=P.yaw;let fy=P.feetY===undefined?rig.position.y:P.feetY;const gy=surfY(p.x,p.z,fy);if(gy-fy<0.7)fy+=(gy-fy)*Math.min(1,dt*12);P.feetY=fy;rig.position.y=fy-P.crouchOff+(P.hOff||0);if(engine)engine.g.gain.value*=0.9;
     // cabeza dentro de una pared: atrás y oscuro
     if(!P.inCar&&insideVol(p.x,p.y,p.z)){rig.position.x+=P.lastSafe.x-p.x;rig.position.z+=P.lastSafe.z-p.z;blackT=Math.max(blackT,0.25);}else P.lastSafe.copy(p);}
   if(!inVR){camera.position.set(0,P.inCar?1.2:(P.crouch?1.05:1.65),0);camera.rotation.set(P.pitch,0,0);}
@@ -2340,12 +2379,17 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
     _m.makeTranslation(q.p.x,q.p.y,q.p.z);peeMesh.setMatrixAt(i,q.life>0?_m:ZM);}peeMesh.instanceMatrix.needsUpdate=true;
   for(let i=puddles.length-1;i>=0;i--){puddles[i].t-=dt;if(puddles[i].t<=0){scene.remove(puddles[i].m);puddles.splice(i,1);}}
   for(const pl of pools){if(pl.s<pl.max){pl.s+=dt*0.08;pl.m.scale.setScalar(pl.s);}}
-  updateChars(dt,p);managePop(p,false);
+  updateChars(dt,p);sepBodies();managePop(p,false);
   for(const c of cars)if(c!==P.inCar&&Math.abs(c.speed)>0.05){c.speed*=Math.pow(0.3,dt);c.steer=0;moveCar(c,dt,false);}
   chunkT-=dt;if(chunkT<=0){chunkT=0.4;for(const c of chunks.values()){const v=Math.hypot(c.cx-p.x,c.cz-p.z)<(c.inner?(inVR?60:75):(inVR?270:320));for(const m of c.meshes)m.visible=v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
     for(const d of DOORS)d.g.visible=Math.abs(d.hx-p.x)<38&&Math.abs(d.hz-p.z)<38;for(const pn of PANES)pn.m.visible=Math.abs(pn.cx-p.x)<45&&Math.abs(pn.cz-p.z)<45;}
   updateWeapons(dt);updateHands();placeHud();updateBody(dt);stepDropped(dt);
-  for(let i=0;i<parts.length;i++){const q=parts[i];if(!q)continue;if(q.life<=0){blood.setMatrixAt(i,ZM);continue;}q.life-=dt;q.v.y-=9.81*dt;q.p.addScaledVector(q.v,dt);const gy=surfY(q.p.x,q.p.z,q.p.y)+0.02;if(q.p.y<gy){q.p.y=gy;q.v.set(0,0,0);}_m.makeTranslation(q.p.x,q.p.y,q.p.z);blood.setMatrixAt(i,q.life>0?_m:ZM);}blood.instanceMatrix.needsUpdate=true;
+  for(let i=0;i<parts.length;i++){const q=parts[i];if(!q)continue;if(q.life<=0){blood.setMatrixAt(i,ZM);continue;}q.life-=dt;
+    if(!q.ground){q.v.y-=9.81*dt;q.v.multiplyScalar(1-dt*0.6);q.p.addScaledVector(q.v,dt);const gy=surfY(q.p.x,q.p.z,q.p.y)+0.004;
+      if(q.p.y<gy){q.p.y=gy;q.ground=true;q.life=R(25,40);q.rot=R(0,6.28);q.r*=R(2.4,3.6);}
+      const sp=q.v.length();_bv.copy(q.v).divideScalar(sp||1);_bq.setFromUnitVectors(UP,sp>0.01?_bv:UP);_bs.set(q.r,q.r*(1+Math.min(sp,5)*0.35),q.r);}
+    else{_bq.setFromAxisAngle(UP,q.rot);_bs.set(q.r*1.3,0.0012,q.r);}
+    _m.compose(q.p,_bq,_bs);blood.setMatrixAt(i,_m);}blood.instanceMatrix.needsUpdate=true;
   for(let i=0;i<dps.length;i++){const q=dps[i];if(!q)continue;if(q.life<=0){dust.setMatrixAt(i,ZM);continue;}q.life-=dt;q.v.y-=4*dt;q.p.addScaledVector(q.v,dt);_m.makeTranslation(q.p.x,q.p.y,q.p.z);dust.setMatrixAt(i,q.life>0?_m:ZM);}dust.instanceMatrix.needsUpdate=true;
   for(const t of tracers)if(t.t>0){t.t-=dt;t.l.material.opacity=Math.max(0,t.t/0.09);}
   for(let i=noises.length-1;i>=0;i--){noises[i].t-=dt;if(noises[i].t<=0)noises.splice(i,1);}
@@ -2389,7 +2433,7 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={spray,THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}
