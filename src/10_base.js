@@ -99,7 +99,7 @@ function atlasMat(map,emis,cols,rows,o={}){const m=new THREE.MeshLambertMaterial
 const atlasOff=(k,cols,rows)=>[(k%cols)/cols,1-(Math.floor(k/cols)+1)/rows];
 const INST={};// nombre → {geo, mat, cols, rows, perChunk:Map(chunk→[]) }
 function defInst(name,geo,mat,cols=1,rows=1,global=false){INST[name]={geo,mat,cols,rows,global,lists:new Map()};}
-function addInst(name,x,y,z,yaw,sx=1,sy=1,sz=1,k=0,lit=0,pitch=0,col){const I=INST[name];const key=I.global?'g':chunkKey(x,z);let L=I.lists.get(key);if(!L)I.lists.set(key,L=[]);L.push([x,y,z,yaw,sx,sy,sz,k,lit,pitch,col]);return[name,key,L.length-1];}
+function addInst(name,x,y,z,yaw,sx=1,sy=1,sz=1,k=0,lit=0,pitch=0,col){const I=INST[name];if(I.parts)for(const pn of I.parts)addInst(pn,x,y,z,yaw,sx,sy,sz,k,lit,pitch,col);const key=I.global?'g':chunkKey(x,z);let L=I.lists.get(key);if(!L)I.lists.set(key,L=[]);L.push([x,y,z,yaw,sx,sy,sz,k,lit,pitch,col]);return[name,key,L.length-1];}
 const instMeshes=[];const _eu=new THREE.Euler();
 function buildInst(){for(const name in INST){const I=INST[name];for(const [key,L] of I.lists){const im=new THREE.InstancedMesh(I.geo,I.mat,L.length);const off=new Float32Array(L.length*2),lit=new Float32Array(L.length);
       L.forEach((t,i)=>{_eu.set(t[9],t[3],0,'YXZ');_m.compose(_p.set(t[0],t[1],t[2]),_q.setFromEuler(_eu),_s.set(t[4],t[5],t[6]));im.setMatrixAt(i,_m);const o=atlasOff(t[7],I.cols,I.rows);off[i*2]=o[0];off[i*2+1]=o[1];lit[i]=t[8];if(t[10]!==undefined)im.setColorAt(i,_c.set(t[10]));});
