@@ -76,7 +76,7 @@ document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0xa9bdd0,30,260);
 scene.background=new THREE.Color(0x0a0c14);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.03,1500);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.07,1500);
 const rig=new THREE.Group();scene.add(rig);rig.add(camera);camera.position.set(0,1.65,0);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
@@ -491,7 +491,7 @@ MATS.asphalt=photoMat('asphalt',{ns:0.6,color:0x6a6a6a,roughness:0.95});MATS.asp
 MATS.panot4=photoMat('panot4',{ns:1.0,color:0xc8c8c8});MATS.panotflor=photoMat('panotflor',{ns:1.0,color:0xc8c8c8});MATS.panotbotons=photoMat('panotbotons',{ns:1.2});
 MATS.granite=photoMat('granite',{ns:0.6,roughness:0.75});MATS.llambordes=photoMat('llambordes',{ns:1.0});
 const texPaint=cTex(256,256,(g,w,h)=>{g.fillStyle='#fff';g.fillRect(0,0,w,h);for(let i=0;i<900;i++){g.fillStyle=`rgba(0,0,0,${R(0.15,0.9)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(0.5,4),0,7);g.fill();}},{});
-MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,alphaTest:0.5,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,alphaTest:0.3,alphaToCoverage:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6});
 // ---------- utilidades de polígonos ----------
 function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
 function centroid(P){let x=0,z=0;for(const p of P){x+=p[0];z+=p[1];}return[x/P.length,z/P.length];}
@@ -518,7 +518,7 @@ const texPlaques=cTex(1024,1024,(g)=>{const W=256,Hh=128;ALLSTR.forEach((s,i)=>{
   g.fillStyle='#f3f1ea';g.fillRect(x+4,y+4,W-8,Hh-8);g.strokeStyle='#1a1a1a';g.lineWidth=4;g.strokeRect(x+12,y+12,W-24,Hh-24);
   g.fillStyle='#151515';g.textAlign='center';g.textBaseline='middle';let fs=30;g.font=`bold ${fs}px Georgia,serif`;while(g.measureText(s.n).width>W-40&&fs>14){fs--;g.font=`bold ${fs}px Georgia,serif`;}
   g.fillText(s.n,x+W/2,y+Hh*0.42);g.font='16px Georgia,serif';g.fillText('Eixample · 2',x+W/2,y+Hh*0.74);});},{});
-defInst('plaque',(()=>{const g=new THREE.PlaneGeometry(0.9,0.45);return g;})(),atlasMat(texPlaques,null,4,8),4,8,true);
+defInst('plaque',(()=>{const g=new THREE.PlaneGeometry(0.9,0.45);return g;})(),(()=>{const m=atlasMat(texPlaques,null,4,8);m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;return m;})(),4,8,true);
 // ---------- registros ----------
 const BLOCKS=[],CARSPOTS=[],LOOT=[],TOILETS=[],FOUNTAINS=[],BEDS=[],SHOPS=[],BASES=[];
 const MAPD={roads:[],blocks:[],shops:[],pois:[],peds:[]};
@@ -713,7 +713,7 @@ function drawBalcDoor(g,x,y,w,h,st,lit){const sh=pick(SHUTC);g.save();g.beginPat
 const texWin=cTex(2048,1024,(g)=>{for(let r=0;r<2;r++)for(let c=0;c<8;c++){const st=[0,0,1,1,2,3,4,5,0,1,1,2,0,3,1,2][r*8+c];drawBalcDoor(g,c*256,r*512,256,512,st,false);}},{});
 const texWinL=cTex(2048,1024,(g)=>{g.fillStyle='#000';g.fillRect(0,0,2048,1024);for(let r=0;r<2;r++)for(let c=0;c<8;c++){const st=[0,0,1,1,2,3,4,5,0,1,1,2,0,3,1,2][r*8+c];if(st===4||st===5||st===3)continue;g.save();g.globalCompositeOperation='source-over';drawBalcDoor(g,c*256,r*512,256,512,st,true);g.restore();
   g.fillStyle='rgba(0,0,0,1)';g.fillRect(c*256,r*512,256*0.07,512);g.fillRect(c*256+256*0.93,r*512,256*0.07,512);}},{});
-const winMat=atlasMat(texWin,texWinL,8,2);
+const winMat=atlasMat(texWin,texWinL,8,2);winMat.polygonOffset=true;winMat.polygonOffsetFactor=-2;winMat.polygonOffsetUnits=-6;texWin.anisotropy=4;
 defInst('win',(()=>{const g=new THREE.PlaneGeometry(1,1);g.translate(0,0.5,0);return g;})(),winMat,8,2);
 // marco de ventana con alféizar y dintel (color de la fachada vía instanceColor)
 {const p=[[bx(1.3,0.07,0.16,0,-0.03,0.07),0xffffff],[bx(1.25,0.16,0.12,0,1.12,0.06),0xffffff]];
@@ -724,7 +724,7 @@ const texRail=cTex(512,256,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#141514';
     g.beginPath();g.moveTo(x+18,h/2);g.bezierCurveTo(x+18,h/2-40,x+78,h/2-40,x+78,h/2);g.stroke();}},{});
 {const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
   const f=new THREE.PlaneGeometry(1,1);f.translate(0,0.5,1);const l=new THREE.PlaneGeometry(1,1);l.rotateY(Math.PI/2);l.translate(-0.5,0.5,0.5);const r=l.clone();r.translate(1,0,0);
-  const railM=new THREE.MeshLambertMaterial({map:texRail,alphaTest:0.5,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM);
+  const railM=new THREE.MeshLambertMaterial({map:texRail,alphaTest:0.18,alphaToCoverage:true,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM);
   const fF=new THREE.PlaneGeometry(1,1);fF.translate(0,0.5,1);defInst('balcRailF',fF,railM);const sS=new THREE.PlaneGeometry(1,1);sS.rotateY(Math.PI/2);sS.translate(0,0.5,0.5);defInst('balcRailS',sS,railM);}
 // macetas y ropa tendida y aire acondicionado
 defInst('maceta',mkG([[cy(0.14,0.1,0.25,0,0.12,0,5),0xa0522d],[sp(0.22,0,0.42,0,5),0x3f6a2a]]),plasticMat);
@@ -857,9 +857,9 @@ function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const y
     if(Math.random()<0.6){const x=a[0]+ux*(u.u1+0.35)+nx*0.03,z=a[1]+uz*(u.u1+0.35)+nz*0.03;addInst('buzzer',x,yb+1.3,z,yaw);}}
   else if(u.kind==='garage'){fillQuad(Math.random()<0.5?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.3);addInst('vado',cx+nx*0.03,yb+u.y1+0.25,cz+nz*0.03,yaw);}
   else if(u.kind==='shop'){const s=u.shop;sign(s.signIdx,yb+u.y1+0.42);
-    if(u.state==='closed'||u.state==='half'){const top=yb+u.y1;const y0=u.state==='half'?yb+1.05:yb;fillQuad(Math.random()<0.7?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,y0,top,0.3);
-      if(Math.random()<0.75){const s2=Math.min(w*0.8,2.6);addInst('graffiti',cx-nx*0.28,y0+(top-y0)*0.5,cz-nz*0.28,yaw,s2,s2*0.8,1,(Math.random()*16)|0);}
-      if(u.state==='half'&&u.room)makeShopInterior(lot,seg,u,ux,uz);
+    if(u.state==='closed'||u.state==='half'){const top=yb+u.y1;const half=u.state==='half'&&u.room;const y0=half?yb+1.15:yb;const sd=half?0.1:0.3;fillQuad(Math.random()<0.7?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,y0,top,sd);
+      if(Math.random()<0.75){const gh=Math.min(w*0.8*0.8,2.1,(top-y0)*0.86),gw=gh/0.8;addInst('graffiti',cx-nx*(sd-0.025),y0+(top-y0)*0.5,cz-nz*(sd-0.025),yaw,gw,gh,1,(Math.random()*16)|0);}
+      if(half){solidBox(cx-nx*sd,cz-nz*sd,w/2,0.05,yaw,y0,top);makeShopInterior(lot,seg,u,ux,uz);}
       else solidBox(cx-nx*0.3,cz-nz*0.3,w/2,0.06,yaw+Math.PI/2*0,yb,top);}
     else if(u.state==='boarded'){fillQuad('wood_dark',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.32,[0.5,0.45,0.4]);
       for(let y=yb+0.3;y<yb+u.y1-0.2;y+=R(0.35,0.6)){addInst('tablon',cx-nx*0.12,y,cz-nz*0.12,yaw+R(-0.15,0.15)*0+0,w*1.05,1,1,0,0,R(-0.12,0.12));}
@@ -944,7 +944,7 @@ function buildCornerLot(lot){const C=lot.C;const pts=[C.a,C.m1,C.m2,C.b];const y
     buildFacade(lot,{a:p,b:q,nx,nz},units);}
   addPolyV(poly,yb-2,lotTop(lot));
   const Bq=bufOf(cen[0],cen[1],'concrete_wall');TINT=[0.7,0.68,0.64];capPoly(Bq,poly,lotTop(lot),0.3);TINT=[1,1,1];}
-function finishSigns(){const t=new THREE.CanvasTexture(SIGNC);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=atlasMat(t,t,4,16,{});INST.shopSign.mat=m;SIGN_MAT=m;}
+function finishSigns(){const t=new THREE.CanvasTexture(SIGNC);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=atlasMat(t,t,4,16,{});m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;INST.shopSign.mat=m;SIGN_MAT=m;}
 let SIGN_MAT=null;
 
 // =====================================================================
@@ -1101,7 +1101,7 @@ function pushDoorsAt(x,z,y,r,vx,vz,strength){for(const d of DOORS){if(d.locked||
     const t=clamp((x-px)*c+(z-pz)*s,0,d.w);const qx=px+c*t,qz=pz+s*t;const ex=x-qx,ez=z-qz,dist=Math.hypot(ex,ez);if(dist>r+0.08)continue;
     // normal del panel y sentido del empuje
     const nx=-s,nz=c;const side=Math.sign(ex*nx+ez*nz)||1;const into=-(vx*nx+vz*nz)*side;// velocidad hacia el panel
-    if(d.slide){const along=vx*c+vz*s;d.off=clamp(d.off+along*0.016*strength,0,d.maxOff);applyDoor(d);continue;}
+    if(d.slide)continue;// las correderas sin corriente solo se abren agarrándolas
     const push=Math.max(into,0.25)*strength*(t/d.w+0.3);d.vel+=-side*d.sign*push*1.2;}}
 function stepDoors(dt){for(const d of DOORS){if(d.slide)continue;if(d.held)continue;
     if(d.target!==null){const e=d.target-d.ang;d.vel=e*5;if(Math.abs(e)<0.01){d.target=null;}}
@@ -1394,7 +1394,7 @@ function poseTargets(h,dt){const pr=h.pr,g=h.gp,o=_o;const v=h.speed;const amp=c
     o.lh.set(0.25,0.06,0.45+Math.sin(t)*0.25);o.rh.set(-0.25,0.06,0.45-Math.sin(t)*0.25);bodyLocal(pr,Object.assign(o,{pitch:Math.PI/2-0.25,roll:Math.sin(t)*0.12,twist:0,headPitch:-1.0,headRoll:0,headYaw:Math.sin(t*0.5)*0.3,pelPitch:Math.PI/2,
       kpL:_pole.set(0,-1,0),kpR:_tmpB.set(0,-1,0),epL:_v3.set(0.5,-0.5,0),epR:_v4.set(-0.5,-0.5,0)}));}
   else{// de pie / caminando (gait)
-    const bob=Math.abs(Math.cos(ph))*0.035*amp,sway=Math.sin(ph)*0.025*amp*g.sway;let pelY=pr.pelH-0.025-0.03*amp-bob;
+    const bob=Math.abs(Math.cos(ph))*0.035*amp,sway=Math.sin(ph)*0.025*amp*g.sway;let pelY=pr.pelH-0.025-0.03*amp-bob;if(h.crouchK){pelY-=pr.pelH*h.crouchK;lean+=h.crouchK*0.5;}
     if(h.atkAnim>0){lean+=0.25;headP-=0.2;}if(act==='aim')lean=0.08;
     o.pel.set(sway,pelY,0);
     for(const side of [1,-1]){const lp=ph+(side>0?0:Math.PI);const limp=g.limp*side>0?Math.abs(g.limp):0;const st=pr.stride*0.5*amp*(1-limp*0.6);
@@ -1558,7 +1558,7 @@ const CONDN=['fresco','rancio','podrido'];
 const P={};
 const G={mag:12,chamber:true,locked:false,kick:0};let BELT=[12,12];let leftHold=null,slideGrab=null;
 function resetPlayer(){Object.assign(P,{hp:100,food:80,water:80,bladder:20,bowels:20,energy:90,mood:70,sick:0,infected:false,infT:0,
-  items:[],bag:false,weapon:'bate',alive:true,inCar:null,light:false,sleeping:false,sleepLeft:0,kills:0,yaw:0,pitch:0,carYaw:0,sprinting:false,crouch:false,crouchToggle:false,deadT:0,accT:0,peeT:0,stepT:0,vomitT:2,lastSafe:new V3()});
+  items:[],bag:false,weapon:'bate',alive:true,inCar:null,light:false,sleeping:false,sleepLeft:0,kills:0,yaw:0,pitch:0,carYaw:0,sprinting:false,crouch:false,crouchToggle:false,crouchOff:0,deadT:0,accT:0,peeT:0,stepT:0,vomitT:2,lastSafe:new V3()});
   addItem('judias',1,'gift');addItem('agua',2,'gift');addItem('vendas',1,'gift');addItem('balas',14,'gift');addItem('papel',1,'gift');
   G.mag=12;G.chamber=true;G.locked=false;BELT=[12,12];leftHold=null;slideGrab=null;
   const b=BASES.find(x=>x.name&&x.name.includes('Ninot'))||BASES.find(x=>x.type==='good')||{x:0,z:0,r:10};const g0=b.gate||[b.x,b.z-26];let sx=g0[0],sz=g0[1];
@@ -1729,18 +1729,30 @@ function applyHC(){for(const side of ['left','right']){const hr=hands[side];if(!
 let body=null;
 function setupBody(){const tpl=TPL.p_m2||TPL_M[0]||CHAR_TPLS[0];if(!tpl)return;const h=newRec(tpl);H_.pop();charSlot--;body=h;h.type='player';h.gp={lean:0,droop:0,tilt:0,arms:'swing',limp:0,sway:1,twitch:0,speedMul:1};
   h.s=1;h.pr={};for(const k in tpl.pr){const v=tpl.pr[k];h.pr[k]=v.isVector3?v.clone():v;}for(let k=0;k<STICKS.length;k++)h.rest[k]=tpl.CB[STICKS[k][0]].distanceTo(tpl.CB[STICKS[k][1]]);h.kp.fill(1);h.kl.fill(1);h.inner.quaternion.copy(tpl.qFix);h.inner.position.set(0,-tpl.minY,0);for(const m of h.meshes)m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,'good',0,tpl)):charMat(m.userData.base,'good',0,tpl);
-  h.y=0;h.bones.Head.scale.setScalar(0.001);h.bones.LeftHand.scale.setScalar(0.001);h.bones.RightHand.scale.setScalar(0.001);h.holder.visible=false;h.phase=0;h.mode='kin';h.k=1;h.yawB=0;}
+  h.y=0;h.bones.Head.scale.setScalar(0.001);h.bones.LeftArm.scale.setScalar(0.001);h.bones.RightArm.scale.setScalar(0.001);setupSleeves();h.holder.visible=false;h.phase=0;h.mode='kin';h.k=1;h.yawB=0;}
 const _bw=new V3(),_bh=new V3();
-function updateBody(dt){if(!body)return;const show=!P.inCar&&P.alive&&!P.sleeping;body.holder.visible=show;if(!show)return;const h=body;
+// Mangas: dos tubos por brazo (hombro→codo→muñeca) que se orientan y estiran cada fotograma: la mano nunca se separa del brazo
+const sleeves={};
+function setupSleeves(){const mat=photoMat('fabric',{vertexColors:false,color:0x39414c,roughness:0.95,ns:0.6});
+  const seg=(r0,r1,cuff)=>{const gs=[new THREE.CylinderGeometry(r1,r0,1,12,1,true).translate(0,0.5,0)];if(cuff)gs.push(new THREE.CylinderGeometry(r1+0.004,r1+0.004,0.09,12,1,false).translate(0,0.955,0));
+    const g=gs.length>1?mergeGeometries(gs):gs[0];const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*2,uv.getY(i)*2.5);return g;};
+  const gU=seg(0.062,0.05,false),gF=seg(0.05,0.037,true),gJ=new THREE.SphereGeometry(0.051,10,8);
+  for(const side of ['left','right']){const up=new THREE.Mesh(gU,mat),fo=new THREE.Mesh(gF,mat),el=new THREE.Mesh(gJ,mat),sh=new THREE.Mesh(gJ,mat);sh.scale.setScalar(1.22);
+    for(const m of [up,fo,el,sh]){m.frustumCulled=false;m.visible=false;scene.add(m);}sleeves[side]={up,fo,el,sh};}}
+const _sd=new V3();
+function setSeg(m,a,b){_sd.subVectors(b,a);const l=_sd.length()||1e-4;m.position.copy(a);m.quaternion.setFromUnitVectors(UP,_sd.divideScalar(l));m.scale.set(1,l,1);}
+function showSleeves(v){for(const k in sleeves){const s=sleeves[k];s.up.visible=s.fo.visible=s.el.visible=s.sh.visible=v;}}
+function updateBody(dt){if(!body)return;const show=!P.inCar&&P.alive&&!P.sleeping;body.holder.visible=show;showSleeves(false);if(!show)return;const h=body;
   camera.getWorldPosition(_v);camera.getWorldDirection(_v1);_v1.y=0;if(_v1.lengthSq()<1e-6)_v1.set(0,0,-1);_v1.normalize();const hy=Math.atan2(_v1.x,_v1.z);
   let dy=hy-h.yawB;dy=Math.atan2(Math.sin(dy),Math.cos(dy));const moving=Math.abs(IN.mx)+Math.abs(IN.my)>0.1;if(Math.abs(dy)>0.7||moving)h.yawB+=dy*Math.min(1,dt*5);
-  const gy=surfY(_v.x,_v.z,rig.position.y+0.3);const eye=Math.max(0.8,_v.y-gy);P.standEye=Math.max((P.standEye||1.6)*0.9995,eye);const tH=h.tpl.height;const sc=clamp(P.standEye/1.6,0.7,1.2)*(1.75/tH);
+  const gy=surfY(_v.x,_v.z,rig.position.y+P.crouchOff+0.3);const eyeR=Math.max(0.45,_v.y-gy);const eye=Math.max(0.8,eyeR+P.crouchOff);P.standEye=Math.max((P.standEye||1.6)*0.9995,eye);h.crouchK=clamp(1-eyeR/P.standEye,0,0.62)*0.95;const tH=h.tpl.height;const sc=clamp(P.standEye/1.6,0.7,1.2)*(1.75/tH);
   if(Math.abs(sc-h.s)>0.02){h.s=sc;h.inner.scale.setScalar(sc);h.inner.position.y=-h.tpl.minY*sc;h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(sc):v*sc;}}
   if(!h.pr.thigh){h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(sc):v*sc;}}
-  h.yaw=h.yawB;h.x=_v.x-Math.sin(h.yawB)*0.17;h.z=_v.z-Math.cos(h.yawB)*0.17;h.speed=moving?(P.sprinting?4.4:P.crouch?1.1:2.1):0;h.act=P.crouch&&!moving?'squat':'stand';h.atkAnim=0;h.aim=0;h.armed=false;
+  h.yaw=h.yawB;h.x=_v.x-Math.sin(h.yawB)*0.17;h.z=_v.z-Math.cos(h.yawB)*0.17;h.speed=moving?(P.sprinting?4.4:P.crouch?1.1:2.1):0;h.act='stand';h.atkAnim=0;h.aim=0;h.armed=false;
   poseTargets(h,dt);const pr=h.pr;
   if(inVR){for(const [side,sh,el,hd] of [['left',LSH,LELB,LHAND],['right',RSH,RELB,RHAND]]){const hr=hands[side];if(!hr||!hr.handRoot.parent)continue;hr.wristObj.getWorldPosition(_bw);
-      _bh.copy(h.tgt[sh]);_pole.set(side==='left'?0.6:-0.6,-1,-0.4).applyAxisAngle(UP,h.yawB);ik2(_bh,_bw,pr.upper,pr.fore,_pole,h.tgt[el],h.tgt[hd]);}}
+      _bh.copy(h.tgt[sh]);_pole.set(side==='left'?0.6:-0.6,-1,-0.4).applyAxisAngle(UP,h.yawB);ik2(_bh,_bw,pr.upper,pr.fore,_pole,h.tgt[el],h.tgt[hd]);
+      const sl=sleeves[side];if(sl){const E=h.tgt[el];_v2.subVectors(_bw,E).normalize();_v3.copy(_bw).addScaledVector(_v2,0.018);setSeg(sl.up,_bh,E);setSeg(sl.fo,E,_v3);sl.el.position.copy(E);sl.sh.position.copy(_bh);sl.up.visible=sl.fo.visible=sl.el.visible=sl.sh.visible=true;}}}
   for(let i=0;i<NP;i++)h.sim[i].copy(h.tgt[i]);driveBones(h);}
 
 // =====================================================================
@@ -1803,7 +1815,7 @@ function damagePlayer(n,from,bite){if(!P.alive)return;if(from==='zombi')n*=S.zSt
 // HUD, PANELES Y MENSAJES
 // =====================================================================
 const hudC=document.getElementById('hud');const hg=hudC.getContext('2d');const hudTex=new THREE.CanvasTexture(hudC);hudTex.colorSpace=THREE.SRGBColorSpace;
-const wrist=new THREE.Mesh(new THREE.PlaneGeometry(0.13,0.1625),new THREE.MeshBasicMaterial({map:hudTex,transparent:true}));wrist.position.set(-0.02,0.07,0.1);wrist.rotation.set(-0.5,0,-0.9);
+const wrist=new THREE.Mesh(new THREE.PlaneGeometry(0.13,0.1625),new THREE.MeshBasicMaterial({map:hudTex,transparent:true}));wrist.visible=false;wrist.renderOrder=999;wrist.material.depthTest=false;scene.add(wrist);let hudOn=true;
 const pnlC=document.getElementById('pnl');const pg=pnlC.getContext('2d');const pnlTex=new THREE.CanvasTexture(pnlC);pnlTex.colorSpace=THREE.SRGBColorSpace;
 const pnlMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.96,0.72),new THREE.MeshBasicMaterial({map:pnlTex,transparent:true,depthTest:false}));pnlMesh.renderOrder=1001;pnlMesh.visible=false;scene.add(pnlMesh);
 const toastC=document.createElement('canvas');toastC.width=900;toastC.height=96;const tg=toastC.getContext('2d');const toastTex=new THREE.CanvasTexture(toastC);toastTex.colorSpace=THREE.SRGBColorSpace;
@@ -1927,7 +1939,7 @@ tbtn('t_up',()=>pressed.add('ArrowUp'));tbtn('t_down',()=>pressed.add('ArrowDown
 let padL=null,padR=null,srcL=null,srcR=null;const prevB={},BS={};const IN={};
 function edge(name,now){const was=prevB[name];prevB[name]=now;return now&&!was;}
 function press(name,down,dt){const s=BS[name]||(BS[name]={d:false,t:0,f:false});let ev=null;if(down){if(!s.d){s.d=true;s.t=0;s.f=false;}else{s.t+=dt;if(!s.f&&s.t>0.5){s.f=true;ev='hold';}}}else if(s.d){s.d=false;if(!s.f)ev='tap';}return ev;}
-function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,attackP:false,use:false,weapon:false,eject:false,light:false,pee:false,inv:false,menu:false,map:false,status:false,crouch:false,reload:false,
+function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,attackP:false,use:false,weapon:false,eject:false,light:false,pee:false,inv:false,menu:false,map:false,status:false,crouch:false,reload:false,hud:false,
     back:false,up:false,down:false,left:false,right:false,ok:false,gas:0,brake:0,steer:0,snap:0,lgDown:false,lgHeld:false});
   const pk=c=>pressed.has(c);
   if(keys.KeyW)IN.my+=1;if(keys.KeyS)IN.my-=1;if(keys.KeyA)IN.mx-=1;if(keys.KeyD)IN.mx+=1;IN.my+=tjy;IN.mx+=tjx;
@@ -1945,14 +1957,14 @@ function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,att
     const a=press('A',bt(padR,4),dt),b=press('B',bt(padR,5),dt),x=press('X',bt(padL,4),dt),y=press('Y',bt(padL,5),dt);
     if(panel){if(x==='tap'||b==='tap')IN.back=true;}
     else{if(a==='tap')IN.weapon=true;if(a==='hold')IN.eject=true;if(b==='tap')IN.light=true;if(b==='hold')IN.pee=true;if(x==='tap')IN.inv=true;if(x==='hold')IN.menu=true;if(y==='tap')IN.map=true;if(y==='hold')IN.status=true;}
-    if(edge('rs',bt(padR,3)))IN.crouch=true;
+    if(edge('rs',bt(padR,3)))IN.crouch=true;if(edge('ls',bt(padL,3)))IN.hud=true;
     IN.up=IN.up||edge('lsu',ly<-0.6);IN.down=IN.down||edge('lsd',ly>0.6);IN.left=IN.left||edge('lsl',lx<-0.6);IN.right=IN.right||edge('lsr',lx>0.6);
     if(edge('snapR',rx>0.7))IN.snap=1;if(edge('snapL',rx<-0.7))IN.snap=-1;
     IN.gas=Math.max(IN.gas,bv(padR,0));IN.brake=Math.max(IN.brake,bv(padL,0));IN.steer+=-dz(lx);if(panel){IN.mx=0;IN.my=0;IN.gas=0;IN.steer=0;}}
   IN.mx=clamp(IN.mx,-1,1);IN.my=clamp(IN.my,-1,1);IN.steer=clamp(IN.steer,-1,1);}
 function haptic(src,i=0.7,ms=50){try{const a=src&&src.gamepad&&src.gamepad.hapticActuators&&src.gamepad.hapticActuators[0];if(a&&a.pulse)a.pulse(i,ms);}catch(e){}}
 const grips=[renderer.xr.getControllerGrip(0),renderer.xr.getControllerGrip(1)];const handFactory=new XRHandModelFactory();
-grips.forEach((g,i)=>{rig.add(g);g.addEventListener('connected',e=>{const side=e.data.handedness;if(e.data.hand)return;gripBySide[side]=g;const hr=hands[side];if(hr)g.add(hr.handRoot);if(side==='left')g.add(wrist,vrFlash,vrFlT);});
+grips.forEach((g,i)=>{rig.add(g);g.addEventListener('connected',e=>{const side=e.data.handedness;if(e.data.hand)return;gripBySide[side]=g;const hr=hands[side];if(hr)g.add(hr.handRoot);if(side==='left')g.add(vrFlash,vrFlT);});
   g.addEventListener('disconnected',()=>{for(const s of ['left','right'])if(gripBySide[s]===g)delete gripBySide[s];g.clear();});
   const hand=renderer.xr.getHand(i);try{hand.add(handFactory.createHandModel(hand,'mesh'));}catch(e){}rig.add(hand);});
 
@@ -2223,25 +2235,33 @@ function updateHands(){for(const side of ['left','right']){const hr=hands[side];
     else if(side==='left'&&leftHold){c.middle=c.ring=c.pinky=0.95;c.index=0.85;c.thumb=0.75;}
     else{const g=bv(1);c.middle=c.ring=c.pinky=0.15+g*0.85;c.index=tch(0)?0.35+bv(0)*0.65:0.05;c.thumb=thumb;}
     if(window.__CURL)Object.assign(c,window.__CURL);
-    // las manos no atraviesan paredes
-    hr.handRoot.parent.getWorldPosition(_v);_cp.x=_v.x;_cp.z=_v.z;const want=_v1.set(0,0,0);if(collide(_cp,0.06,_v.y-0.05,_v.y+0.05)){want.set(_cp.x-_v.x,0,_cp.z-_v.z);hr.handRoot.parent.getWorldQuaternion(_q);want.applyQuaternion(_q.invert());}
-    hr.off.lerp(want,0.5);applyHC();poseHand(hr);
+    // las manos (y lo que llevan) no atraviesan lo sólido: el mando se frena donde el rayo pecho→mano toca pared, puerta, persiana o mueble
+    {const g=hr.handRoot.parent;g.getWorldPosition(_v);hr.real=(hr.real||new V3()).copy(_v);if(inVR&&!P.inCar&&g.matrixAutoUpdate===false){camera.getWorldPosition(_v1);_v1.y-=0.18;_v2.subVectors(_v,_v1);const d=_v2.length();
+        if(d>0.08){_v2.divideScalar(d);const pad=0.075;const t=rayWorld(_v1,_v2,d+pad);if(t>0.03&&t<d+pad){_v3.copy(_v2).multiplyScalar(t-pad-d);rig.getWorldQuaternion(_q).invert();_v3.applyQuaternion(_q);const e=g.matrix.elements;e[12]+=_v3.x;e[13]+=_v3.y;e[14]+=_v3.z;
+            g.position.set(e[12],e[13],e[14]);g.updateMatrixWorld(true);if(!hr.blocked){hr.blocked=true;haptic(side==='left'?srcL:srcR,0.35,25);}}else hr.blocked=false;}}}
+    hr.off.set(0,0,0);applyHC();poseHand(hr);
     // puertas: agarrar la manilla con el grip; con la mano libre se empujan
     const hp=hr.handRoot.parent.getWorldPosition(_v5);const free=side==='left'?!leftHold:(P.weapon==='manos');
     if(free||doorGrab[side])handDoors(side,hp,side==='left'?IN.lgDown:IN.use,side==='left'?IN.lgHeld:IN.rgHeld,frameDt);
     hr.pv=hr.pv||hp.clone();const vx=(hp.x-hr.pv.x)/Math.max(frameDt,0.008),vz=(hp.z-hr.pv.z)/Math.max(frameDt,0.008);hr.pv.copy(hp);
-    if(!doorGrab[side])pushDoorsAt(hp.x,hp.z,hp.y,0.07,vx,vz,0.35);
-    // tocar a alguien lo empuja un poco (física)
-    if(Math.hypot(vx,vz)<2.5)for(const h of H_){if(!h.active||h.dead)continue;const c=h.sim[CHEST];if(Math.abs(c.x-hp.x)>0.6||Math.abs(c.z-hp.z)>0.6)continue;let bi=-1,bd=0.2*0.2;for(const i of [CHEST,HEAD,LSH,RSH,PELVIS,LELB,RELB]){const q=h.sim[i];const d2=(q.x-hp.x)**2+(q.y-hp.y)**2+(q.z-hp.z)**2;if(d2<bd){bd=d2;bi=i;}}
-      if(bi>=0&&clockT-(h.touchT||0)>0.25){h.touchT=clockT;enterPhys(h);applyImp(h,_imp.set(vx*0.35,0.1,vz*0.35),bi);for(let k=0;k<NP;k++)h.kl[k]=Math.min(h.kl[k],0.6+0.4*(k!==bi));haptic(side==='left'?srcL:srcR,0.25,25);}}}}
+    if(!doorGrab[side])pushDoorsAt(hr.real.x,hr.real.z,hr.real.y,0.09,vx,vz,0.5);
+    // tocar a alguien: la mano es sólida, desplaza el punto del cuerpo que toca (vivo o muerto) y el resto del cuerpo reacciona
+    for(const h of H_){if(!h.active)continue;const c=h.sim[CHEST];if(Math.abs(c.x-hp.x)>1.1||Math.abs(c.z-hp.z)>1.1||Math.abs(c.y-hp.y)>1.6)continue;let hit=-1;
+      for(let i=0;i<NP;i++){const q=h.sim[i];const rr=PR[i]+0.065;const dx=q.x-hp.x,dy=q.y-hp.y,dz=q.z-hp.z;const d2=dx*dx+dy*dy+dz*dz;if(d2>=rr*rr||d2<1e-7)continue;const d=Math.sqrt(d2),push=rr-d;
+        if(hit<0){hit=i;if(!h.dead&&h.mode!=='phys'){enterPhys(h);}h.sleep=0;}q.x+=dx/d*push;q.y+=dy/d*push*0.4;q.z+=dz/d*push;}
+      if(hit>=0){const sp=Math.hypot(vx,vz);if(sp>0.25&&sp<3)applyImp(h,_imp.set(vx*0.3,0.05,vz*0.3),hit);if(!h.dead)for(let k=0;k<NP;k++)h.kl[k]=Math.min(h.kl[k],0.6+0.4*(k!==hit));
+        if(clockT-(h.touchT||0)>0.2){h.touchT=clockT;haptic(side==='left'?srcL:srcR,0.3,25);}}}}}
+function placeHud(){const g=gripBySide.left;const on=inVR&&hudOn&&g&&!panel&&P.alive;wrist.visible=!!on;if(!on)return;g.getWorldPosition(_v);camera.getWorldPosition(_v1);
+  // panel flotante encima de la mano izquierda, siempre mirando a la cara; se enciende y apaga pulsando el joystick izquierdo
+  _v2.subVectors(_v1,_v);_v2.y=0;const l=_v2.length()||1;wrist.position.set(_v.x+_v2.x/l*0.03,_v.y+0.17,_v.z+_v2.z/l*0.03);wrist.lookAt(_v1);}
 const doorGrab={left:null,right:null};const _v5=new V3(),_v6=new V3();let frameDt=0.016;
 function handAng(d,hp){if(d.slide)return (hp.x-d.sx)*d.ux+(hp.z-d.sz)*d.uz;const th=Math.atan2(-(hp.z-d.hz),hp.x-d.hx);let a=(th-d.base)*d.sign;return Math.atan2(Math.sin(a),Math.cos(a));}
 function handDoors(side,hp,down,held,dt){let g=doorGrab[side];const src=side==='left'?srcL:srcR;
-  if(down&&!g){for(const d of DOORS){const dx=d.hx-hp.x,dz=d.hz-hp.z;if(dx*dx+dz*dz>6)continue;doorHandleWorld(d,_v6);if(_v6.distanceTo(hp)>0.17)continue;
+  if(down&&!g){for(const d of DOORS){const dx=d.hx-hp.x,dz=d.hz-hp.z;if(dx*dx+dz*dz>6)continue;doorHandleWorld(d,_v6);if(_v6.distanceTo(hp)>0.3)continue;
       if(d.locked){sfx('rattle');haptic(src,0.6,80);toast('Está cerrada con llave',1.2);break;}g=doorGrab[side]={d,a0:handAng(d,hp)-(d.slide?d.off:d.ang)};d.held=side;haptic(src,0.4,30);sfx('click');break;}}
   if(!g)return;const d=g.d;if(!held){d.held=null;doorGrab[side]=null;return;}
   const prev=d.slide?d.off:d.ang;const tgt=handAng(d,hp)-g.a0;if(d.slide)d.off=clamp(tgt,0,d.maxOff);else{d.ang=clamp(tgt,0,d.maxA);d.vel=(d.ang-prev)/Math.max(dt,0.008);d.target=null;}applyDoor(d);
-  if(doorHandleWorld(d,_v6).distanceTo(hp)>0.45){d.held=null;doorGrab[side]=null;}}
+  if(doorHandleWorld(d,_v6).distanceTo(hp)>0.8){d.held=null;doorGrab[side]=null;}}
 function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(camW);const p=camW;
   if(panel)panelInput();else if(P.alive&&!P.sleeping){if(IN.inv)openPanel('inv');else if(IN.menu)openPanel('main');else if(IN.map)openPanel('map');else if(IN.status)openPanel('status');}
   if(!inVR&&!P.sleeping){const sens=0.0024;if(P.inCar)P.carYaw-=lookDX*sens;else P.yaw-=lookDX*sens;P.pitch=clamp(P.pitch-lookDY*sens,-1.35,1.35);}lookDX=lookDY=0;
@@ -2249,17 +2269,17 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   if(P.alive&&!P.sleeping&&!panel){if(IN.use&&!(inVR&&(doorGrab.right||doorGrab.left)))doInteract();
     if(IN.weapon&&!P.inCar){P.weapon=P.weapon==='manos'?'bate':P.weapon==='bate'?'pistola':'manos';toast({manos:'Manos libres',bate:'Bate',pistola:'Pistola'}[P.weapon],1.5);}
     if(IN.eject&&P.weapon==='pistola')ejectMag(true);if(IN.reload&&P.weapon==='pistola')reloadFlat();if(IN.light){P.light=!P.light;sfx('click');}if(IN.pee)doPee();
-    if(IN.crouch){P.crouchToggle=!P.crouchToggle;toast(P.crouchToggle?'Te agachas (sigilo)':'Te levantas',1.2);}
+    if(IN.crouch){P.crouchToggle=!P.crouchToggle;toast(P.crouchToggle?'Te agachas':'Te levantas',1.2);}if(IN.hud){hudOn=!hudOn;sfx('click');}
     if(!P.inCar&&IN.attackP){if(P.weapon==='pistola'){if(inVR&&gripBySide.right){vrGun.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrGun.getWorldQuaternion(_q));fireGun(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireGun(_o2,_d2);}}else meleeFlat();}}
-  P.crouch=P.crouchToggle||(inVR&&camera.position.y<1.12);
+  P.crouchOff+=((inVR&&P.crouchToggle&&!P.inCar?0.75:0)-P.crouchOff)*Math.min(1,dt*7);if(P.crouchOff<0.004)P.crouchOff=0;P.crouch=P.crouchToggle||(inVR&&camera.position.y<1.12);
   if(P.alive&&!P.sleeping){if(P.inCar)driveCar(P.inCar,panel?0:dt);
     else if(!panel){camera.getWorldDirection(_d2);_d2.y=0;if(_d2.lengthSq()<1e-6)_d2.set(0,0,-1);_d2.normalize();const rx=-_d2.z,rz=_d2.x;let mx=IN.mx,my=IN.my;const ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;}
       const spr=IN.sprint&&P.energy>5&&my>0.3&&!P.crouch;P.sprinting=spr&&ml>0.2;const sp=(spr?4.8:P.crouch?1.2:2.3)*(P.energy<12?0.6:1)*(P.hp<25?0.75:1)*(invWeight()>invCap()?0.65:1);
-      const fy=rig.position.y;P.vx=(_d2.x*my+rx*mx)*sp;P.vz=(_d2.z*my+rz*mx)*sp;const pt={x:p.x+P.vx*dt,z:p.z+P.vz*dt};collide(pt,0.3,fy+0.35,P.crouch?fy+1.0:fy+1.75);
+      const fy=rig.position.y+P.crouchOff;P.vx=(_d2.x*my+rx*mx)*sp;P.vz=(_d2.z*my+rz*mx)*sp;const pt={x:p.x+P.vx*dt,z:p.z+P.vz*dt};collide(pt,0.3,fy+0.35,fy+(inVR?clamp(p.y-fy+0.08,0.6,1.95):(P.crouch?1.0:1.75)));
       for(const c of cars){const ex=pt.x-c.x,ez=pt.z-c.z,d=Math.hypot(ex,ez);if(d<c.halfW+1&&d>0){pt.x=c.x+ex/d*(c.halfW+1);pt.z=c.z+ez/d*(c.halfW+1);}}
       rig.position.x+=pt.x-p.x;rig.position.z+=pt.z-p.z;if(ml>0.2){P.stepT-=dt*sp;if(P.stepT<=0){P.stepT=0.8;makeNoise(p.x,p.z,P.crouch?2:P.sprinting?14:6);}}}}
   if(P.inCar){const c=P.inCar;const s=Math.sin(c.yaw),co=Math.cos(c.yaw);const lx=c.seat.x,lz=c.seat.z;const camY=inVR?camera.position.y:1.2;rig.position.set(c.x+lx*co+lz*s,c.y+c.eye-camY,c.z-lx*s+lz*co);rig.rotation.y=c.yaw+Math.PI+P.carYaw;}
-  else{rig.rotation.y=P.yaw;const gy=surfY(p.x,p.z,rig.position.y);if(gy-rig.position.y<0.7)rig.position.y+=(gy-rig.position.y)*Math.min(1,dt*12);if(engine)engine.g.gain.value*=0.9;
+  else{rig.rotation.y=P.yaw;let fy=P.feetY===undefined?rig.position.y:P.feetY;const gy=surfY(p.x,p.z,fy);if(gy-fy<0.7)fy+=(gy-fy)*Math.min(1,dt*12);P.feetY=fy;rig.position.y=fy-P.crouchOff;if(engine)engine.g.gain.value*=0.9;
     // cabeza dentro de una pared: atrás y oscuro
     if(!P.inCar&&insideVol(p.x,p.y,p.z)){rig.position.x+=P.lastSafe.x-p.x;rig.position.z+=P.lastSafe.z-p.z;blackT=Math.max(blackT,0.25);}else P.lastSafe.copy(p);}
   if(!inVR){camera.position.set(0,P.inCar?1.2:(P.crouch?1.05:1.65),0);camera.rotation.set(P.pitch,0,0);}
@@ -2277,7 +2297,7 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   for(const c of cars)if(c!==P.inCar&&Math.abs(c.speed)>0.05){c.speed*=Math.pow(0.3,dt);c.steer=0;moveCar(c,dt,false);}
   chunkT-=dt;if(chunkT<=0){chunkT=0.4;for(const c of chunks.values()){const v=Math.hypot(c.cx-p.x,c.cz-p.z)<(c.inner?(inVR?60:75):(inVR?270:320));for(const m of c.meshes)m.visible=v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
     for(const d of DOORS)d.g.visible=Math.abs(d.hx-p.x)<38&&Math.abs(d.hz-p.z)<38;for(const pn of PANES)pn.m.visible=Math.abs(pn.cx-p.x)<45&&Math.abs(pn.cz-p.z)<45;}
-  updateWeapons(dt);updateHands();updateBody(dt);stepDropped(dt);
+  updateWeapons(dt);updateHands();placeHud();updateBody(dt);stepDropped(dt);
   for(let i=0;i<parts.length;i++){const q=parts[i];if(!q)continue;if(q.life<=0){blood.setMatrixAt(i,ZM);continue;}q.life-=dt;q.v.y-=9.81*dt;q.p.addScaledVector(q.v,dt);const gy=surfY(q.p.x,q.p.z,q.p.y)+0.02;if(q.p.y<gy){q.p.y=gy;q.v.set(0,0,0);}_m.makeTranslation(q.p.x,q.p.y,q.p.z);blood.setMatrixAt(i,q.life>0?_m:ZM);}blood.instanceMatrix.needsUpdate=true;
   for(let i=0;i<dps.length;i++){const q=dps[i];if(!q)continue;if(q.life<=0){dust.setMatrixAt(i,ZM);continue;}q.life-=dt;q.v.y-=4*dt;q.p.addScaledVector(q.v,dt);_m.makeTranslation(q.p.x,q.p.y,q.p.z);dust.setMatrixAt(i,q.life>0?_m:ZM);}dust.instanceMatrix.needsUpdate=true;
   for(const t of tracers)if(t.t>0){t.t-=dt;t.l.material.opacity=Math.max(0,t.t/0.09);}
@@ -2314,7 +2334,7 @@ bflat.onclick=()=>begin(false);
 if(!navigator.xr)vrmsg.textContent='Este navegador no tiene WebXR. Abre esta página en el navegador de las Quest 3.';
 else navigator.xr.isSessionSupported('immersive-vr').then(ok=>{if(!ok)vrmsg.textContent='Aquí no hay visor VR. En las Quest 3 este botón entra en realidad virtual.';}).catch(()=>{});
 bvr.onclick=async()=>{initAudio();try{const ses=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});
-    renderer.xr.setFoveation(1);await renderer.xr.setSession(ses);inVR=true;camera.position.set(0,0,0);camera.rotation.set(0,0,0);viewModel.visible=false;
+    renderer.xr.setFoveation(0.5);await renderer.xr.setSession(ses);inVR=true;camera.position.set(0,0,0);camera.rotation.set(0,0,0);viewModel.visible=false;
     ses.addEventListener('end',()=>{inVR=false;viewModel.visible=true;hudC.style.display='block';document.getElementById('cross').style.display='block';closePanel();});begin(true);}
   catch(e){vrmsg.innerHTML='No se ha podido abrir la VR ('+(e&&e.name||'error')+'). Si estás dentro de claude.ai, la página bloquea la VR: abre el juego desde tu enlace de GitHub Pages.';}};
 // arranque: construir Barcelona y descargar recursos

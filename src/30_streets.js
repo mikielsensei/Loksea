@@ -18,7 +18,7 @@ MATS.asphalt=photoMat('asphalt',{ns:0.6,color:0x6a6a6a,roughness:0.95});MATS.asp
 MATS.panot4=photoMat('panot4',{ns:1.0,color:0xc8c8c8});MATS.panotflor=photoMat('panotflor',{ns:1.0,color:0xc8c8c8});MATS.panotbotons=photoMat('panotbotons',{ns:1.2});
 MATS.granite=photoMat('granite',{ns:0.6,roughness:0.75});MATS.llambordes=photoMat('llambordes',{ns:1.0});
 const texPaint=cTex(256,256,(g,w,h)=>{g.fillStyle='#fff';g.fillRect(0,0,w,h);for(let i=0;i<900;i++){g.fillStyle=`rgba(0,0,0,${R(0.15,0.9)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(0.5,4),0,7);g.fill();}},{});
-MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,alphaTest:0.5,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,alphaTest:0.3,alphaToCoverage:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6});
 // ---------- utilidades de polígonos ----------
 function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
 function centroid(P){let x=0,z=0;for(const p of P){x+=p[0];z+=p[1];}return[x/P.length,z/P.length];}
@@ -45,7 +45,7 @@ const texPlaques=cTex(1024,1024,(g)=>{const W=256,Hh=128;ALLSTR.forEach((s,i)=>{
   g.fillStyle='#f3f1ea';g.fillRect(x+4,y+4,W-8,Hh-8);g.strokeStyle='#1a1a1a';g.lineWidth=4;g.strokeRect(x+12,y+12,W-24,Hh-24);
   g.fillStyle='#151515';g.textAlign='center';g.textBaseline='middle';let fs=30;g.font=`bold ${fs}px Georgia,serif`;while(g.measureText(s.n).width>W-40&&fs>14){fs--;g.font=`bold ${fs}px Georgia,serif`;}
   g.fillText(s.n,x+W/2,y+Hh*0.42);g.font='16px Georgia,serif';g.fillText('Eixample · 2',x+W/2,y+Hh*0.74);});},{});
-defInst('plaque',(()=>{const g=new THREE.PlaneGeometry(0.9,0.45);return g;})(),atlasMat(texPlaques,null,4,8),4,8,true);
+defInst('plaque',(()=>{const g=new THREE.PlaneGeometry(0.9,0.45);return g;})(),(()=>{const m=atlasMat(texPlaques,null,4,8);m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;return m;})(),4,8,true);
 // ---------- registros ----------
 const BLOCKS=[],CARSPOTS=[],LOOT=[],TOILETS=[],FOUNTAINS=[],BEDS=[],SHOPS=[],BASES=[];
 const MAPD={roads:[],blocks:[],shops:[],pois:[],peds:[]};

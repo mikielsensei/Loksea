@@ -98,9 +98,9 @@ function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const y
     if(Math.random()<0.6){const x=a[0]+ux*(u.u1+0.35)+nx*0.03,z=a[1]+uz*(u.u1+0.35)+nz*0.03;addInst('buzzer',x,yb+1.3,z,yaw);}}
   else if(u.kind==='garage'){fillQuad(Math.random()<0.5?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.3);addInst('vado',cx+nx*0.03,yb+u.y1+0.25,cz+nz*0.03,yaw);}
   else if(u.kind==='shop'){const s=u.shop;sign(s.signIdx,yb+u.y1+0.42);
-    if(u.state==='closed'||u.state==='half'){const top=yb+u.y1;const y0=u.state==='half'?yb+1.05:yb;fillQuad(Math.random()<0.7?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,y0,top,0.3);
-      if(Math.random()<0.75){const s2=Math.min(w*0.8,2.6);addInst('graffiti',cx-nx*0.28,y0+(top-y0)*0.5,cz-nz*0.28,yaw,s2,s2*0.8,1,(Math.random()*16)|0);}
-      if(u.state==='half'&&u.room)makeShopInterior(lot,seg,u,ux,uz);
+    if(u.state==='closed'||u.state==='half'){const top=yb+u.y1;const half=u.state==='half'&&u.room;const y0=half?yb+1.15:yb;const sd=half?0.1:0.3;fillQuad(Math.random()<0.7?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,y0,top,sd);
+      if(Math.random()<0.75){const gh=Math.min(w*0.8*0.8,2.1,(top-y0)*0.86),gw=gh/0.8;addInst('graffiti',cx-nx*(sd-0.025),y0+(top-y0)*0.5,cz-nz*(sd-0.025),yaw,gw,gh,1,(Math.random()*16)|0);}
+      if(half){solidBox(cx-nx*sd,cz-nz*sd,w/2,0.05,yaw,y0,top);makeShopInterior(lot,seg,u,ux,uz);}
       else solidBox(cx-nx*0.3,cz-nz*0.3,w/2,0.06,yaw+Math.PI/2*0,yb,top);}
     else if(u.state==='boarded'){fillQuad('wood_dark',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.32,[0.5,0.45,0.4]);
       for(let y=yb+0.3;y<yb+u.y1-0.2;y+=R(0.35,0.6)){addInst('tablon',cx-nx*0.12,y,cz-nz*0.12,yaw+R(-0.15,0.15)*0+0,w*1.05,1,1,0,0,R(-0.12,0.12));}
@@ -185,5 +185,5 @@ function buildCornerLot(lot){const C=lot.C;const pts=[C.a,C.m1,C.m2,C.b];const y
     buildFacade(lot,{a:p,b:q,nx,nz},units);}
   addPolyV(poly,yb-2,lotTop(lot));
   const Bq=bufOf(cen[0],cen[1],'concrete_wall');TINT=[0.7,0.68,0.64];capPoly(Bq,poly,lotTop(lot),0.3);TINT=[1,1,1];}
-function finishSigns(){const t=new THREE.CanvasTexture(SIGNC);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=atlasMat(t,t,4,16,{});INST.shopSign.mat=m;SIGN_MAT=m;}
+function finishSigns(){const t=new THREE.CanvasTexture(SIGNC);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=atlasMat(t,t,4,16,{});m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;INST.shopSign.mat=m;SIGN_MAT=m;}
 let SIGN_MAT=null;

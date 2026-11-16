@@ -42,7 +42,7 @@ function pushDoorsAt(x,z,y,r,vx,vz,strength){for(const d of DOORS){if(d.locked||
     const t=clamp((x-px)*c+(z-pz)*s,0,d.w);const qx=px+c*t,qz=pz+s*t;const ex=x-qx,ez=z-qz,dist=Math.hypot(ex,ez);if(dist>r+0.08)continue;
     // normal del panel y sentido del empuje
     const nx=-s,nz=c;const side=Math.sign(ex*nx+ez*nz)||1;const into=-(vx*nx+vz*nz)*side;// velocidad hacia el panel
-    if(d.slide){const along=vx*c+vz*s;d.off=clamp(d.off+along*0.016*strength,0,d.maxOff);applyDoor(d);continue;}
+    if(d.slide)continue;// las correderas sin corriente solo se abren agarrándolas
     const push=Math.max(into,0.25)*strength*(t/d.w+0.3);d.vel+=-side*d.sign*push*1.2;}}
 function stepDoors(dt){for(const d of DOORS){if(d.slide)continue;if(d.held)continue;
     if(d.target!==null){const e=d.target-d.ang;d.vel=e*5;if(Math.abs(e)<0.01){d.target=null;}}

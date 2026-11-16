@@ -18,7 +18,7 @@ const CONDN=['fresco','rancio','podrido'];
 const P={};
 const G={mag:12,chamber:true,locked:false,kick:0};let BELT=[12,12];let leftHold=null,slideGrab=null;
 function resetPlayer(){Object.assign(P,{hp:100,food:80,water:80,bladder:20,bowels:20,energy:90,mood:70,sick:0,infected:false,infT:0,
-  items:[],bag:false,weapon:'bate',alive:true,inCar:null,light:false,sleeping:false,sleepLeft:0,kills:0,yaw:0,pitch:0,carYaw:0,sprinting:false,crouch:false,crouchToggle:false,deadT:0,accT:0,peeT:0,stepT:0,vomitT:2,lastSafe:new V3()});
+  items:[],bag:false,weapon:'bate',alive:true,inCar:null,light:false,sleeping:false,sleepLeft:0,kills:0,yaw:0,pitch:0,carYaw:0,sprinting:false,crouch:false,crouchToggle:false,crouchOff:0,deadT:0,accT:0,peeT:0,stepT:0,vomitT:2,lastSafe:new V3()});
   addItem('judias',1,'gift');addItem('agua',2,'gift');addItem('vendas',1,'gift');addItem('balas',14,'gift');addItem('papel',1,'gift');
   G.mag=12;G.chamber=true;G.locked=false;BELT=[12,12];leftHold=null;slideGrab=null;
   const b=BASES.find(x=>x.name&&x.name.includes('Ninot'))||BASES.find(x=>x.type==='good')||{x:0,z:0,r:10};const g0=b.gate||[b.x,b.z-26];let sx=g0[0],sz=g0[1];
@@ -189,18 +189,30 @@ function applyHC(){for(const side of ['left','right']){const hr=hands[side];if(!
 let body=null;
 function setupBody(){const tpl=TPL.p_m2||TPL_M[0]||CHAR_TPLS[0];if(!tpl)return;const h=newRec(tpl);H_.pop();charSlot--;body=h;h.type='player';h.gp={lean:0,droop:0,tilt:0,arms:'swing',limp:0,sway:1,twitch:0,speedMul:1};
   h.s=1;h.pr={};for(const k in tpl.pr){const v=tpl.pr[k];h.pr[k]=v.isVector3?v.clone():v;}for(let k=0;k<STICKS.length;k++)h.rest[k]=tpl.CB[STICKS[k][0]].distanceTo(tpl.CB[STICKS[k][1]]);h.kp.fill(1);h.kl.fill(1);h.inner.quaternion.copy(tpl.qFix);h.inner.position.set(0,-tpl.minY,0);for(const m of h.meshes)m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,'good',0,tpl)):charMat(m.userData.base,'good',0,tpl);
-  h.y=0;h.bones.Head.scale.setScalar(0.001);h.bones.LeftHand.scale.setScalar(0.001);h.bones.RightHand.scale.setScalar(0.001);h.holder.visible=false;h.phase=0;h.mode='kin';h.k=1;h.yawB=0;}
+  h.y=0;h.bones.Head.scale.setScalar(0.001);h.bones.LeftArm.scale.setScalar(0.001);h.bones.RightArm.scale.setScalar(0.001);setupSleeves();h.holder.visible=false;h.phase=0;h.mode='kin';h.k=1;h.yawB=0;}
 const _bw=new V3(),_bh=new V3();
-function updateBody(dt){if(!body)return;const show=!P.inCar&&P.alive&&!P.sleeping;body.holder.visible=show;if(!show)return;const h=body;
+// Mangas: dos tubos por brazo (hombro→codo→muñeca) que se orientan y estiran cada fotograma: la mano nunca se separa del brazo
+const sleeves={};
+function setupSleeves(){const mat=photoMat('fabric',{vertexColors:false,color:0x39414c,roughness:0.95,ns:0.6});
+  const seg=(r0,r1,cuff)=>{const gs=[new THREE.CylinderGeometry(r1,r0,1,12,1,true).translate(0,0.5,0)];if(cuff)gs.push(new THREE.CylinderGeometry(r1+0.004,r1+0.004,0.09,12,1,false).translate(0,0.955,0));
+    const g=gs.length>1?mergeGeometries(gs):gs[0];const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*2,uv.getY(i)*2.5);return g;};
+  const gU=seg(0.062,0.05,false),gF=seg(0.05,0.037,true),gJ=new THREE.SphereGeometry(0.051,10,8);
+  for(const side of ['left','right']){const up=new THREE.Mesh(gU,mat),fo=new THREE.Mesh(gF,mat),el=new THREE.Mesh(gJ,mat),sh=new THREE.Mesh(gJ,mat);sh.scale.setScalar(1.22);
+    for(const m of [up,fo,el,sh]){m.frustumCulled=false;m.visible=false;scene.add(m);}sleeves[side]={up,fo,el,sh};}}
+const _sd=new V3();
+function setSeg(m,a,b){_sd.subVectors(b,a);const l=_sd.length()||1e-4;m.position.copy(a);m.quaternion.setFromUnitVectors(UP,_sd.divideScalar(l));m.scale.set(1,l,1);}
+function showSleeves(v){for(const k in sleeves){const s=sleeves[k];s.up.visible=s.fo.visible=s.el.visible=s.sh.visible=v;}}
+function updateBody(dt){if(!body)return;const show=!P.inCar&&P.alive&&!P.sleeping;body.holder.visible=show;showSleeves(false);if(!show)return;const h=body;
   camera.getWorldPosition(_v);camera.getWorldDirection(_v1);_v1.y=0;if(_v1.lengthSq()<1e-6)_v1.set(0,0,-1);_v1.normalize();const hy=Math.atan2(_v1.x,_v1.z);
   let dy=hy-h.yawB;dy=Math.atan2(Math.sin(dy),Math.cos(dy));const moving=Math.abs(IN.mx)+Math.abs(IN.my)>0.1;if(Math.abs(dy)>0.7||moving)h.yawB+=dy*Math.min(1,dt*5);
-  const gy=surfY(_v.x,_v.z,rig.position.y+0.3);const eye=Math.max(0.8,_v.y-gy);P.standEye=Math.max((P.standEye||1.6)*0.9995,eye);const tH=h.tpl.height;const sc=clamp(P.standEye/1.6,0.7,1.2)*(1.75/tH);
+  const gy=surfY(_v.x,_v.z,rig.position.y+P.crouchOff+0.3);const eyeR=Math.max(0.45,_v.y-gy);const eye=Math.max(0.8,eyeR+P.crouchOff);P.standEye=Math.max((P.standEye||1.6)*0.9995,eye);h.crouchK=clamp(1-eyeR/P.standEye,0,0.62)*0.95;const tH=h.tpl.height;const sc=clamp(P.standEye/1.6,0.7,1.2)*(1.75/tH);
   if(Math.abs(sc-h.s)>0.02){h.s=sc;h.inner.scale.setScalar(sc);h.inner.position.y=-h.tpl.minY*sc;h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(sc):v*sc;}}
   if(!h.pr.thigh){h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(sc):v*sc;}}
-  h.yaw=h.yawB;h.x=_v.x-Math.sin(h.yawB)*0.17;h.z=_v.z-Math.cos(h.yawB)*0.17;h.speed=moving?(P.sprinting?4.4:P.crouch?1.1:2.1):0;h.act=P.crouch&&!moving?'squat':'stand';h.atkAnim=0;h.aim=0;h.armed=false;
+  h.yaw=h.yawB;h.x=_v.x-Math.sin(h.yawB)*0.17;h.z=_v.z-Math.cos(h.yawB)*0.17;h.speed=moving?(P.sprinting?4.4:P.crouch?1.1:2.1):0;h.act='stand';h.atkAnim=0;h.aim=0;h.armed=false;
   poseTargets(h,dt);const pr=h.pr;
   if(inVR){for(const [side,sh,el,hd] of [['left',LSH,LELB,LHAND],['right',RSH,RELB,RHAND]]){const hr=hands[side];if(!hr||!hr.handRoot.parent)continue;hr.wristObj.getWorldPosition(_bw);
-      _bh.copy(h.tgt[sh]);_pole.set(side==='left'?0.6:-0.6,-1,-0.4).applyAxisAngle(UP,h.yawB);ik2(_bh,_bw,pr.upper,pr.fore,_pole,h.tgt[el],h.tgt[hd]);}}
+      _bh.copy(h.tgt[sh]);_pole.set(side==='left'?0.6:-0.6,-1,-0.4).applyAxisAngle(UP,h.yawB);ik2(_bh,_bw,pr.upper,pr.fore,_pole,h.tgt[el],h.tgt[hd]);
+      const sl=sleeves[side];if(sl){const E=h.tgt[el];_v2.subVectors(_bw,E).normalize();_v3.copy(_bw).addScaledVector(_v2,0.018);setSeg(sl.up,_bh,E);setSeg(sl.fo,E,_v3);sl.el.position.copy(E);sl.sh.position.copy(_bh);sl.up.visible=sl.fo.visible=sl.el.visible=sl.sh.visible=true;}}}
   for(let i=0;i<NP;i++)h.sim[i].copy(h.tgt[i]);driveBones(h);}
 
 // =====================================================================

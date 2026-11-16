@@ -20,7 +20,7 @@ function drawBalcDoor(g,x,y,w,h,st,lit){const sh=pick(SHUTC);g.save();g.beginPat
 const texWin=cTex(2048,1024,(g)=>{for(let r=0;r<2;r++)for(let c=0;c<8;c++){const st=[0,0,1,1,2,3,4,5,0,1,1,2,0,3,1,2][r*8+c];drawBalcDoor(g,c*256,r*512,256,512,st,false);}},{});
 const texWinL=cTex(2048,1024,(g)=>{g.fillStyle='#000';g.fillRect(0,0,2048,1024);for(let r=0;r<2;r++)for(let c=0;c<8;c++){const st=[0,0,1,1,2,3,4,5,0,1,1,2,0,3,1,2][r*8+c];if(st===4||st===5||st===3)continue;g.save();g.globalCompositeOperation='source-over';drawBalcDoor(g,c*256,r*512,256,512,st,true);g.restore();
   g.fillStyle='rgba(0,0,0,1)';g.fillRect(c*256,r*512,256*0.07,512);g.fillRect(c*256+256*0.93,r*512,256*0.07,512);}},{});
-const winMat=atlasMat(texWin,texWinL,8,2);
+const winMat=atlasMat(texWin,texWinL,8,2);winMat.polygonOffset=true;winMat.polygonOffsetFactor=-2;winMat.polygonOffsetUnits=-6;texWin.anisotropy=4;
 defInst('win',(()=>{const g=new THREE.PlaneGeometry(1,1);g.translate(0,0.5,0);return g;})(),winMat,8,2);
 // marco de ventana con alféizar y dintel (color de la fachada vía instanceColor)
 {const p=[[bx(1.3,0.07,0.16,0,-0.03,0.07),0xffffff],[bx(1.25,0.16,0.12,0,1.12,0.06),0xffffff]];
@@ -31,7 +31,7 @@ const texRail=cTex(512,256,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#141514';
     g.beginPath();g.moveTo(x+18,h/2);g.bezierCurveTo(x+18,h/2-40,x+78,h/2-40,x+78,h/2);g.stroke();}},{});
 {const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
   const f=new THREE.PlaneGeometry(1,1);f.translate(0,0.5,1);const l=new THREE.PlaneGeometry(1,1);l.rotateY(Math.PI/2);l.translate(-0.5,0.5,0.5);const r=l.clone();r.translate(1,0,0);
-  const railM=new THREE.MeshLambertMaterial({map:texRail,alphaTest:0.5,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM);
+  const railM=new THREE.MeshLambertMaterial({map:texRail,alphaTest:0.18,alphaToCoverage:true,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM);
   const fF=new THREE.PlaneGeometry(1,1);fF.translate(0,0.5,1);defInst('balcRailF',fF,railM);const sS=new THREE.PlaneGeometry(1,1);sS.rotateY(Math.PI/2);sS.translate(0,0.5,0.5);defInst('balcRailS',sS,railM);}
 // macetas y ropa tendida y aire acondicionado
 defInst('maceta',mkG([[cy(0.14,0.1,0.25,0,0.12,0,5),0xa0522d],[sp(0.22,0,0.42,0,5),0x3f6a2a]]),plasticMat);

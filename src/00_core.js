@@ -76,7 +76,7 @@ document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0xa9bdd0,30,260);
 scene.background=new THREE.Color(0x0a0c14);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.03,1500);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.07,1500);
 const rig=new THREE.Group();scene.add(rig);rig.add(camera);camera.position.set(0,1.65,0);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
