@@ -52,7 +52,10 @@ texSigns.wrapS=texSigns.wrapT=THREE.ClampToEdgeWrapping;
 const signMat=atlasMat(texSigns,null,4,2,{side:THREE.DoubleSide,alphaTest:0.5});
 // cara de señal (plano de 0.6 m) + palo
 defInst('signFace',(()=>{const g=new THREE.PlaneGeometry(0.6,0.6);return g;})(),signMat,4,2,true);
-const SIGNBACK=new THREE.MeshLambertMaterial({color:0x8a8e90});
+const SIGNBACK=pbr(new THREE.MeshStandardMaterial({color:0x9a9ea2,roughness:0.5,metalness:0.6}));
+// trasera de la señal (chapa gris) y abrazaderas al poste
+defInst('signBackS',(()=>{const g=new THREE.BoxGeometry(0.6,0.6,0.012);g.translate(0,0,-0.008);return g;})(),SIGNBACK,1,1,true);
+defInst('signBackC',(()=>{const g=new THREE.CylinderGeometry(0.3,0.3,0.012,24);g.rotateX(Math.PI/2);g.translate(0,0,-0.008);return g;})(),SIGNBACK,1,1,true);
 defInst('signPole',mkG([[cy(0.03,0.03,3.1,0,1.55,0,6),0x8d9194]]),metalMat,1,1,true);
 
 // ---------- farola del Eixample (fanal alto con brazo) ----------

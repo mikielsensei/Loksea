@@ -345,7 +345,10 @@ texSigns.wrapS=texSigns.wrapT=THREE.ClampToEdgeWrapping;
 const signMat=atlasMat(texSigns,null,4,2,{side:THREE.DoubleSide,alphaTest:0.5});
 // cara de señal (plano de 0.6 m) + palo
 defInst('signFace',(()=>{const g=new THREE.PlaneGeometry(0.6,0.6);return g;})(),signMat,4,2,true);
-const SIGNBACK=new THREE.MeshLambertMaterial({color:0x8a8e90});
+const SIGNBACK=pbr(new THREE.MeshStandardMaterial({color:0x9a9ea2,roughness:0.5,metalness:0.6}));
+// trasera de la señal (chapa gris) y abrazaderas al poste
+defInst('signBackS',(()=>{const g=new THREE.BoxGeometry(0.6,0.6,0.012);g.translate(0,0,-0.008);return g;})(),SIGNBACK,1,1,true);
+defInst('signBackC',(()=>{const g=new THREE.CylinderGeometry(0.3,0.3,0.012,24);g.rotateX(Math.PI/2);g.translate(0,0,-0.008);return g;})(),SIGNBACK,1,1,true);
 defInst('signPole',mkG([[cy(0.03,0.03,3.1,0,1.55,0,6),0x8d9194]]),metalMat,1,1,true);
 
 // ---------- farola del Eixample (fanal alto con brazo) ----------
@@ -540,7 +543,9 @@ const PAINTW=0xefefe8,PAINTY=0xe8b820;
 MATS.asphalt=photoMat('asphalt',{ns:0.6,color:0x6a6a6a,roughness:0.95});MATS.asphaltc=photoMat('asphalt_cracked',{ns:0.6,color:0x707070});
 MATS.panot4=photoMat('panot4',{ns:1.0,color:0xc8c8c8});MATS.panotflor=photoMat('panotflor',{ns:1.0,color:0xc8c8c8});MATS.panotbotons=photoMat('panotbotons',{ns:1.2});
 MATS.granite=photoMat('granite',{ns:0.6,roughness:0.75});MATS.llambordes=photoMat('llambordes',{ns:1.0});
-const texPaint=cTex(256,256,(g,w,h)=>{g.fillStyle='#fff';g.fillRect(0,0,w,h);for(let i=0;i<900;i++){g.fillStyle=`rgba(0,0,0,${R(0.15,0.9)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(0.5,4),0,7);g.fill();}},{});
+// pintura vial: blanca y limpia, con grano y algún desconchón (se ve el asfalto, no manchas negras)
+const texPaint=cTex(256,256,(g,w,h)=>{g.fillStyle='#f2f2ee';g.fillRect(0,0,w,h);const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-0.5)*26;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}g.putImageData(d,0,0);
+  g.globalCompositeOperation='destination-out';for(let i=0;i<160;i++){g.fillStyle=`rgba(0,0,0,${R(0.6,1)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(0.4,1.8),0,7);g.fill();}g.globalCompositeOperation='source-over';},{});
 MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,alphaTest:0.3,alphaToCoverage:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6});
 // ---------- utilidades de polígonos ----------
 function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
@@ -564,11 +569,19 @@ function paintRect(cx,cz,ux,uz,len,wid,col,y){const b=bufOf(cx,cz,'paint');TINT=
 function paintDashes(x0,z0,x1,z1,dash,gap,wid,col){const L=Math.hypot(x1-x0,z1-z0);const ux=(x1-x0)/L,uz=(z1-z0)/L;for(let t=gap/2;t+dash<L;t+=dash+gap)paintRect(x0+ux*(t+dash/2),z0+uz*(t+dash/2),ux,uz,dash,wid,col);}
 // ---------- placas con el nombre de la calle (mármol blanco, letras negras) ----------
 const ALLSTR=[...VSTR,...HSTR];
+// placa de Barcelona: losa de mármol blanco con vetas y letras negras grabadas («Carrer de» pequeño y el nombre grande)
+const plaqueLines=n=>{const m=/^(C\.|Rambla|Pg\.|Av\.)\s+(de la |de les |del |de |d')?(.*)$/.exec(n);if(!m)return['',n];const t={'C.':'Carrer','Rambla':'Rambla','Pg.':'Passeig','Av.':'Avinguda'}[m[1]];const pre=(m[2]||'').trim();
+  return pre.endsWith("'")?[t,pre+m[3]]:[t+(pre?' '+pre:''),m[3]];};
 const texPlaques=cTex(1024,1024,(g)=>{const W=256,Hh=128;ALLSTR.forEach((s,i)=>{const x=(i%4)*W,y=Math.floor(i/4)*Hh;
-  g.fillStyle='#f3f1ea';g.fillRect(x+4,y+4,W-8,Hh-8);g.strokeStyle='#1a1a1a';g.lineWidth=4;g.strokeRect(x+12,y+12,W-24,Hh-24);
-  g.fillStyle='#151515';g.textAlign='center';g.textBaseline='middle';let fs=30;g.font=`bold ${fs}px Georgia,serif`;while(g.measureText(s.n).width>W-40&&fs>14){fs--;g.font=`bold ${fs}px Georgia,serif`;}
-  g.fillText(s.n,x+W/2,y+Hh*0.42);g.font='16px Georgia,serif';g.fillText('Eixample · 2',x+W/2,y+Hh*0.74);});},{});
-defInst('plaque',(()=>{const g=new THREE.PlaneGeometry(0.9,0.45);return g;})(),(()=>{const m=atlasMat(texPlaques,null,4,8);m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;return m;})(),4,8,true);
+  g.fillStyle='#ecebe5';g.fillRect(x,y,W,Hh);
+  for(let k=0;k<5;k++){g.strokeStyle=`rgba(120,120,125,${R(0.08,0.22)})`;g.lineWidth=R(0.6,2.2);g.beginPath();let px=x+R(0,W),py=y;g.moveTo(px,py);for(let q=0;q<10;q++){px+=R(-14,14);py+=Hh/10;g.lineTo(px,py);}g.stroke();}
+  const d=g.getImageData(x,y,W,Hh);for(let k=0;k<d.data.length;k+=4){const n=(Math.random()-0.5)*10;d.data[k]+=n;d.data[k+1]+=n;d.data[k+2]+=n;}g.putImageData(d,x,y);
+  const [l1,l2]=plaqueLines(s.n);g.textAlign='center';g.textBaseline='middle';
+  const eng=(t,cy,font)=>{g.font=font;g.fillStyle='rgba(255,255,255,0.7)';g.fillText(t,x+W/2+1,cy+1.2);g.fillStyle='#16171a';g.fillText(t,x+W/2,cy);};
+  if(l1)eng(l1,y+Hh*0.27,'500 24px Georgia,"Times New Roman",serif');let fs=46;g.font=`bold ${fs}px Georgia,"Times New Roman",serif`;while(g.measureText(l2).width>W-26&&fs>18){fs--;g.font=`bold ${fs}px Georgia,"Times New Roman",serif`;}
+  eng(l2,y+Hh*(l1?0.63:0.5),`bold ${fs}px Georgia,"Times New Roman",serif`);g.fillStyle='#8c1c22';g.font='bold 13px Arial';g.textAlign='right';g.fillText('2',x+W-10,y+Hh-11);});},{});
+defInst('plaqueSlab',mkG([[bx(0.64,0.34,0.03,0,0,0),0xdedcd4]]),plasticMat,1,1,true);
+defInst('plaque',(()=>{const g=new THREE.PlaneGeometry(0.6,0.3);return g;})(),(()=>{const m=atlasMat(texPlaques,null,4,8);m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;return m;})(),4,8,true);
 // ---------- registros ----------
 const BLOCKS=[],CARSPOTS=[],LOOT=[],TOILETS=[],FOUNTAINS=[],BEDS=[],SHOPS=[],BASES=[];
 const MAPD={roads:[],blocks:[],shops:[],pois:[],peds:[]};
@@ -640,8 +653,10 @@ function roadSegment(s,a0,a1,crossA,crossB){const bands=roadBands(s);const ua=s.
     // contenido del carril de aparcamiento
     parkingLane(s,B,a0,a1,p0,p1,parkSide);}
   MAPD.roads.push([SP(s,a0,0),SP(s,a1,0),s.w]);}
-function arrowPaint(cx,cz,ux,uz){paintRect(cx-ux*1.2,cz-uz*1.2,ux,uz,3,0.18,PAINTW);const vx=-uz,vz=ux;
-  for(const sg of [-1,1]){const px=cx+ux*0.6+vx*sg*0.35,pz=cz+uz*0.6+vz*sg*0.35;const ax=ux-vx*sg*0.7,az=uz-vz*sg*0.7,l=Math.hypot(ax,az);paintRect(px,pz,ax/l,az/l,1.1,0.18,PAINTW);}}
+// flecha de carril reglamentaria (5 m): fuste largo y punta maciza
+function paintTri(A,B,C){const c=[(A[0]+B[0]+C[0])/3,(A[1]+B[1]+C[1])/3];const b=bufOf(c[0],c[1],'paint');TINT=hexTint(PAINTW);quadHUp(b,A,B,C,C,(x,z)=>H(x,z)+0.012,0.25);TINT=[1,1,1];}
+function arrowPaint(cx,cz,ux,uz){const vx=-uz,vz=ux;paintRect(cx-ux*0.9,cz-uz*0.9,ux,uz,3.5,0.16,PAINTW);
+  const P=(a,b)=>[cx+ux*a+vx*b,cz+uz*a+vz*b];paintTri(P(0.82,-0.33),P(0.82,0.33),P(2.5,0));paintTri(P(0.82,-0.08),P(0.82,0.08),P(0.6,0));}
 // aparcamiento: contenedores con su caja amarilla, Bicing, carga y descarga, coches
 const CONTSET=['resta','resta','organica','envasos','paper','vidre'];
 let bicingCount=0;
@@ -696,14 +711,27 @@ function sidewalkFurniture(bk){const sides=[[0,1,bk.str[0]],[2,3,bk.str[1]],[4,5
     for(let t=1;t<L-0.5;t+=1.6){const p=[a[0]+ux*t-nx*0.3,a[1]+uz*t-nz*0.3];put('pilona',p[0],p[1],0,true,0.09,0.09,0.85);}
     if(Math.random()<0.3){const p=[(a[0]+b[0])/2-nx*3,(a[1]+b[1])/2-nz*3];put('font',p[0],p[1],Math.atan2(nx,nz),true,0.25,0.25,1.5);FOUNTAINS.push({x:p[0],z:p[1]});}
     else if(Math.random()<0.25){const p=[(a[0]+b[0])/2-nx*4,(a[1]+b[1])/2-nz*4];put('kiosk',p[0],p[1],Math.atan2(nx,nz),true,1.5,1.0,2.6);}
-    // semáforos en los dos extremos del xamfrà
-    for(const [p,t] of [[a,1],[b,-1]]){const q=[p[0]-nx*0.45+ux*t*0.4,p[1]-nz*0.45+uz*t*0.4];put('semafor',q[0],q[1],Math.atan2(nx,nz),true,0.07,0.07,3.4);}}
+    // en cada extremo del xamfrà: semáforo mirando a los coches que llegan por esa calle y señales para los que cruzan
+    for(const [p,t,si] of [[a,1,(e-1)/2],[b,-1,((e+1)/2)%4]]){const st=bk.str[si];if(!st||st.type==='ped'||st.type==='superilla')continue;
+      // dirección de la calle junto a esta esquina y sentido hacia el cruce
+      const sx=st.ax==='v'?0:1,sz=st.ax==='v'?1:0;const tox=-ux*t,toz=-uz*t;let toward=Math.sign(sx*tox+sz*toz)||1;
+      const q=[p[0]-nx*0.45+ux*t*0.5,p[1]-nz*0.45+uz*t*0.5];const y=surfY(q[0],q[1]);
+      const approach=!st.dir||(st.dir===toward);
+      if(approach){const yaw=Math.atan2(-sx*toward,-sz*toward);addInst('semafor',q[0],y,q[1],yaw);solidBox(q[0],q[1],0.08,0.08,0,y,y+3.5);
+        if(st.dir&&Math.random()<0.5)signOn(q[0]-sx*toward*0.07,y+3.75,q[1]-sz*toward*0.07,yaw,3,true);}
+      else if(st.dir){// salida del cruce: dirección prohibida mirando al cruce
+        const yaw=Math.atan2(sx*toward,sz*toward);addInst('signPole',q[0],y,q[1],0);signOn(q[0]+sx*toward*0.04,y+2.75,q[1]+sz*toward*0.04,yaw,1,true);solidBox(q[0],q[1],0.05,0.05,0,y,y+3);
+        // sentido único (flecha) para los que pasan por la otra calle: dos caras
+        const oyaw=Math.atan2(sz,sx);const ar=Math.atan2(-Math.cos(oyaw),Math.sin(oyaw));
+        for(const sg of [1,-1]){const yw=oyaw+(sg<0?Math.PI:0);const axx=-Math.cos(yw),azz=Math.sin(yw);const flip=(axx*sx+azz*sz)*(st.dir)<0;signOn(q[0]+Math.sin(yw)*0.02,y+2.1,q[1]+Math.cos(yw)*0.02,yw,0,false,flip);}}}}
   // placas con el nombre de la calle en las esquinas de los edificios
-  for(const [e,n,s] of sides){if(!s||!s.n)continue;const idx=ALLSTR.indexOf(s);if(idx<0)continue;const a=bk.bp[e],b=bk.bp[n];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;let nx=-uz,nz=ux;
-    if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}for(const t of [1.2,L-1.2]){const x=a[0]+ux*t+nx*0.03,z=a[1]+uz*t+nz*0.03;addInst('plaque',x,H(x,z)+CURB+3.6,z,Math.atan2(nx,nz),1,1,1,idx);}}
+  for(let e=1;e<8;e+=2){const a=bk.bp[e],b=bk.bp[(e+1)%8];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<3)continue;const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;let nx=-uz,nz=ux;
+    if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}
+    for(const [t,si] of [[0.62,(e-1)/2],[L-0.62,((e+1)/2)%4]]){const s=bk.str[si];if(!s||!s.n)continue;const idx=ALLSTR.indexOf(s);if(idx<0)continue;const x=a[0]+ux*t+nx*0.02,z=a[1]+uz*t+nz*0.02;const y=H(x,z)+CURB+2.95;
+      addInst('plaqueSlab',x,y,z,Math.atan2(nx,nz));addInst('plaque',x+nx*0.016,y,z+nz*0.016,Math.atan2(nx,nz),1,1,1,idx);}}
   // señales de sentido único en las esquinas (en el poste del semáforo / poste propio)
 }
-function trafficSigns(){for(let i=0;i<NXS;i++)for(let j=0;j<NZS;j++){const V=VSTR[i],Hh=HSTR[j];
+function trafficSignsOld(){for(let i=0;i<NXS;i++)for(let j=0;j<NZS;j++){const V=VSTR[i],Hh=HSTR[j];
   for(const [s,o] of [[V,Hh],[Hh,V]]){if(!s.dir||s.type==='rambla')continue;const ua=s.ax==='v'?[0,1]:[1,0];
     // señal de sentido obligatorio en la esquina de salida y dirección prohibida en la de entrada
     const cx=V.pos,cz=Hh.pos;const off=o.w/2+2,side=s.w/2-s.sw+0.6;
@@ -712,6 +740,9 @@ function trafficSigns(){for(let i=0;i<NXS;i++)for(let j=0;j<NZS;j++){const V=VST
       const prohib=(sg>0)!==(s.dir>0);addInst('signFace',q[0],y+2.75,q[1],yaw+Math.PI,1,1,1,prohib?1:0);if(!prohib)addInst('signFace',q[0],y+2.75,q[1],yaw,1,1,1,0);
       addInst('signFace',q[0],y+2.1,q[1],yaw+Math.PI,1,1,1,3);solidBox(q[0],q[1],0.05,0.05,0,y,y+3);}}}}
 
+function trafficSigns(){}
+// señal en un poste: k = celda del atlas (0 sentido obligatorio, 1 prohibido, 3 «30»...), redonda o cuadrada; flip invierte la flecha
+function signOn(x,y,z,yaw,k,round,flip){addInst('signFace',x,y,z,yaw,flip?-1:1,1,1,k);addInst(round?'signBackC':'signBackS',x,y,z,yaw);}
 // ---------- límite del mapa: barreras militares al final de cada calle ----------
 function mapLimits(){const put2=(x,z,yaw)=>{const y=surfY(x,z);addInst('jersey',x,y,z,yaw);addInst('valla',x,y+0.9,z,yaw);};
   for(let i=0;i<NXS;i++){const s=VSTR[i];for(const z of [ZMIN+10,ZMAX-10])for(let d=-s.w/2+1;d<s.w/2;d+=2.05)put2(s.pos+d,z,0);}
