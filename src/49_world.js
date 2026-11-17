@@ -16,5 +16,5 @@ let worldBuilt=false;
 function buildWorld(){if(worldBuilt)return;worldBuilt=true;const t0=performance.now();
   planSupers();buildStreets();
   for(const bk of BLOCKS)buildBlock(bk);
-  finishSigns();buildBases();decayWorld();buildChunks();buildInst();drawMap();
+  finishSigns();buildBases();buildMoeve();decayWorld();buildChunks();buildInst();drawMap();
   console.log('mundo',(performance.now()-t0)|0,'ms',BLOCKS.length,'manzanas',shopCount,'locales',LOOT.length,'botín',DOORS.length,'puertas');}

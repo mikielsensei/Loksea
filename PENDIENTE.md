@@ -66,9 +66,12 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 2. Atlas de rótulos ampliado a 16x32 celdas de 256x64 (512) pero se vuelve a llenar: los locales genéricos deberían reutilizar celdas (solo nombre único por POI real).
 3. (HECHO v8.5: balanceo ~3° a 0,8 g, amortiguado y con eje a 0,55 m) Coches: balanceo exagerado (se levantan al mínimo giro) → reducir roll/pitch y que dependa de la velocidad, más peso (GTA IV). Peso y gravedad en todo (zombis, mobiliario) pensando en coger y lanzar objetos.
 4. (v8.5: fusil de corredera CC0 'Lightning' de OpenGameArt en `assets/models/rifle.glb`, texturas 512) Armas largas de NPC/zombis "dos rectángulos": modelar fusil/escopeta decentes. Pistola coherente con las manos nuevas.
-5. Texturas fotográficas en mangas y ropa del avatar del jugador.
-6. Gasolinera Moeve (antes Cepsa) y Carrefour Express en Casanova-Aragó (lado Villarroel, ahora jugable: POI i≈-0.05, j≈3.15).
+5. (HECHO v8.7) Texturas fotográficas en mangas (algodón Poly Haven a juego con la camisa) y microdetalle de tejido en la ropa. Falta comprobar en VR.
+6. (HECHO v8.8 `buildMoeve` en 38_ninot.js: marquesina, 2 surtidores, tótem de precios) Gasolinera Moeve (antes Cepsa) y Carrefour Express en Casanova-Aragó (lado Villarroel, ahora jugable: POI i≈-0.05, j≈3.15).
 7. Rótulos/escaparates realistas: banderolas (cruz verde farmacia, T estanco), letras 3D, marcos por tipo.
 8. Furgonetas (Berlingo/Kangoo/Citan), coches quemados, motos caídas con restos.
 9. Semáforos en posiciones reales (OSM highway=traffic_signals) y modelo mejor; flechas de carril reales (turn:lanes en ways.json).
 10. Daño melee con cortes/mutilación, interiores de bares, balcones variados, NPC con rutinas.
+
+- Pistola: revisar en VR que la empuñadura encaje con las manos nuevas (no comprobado en render plano).
+- Peso y gravedad para TODO (mobiliario y objetos con física) pensando en coger y lanzar cosas del suelo.

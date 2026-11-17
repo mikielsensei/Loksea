@@ -1621,6 +1621,36 @@ function buildNinot(bk){const{x0,x1,z0,z1}=bk;const cx=(x0+x1)/2,F=z1,zb=F-NINOT
   return{cx,cz:F-5,y:yF,gate:[cx,F+5],F};}
 
 // =====================================================================
+// GASOLINERA MOEVE (antes Cepsa) en el xamfrà de Aragó con Casanova (lado Villarroel): surtidores bajo marquesina
+// =====================================================================
+const texMoeve=cTex(512,128,(g,w,h)=>{const gr=g.createLinearGradient(0,0,w,0);gr.addColorStop(0,'#0e5a5e');gr.addColorStop(1,'#123c66');g.fillStyle=gr;g.fillRect(0,0,w,h);
+  g.fillStyle='#f2f4f2';g.font='bold 92px Helvetica, Arial, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('moeve',w/2,h/2+4);
+  g.fillStyle='rgba(40,30,20,0.4)';for(let i=0;i<30;i++)g.fillRect(Math.random()*w,Math.random()*h,3+Math.random()*40,2+Math.random()*10);});
+const texPrices=cTex(256,512,(g,w,h)=>{g.fillStyle='#16191c';g.fillRect(0,0,w,h);g.drawImage(texMoeve.image,0,0,w,64);
+  const rows=[['Gasolina 95','1,6__'],['Gasolina 98','1,7_9'],['Diésel','1,5_9'],['Diésel+','_,__9']];rows.forEach(([n,p],k)=>{const y=110+k*96;g.fillStyle='#e8e4da';g.font='bold 26px Arial';g.textAlign='left';g.fillText(n,14,y);
+    g.fillStyle='#d23a1e';g.font='bold 46px monospace';g.fillText(p,14,y+48);});
+  g.fillStyle='rgba(60,40,20,0.5)';for(let i=0;i<50;i++)g.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*30,1+Math.random()*12);});
+function buildMoeve(){const lot=LOTS.find(l=>l.corner&&l.bk.i===0&&l.bk.j===3&&l.C.sN===0);if(!lot)return;const C=lot.C;
+  const ex=C.m2[0]-C.m1[0],ez=C.m2[1]-C.m1[1],L=Math.hypot(ex,ez);const ux=ex/L,uz=ez/L;const cen=centroid(lot.bk.bp);let nx=uz,nz=-ux;const mx=(C.m1[0]+C.m2[0])/2,mz=(C.m1[1]+C.m2[1])/2;
+  if(nx*(mx-cen[0])+nz*(mz-cen[1])<0){nx=-nx;nz=-nz;}const yaw=Math.atan2(nx,nz);const y=surfY(mx+nx*3,mz+nz*3);
+  const at=(u,w)=>[mx+ux*u+nx*w,mz+uz*u+nz*w];
+  // marquesina (losa blanca con canto de marca) apoyada en la fachada y en dos pilares
+  const parts=[[bx(L+2,0.55,6.2,0,4.75,3.1),0xd8d8d2],[bx(L+2.1,0.45,0.08,0,4.7,6.22),0x0e5a5e],[bx(0.08,0.45,6.2,(L+2)/2+0.02,4.7,3.1),0x0e5a5e],[bx(0.08,0.45,6.2,-(L+2)/2-0.02,4.7,3.1),0x0e5a5e]];
+  for(const s of [-1,1])parts.push([bx(0.35,4.5,0.35,s*(L/2-1),2.25,5.3),0xcfcfc8]);
+  for(const s of [-1,1]){const px=s*2.6;parts.push([bx(1.6,0.2,0.7,px,0.1,3.4),0x9a968c],[bx(0.95,1.75,0.5,px,1.07,3.4),0xe6e6e0],[bx(0.97,0.3,0.52,px,1.85,3.4),0x0e5a5e],[bx(0.4,0.25,0.02,px,1.45,3.66),0x1a2024],[bx(0.4,0.25,0.02,px,1.45,3.14),0x1a2024],[bx(0.08,0.9,0.08,px+0.6,0.7,3.4),0x333333]);
+    addOBB(at(px,3.4)[0],at(px,3.4)[1],0.55,0.3,yaw,y,y+1.9);}
+  for(const s of [-1,1]){const p=at(s*(L/2-1),5.3);addOBB(p[0],p[1],0.2,0.2,yaw,y,y+4.5);}
+  const m=landmarkMesh(mkG(parts),paintMat);m.position.set(mx,y,mz);m.rotation.y=yaw;
+  // rótulo en el canto y tótem de precios
+  const sg=new THREE.Mesh(new THREE.PlaneGeometry(3.2,0.8),new THREE.MeshLambertMaterial({map:texMoeve}));{const q=at(0,6.27);sg.position.set(q[0],y+4.72,q[1]);}sg.rotation.y=yaw;scene.add(sg);
+  const tp=at(L/2+2.5,6.5);const tot=landmarkMesh(mkG([[bx(1.3,0.4,0.4,0,0.2,0),0x7a7670],[bx(1.1,4.4,0.3,0,2.6,0),0xd8d8d2]]),paintMat);tot.position.set(tp[0],surfY(tp[0],tp[1]),tp[1]);tot.rotation.y=yaw+0.6;
+  for(const f of [1,-1]){const pm=new THREE.Mesh(new THREE.PlaneGeometry(1.0,2.0),new THREE.MeshLambertMaterial({map:texPrices}));pm.position.set(0,3.4,f*0.16);if(f<0)pm.rotation.y=Math.PI;tot.add(pm);}
+  addOBB(tp[0],tp[1],0.65,0.25,yaw+0.6,surfY(tp[0],tp[1]),surfY(tp[0],tp[1])+4.8);
+  // un coche abandonado repostando y manchas
+  CARSPOTS.push({x:at(-2.6,4.6)[0],z:at(-2.6,4.6)[1],yaw:Math.atan2(ux,uz)});
+  for(let i=0;i<4;i++){const p=at(R(-4,4),R(2,5.5));addInst(pick(['caja2','bolsas','paper']),p[0],surfY(p[0],p[1]),p[1],R(0,6.28));}}
+
+// =====================================================================
 // BASES: Mercat del Ninot (aliados), escuela en el interior de manzana (aliados) y un Mercadona tomado por bandidos
 // =====================================================================
 defInst('tent',mkG([[(()=>{const g=new THREE.ConeGeometry(1.5,1.6,4);g.rotateY(Math.PI/4);g.translate(0,0.8,0);return g;})(),0xffffff]]),new THREE.MeshLambertMaterial({vertexColors:true}),1,1,true);
@@ -2088,7 +2118,7 @@ let worldBuilt=false;
 function buildWorld(){if(worldBuilt)return;worldBuilt=true;const t0=performance.now();
   planSupers();buildStreets();
   for(const bk of BLOCKS)buildBlock(bk);
-  finishSigns();buildBases();decayWorld();buildChunks();buildInst();drawMap();
+  finishSigns();buildBases();buildMoeve();decayWorld();buildChunks();buildInst();drawMap();
   console.log('mundo',(performance.now()-t0)|0,'ms',BLOCKS.length,'manzanas',shopCount,'locales',LOOT.length,'botín',DOORS.length,'puertas');}
 
 const HFIT={kx:0.034,ky:-0.032,kz:0.02,fx:-0.15,fy:-1,fz:0.1,gr:-1.27,gy:-0.014,gz:0.026};
