@@ -437,7 +437,7 @@ function dirtyGlass(box,wipers){const m=new THREE.MeshStandardMaterial({color:0x
 let WS_MAT=null,WIN_MAT=null;
 const WIPER_GEO=mkG([[bx(0.46,0.012,0.012,0.23,0.012,0.0),0x111111],[bx(0.42,0.004,0.02,0.24,0.02,0.0),0x0a0a0a],[cy(0.016,0.016,0.03,0,0.01,0,8),0x111111]]);
 const MIRROR_GEO=new THREE.PlaneGeometry(0.13,0.085);const mirrorMat=pbr(new THREE.MeshStandardMaterial({color:0x8a9aa8,metalness:1,roughness:0.06,envMapIntensity:2}));
-function makeCar(x,z,yaw,kind,o={}){const T=CARTPL;if(!T)return makeCarProc(x,z,yaw,kind);
+function makeCar(x,z,yaw,kind,o={}){const T=CARVAN&&!o.noVan&&Math.random()<0.28?CARVAN:CARTPL;if(!T)return makeCarProc(x,z,yaw,kind);
   const g=new THREE.Group();const body=new THREE.Group();body.position.y=0.5;g.add(body);const wheels=[];const wreck=o.wreck||0;
   const inner=T.root.clone(true);inner.position.y=-0.5;body.add(inner);const taxi=!wreck&&Math.random()<0.12;const col=taxi?0x111214:wreck>0.9?0x222222:pick(CARCOL);
   let bodyMesh=null,winMesh=[];inner.traverse(q=>{if(!q.isMesh)return;if(q.name==='Car'){q.material=wearMat(q.material,col,Math.random()*50,wreck);q.material.side=THREE.FrontSide;bodyMesh=q;}else if(/Window|Windshield/.test(q.name)){if(!WS_MAT){WS_MAT=dirtyGlass(T.wsLocal,true);WIN_MAT=dirtyGlass(null,false);}q.material=q.name==='Windshield'?WS_MAT:WIN_MAT;q.renderOrder=3;winMesh.push(q);}else if(q.material.side!==THREE.FrontSide){q.material=q.material.clone();q.material.side=THREE.FrontSide;}});
@@ -451,7 +451,7 @@ function makeCar(x,z,yaw,kind,o={}){const T=CARTPL;if(!T)return makeCarProc(x,z,
   for(const w of T.wheels){const src=inner.getObjectByName(w.name);if(!src)continue;const piv=new THREE.Group();piv.position.set(w.c.x,w.c.y,w.c.z);piv.rotation.order='YXZ';g.add(piv);piv.attach(src);
     if(wreck&&Math.random()<0.4){piv.rotation.z=R(-0.3,0.3);piv.position.y-=0.08;}wheels.push({node:piv,front:w.front});}
   const y=surfY(x,z);g.position.set(x,y,z);g.rotation.y=yaw;scene.add(g);
-  const car={g,body,bodyMesh,sw:null,swp:null,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:wreck?0:R(5,60),wheels,seat:new V3(0.32,0.3,0.12),eye:1.17,halfW:T.halfW,len:T.len,kind:'panda',searched:false,wreck,gear:0,shift:{gx:0,gz:0,held:null},wheelR:0.29};cars.push(car);return car;}
+  const car={g,body,bodyMesh,sw:null,swp:null,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:wreck?0:R(5,60),wheels,seat:new V3(0.32,0.3,0.12),eye:1.17,halfW:T.halfW,len:T.len,kind:'panda',searched:false,wreck,gear:0,shift:{gx:0,gz:0,held:null},wheelR:0.29};car.isVan=!!T.van;cars.push(car);return car;}
 // el interior y el volante solo se montan cuando te subes (ahorra triángulos en los coches aparcados)
 function carInterior(car){if(car.swp||!car.bodyMesh)return;const b=car.body;const tm=new THREE.Mesh(CARINT.trim,plasticMat),sm=new THREE.Mesh(CARINT.seats,seatMat);tm.position.y=sm.position.y=-0.5;b.add(tm,sm);
   const sc=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.2),screenMat);sc.position.set(0,1.02-0.5,0.86);sc.rotation.set(-0.25,Math.PI,0);b.add(sc);

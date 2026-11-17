@@ -69,7 +69,7 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 5. (HECHO v8.7) Texturas fotográficas en mangas (algodón Poly Haven a juego con la camisa) y microdetalle de tejido en la ropa. Falta comprobar en VR.
 6. (HECHO v8.8 `buildMoeve` en 38_ninot.js: marquesina, 2 surtidores, tótem de precios) Gasolinera Moeve (antes Cepsa) y Carrefour Express en Casanova-Aragó (lado Villarroel, ahora jugable: POI i≈-0.05, j≈3.15).
 7. Rótulos/escaparates realistas: banderolas (cruz verde farmacia, T estanco), letras 3D, marcos por tipo.
-8. Furgonetas (Berlingo/Kangoo/Citan), coches quemados, motos caídas con restos.
+8. (v8.9-v9.4) Motos rehechas y caídas con restos; furgonetas tipo Kangoo/Berlingo (deformando el mismo modelo, `makeVanTpl`, 28% de los coches). Falta: coches quemados con más detalle, furgonetas de reparto grandes.
 9. Semáforos en posiciones reales (OSM highway=traffic_signals) y modelo mejor; flechas de carril reales (turn:lanes en ways.json).
 10. Daño melee con cortes/mutilación, interiores de bares, balcones variados, NPC con rutinas.
 

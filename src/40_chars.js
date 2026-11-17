@@ -12,7 +12,7 @@ const EXTRA=['Spine','Spine1','Spine2','LeftShoulder','RightShoulder'];
 const BIPMAP={'Pelvis':'Hips','Spine':'Spine','Spine1':'Spine1','Spine2':'Spine2','Neck':'Neck','Head':'Head','L Clavicle':'LeftShoulder','L UpperArm':'LeftArm','L Forearm':'LeftForeArm','L Hand':'LeftHand','L Thigh':'LeftUpLeg','L Calf':'LeftLeg','L Foot':'LeftFoot',
   'R Clavicle':'RightShoulder','R UpperArm':'RightArm','R Forearm':'RightForeArm','R Hand':'RightHand','R Thigh':'RightUpLeg','R Calf':'RightLeg','R Foot':'RightFoot'};
 const cleanName=n=>{n=n.replace(/^mixamorig[:_]?/i,'');const m=/^Bip01[ _](.*)$/.exec(n);if(m){const k=m[1].replace(/_/g,' ');return BIPMAP[k]||('bip_'+k);}return n;};
-const TPL={};let CHAR_TPLS=[];let ferrariTpl=null;const HANDTPL={};let CARTPL=null;
+const TPL={};let CHAR_TPLS=[];let ferrariTpl=null;const HANDTPL={};let CARTPL=null,CARVAN=null;
 const _fx=new V3(),_fy=new V3(),_fz=new V3(),_fm=new M4();
 function frameQ(up,side,out){_fy.copy(up).normalize();_fx.copy(side).addScaledVector(_fy,-side.dot(_fy));if(_fx.lengthSq()<1e-8)_fx.set(1,0,0);_fx.normalize();_fz.crossVectors(_fx,_fy);_fm.makeBasis(_fx,_fy,_fz);return out.setFromRotationMatrix(_fm);}
 function prepTpl(gltf,name){if(!gltf)return null;const root=gltf.scene;root.updateMatrixWorld(true);const bones={};
@@ -57,6 +57,19 @@ function prepCarTpl(root,sc){root.scale.setScalar(sc);root.updateMatrixWorld(tru
   const box=new THREE.Box3().setFromObject(root);const ws=parts.Windshield?new THREE.Box3().setFromObject(parts.Windshield):null,mir=parts.Mirrors?new THREE.Box3().setFromObject(parts.Mirrors):null;
   for(const k of ['Windshield','Windows','RearWindow'])if(parts[k]){parts[k].geometry.computeBoundingBox();}
   return{root,wheels,box,ws,mir,wsLocal:parts.Windshield?parts.Windshield.geometry.boundingBox.clone():null,len:box.max.z-box.min.z,halfW:(parts.Car?new THREE.Box3().setFromObject(parts.Car):box).getSize(new V3()).x/2};}
+// furgoneta tipo Kangoo/Berlingo a partir del mismo coche: más larga por detrás, techo alto y trasera cuadrada
+function makeVanTpl(src){const root=src.clone(true);root.scale.setScalar(1);const zc=0.15,belt=0.76,roofH=1.31;
+  root.traverse(o=>{if(!o.isMesh)return;o.geometry=o.geometry.clone();o.material=o.material.clone?o.material.clone():o.material;
+    const pa=o.geometry.attributes.position;const isWheel=/Wheel/.test(o.name);
+    if(isWheel){o.geometry.computeBoundingBox();const cz=(o.geometry.boundingBox.min.z+o.geometry.boundingBox.max.z)/2;if(cz<0){const dz=(zc+(cz-zc)*1.42)-cz;o.geometry.translate(0,0,dz);}return;}
+    const rot=o.quaternion.lengthSq()>0&&Math.abs(o.quaternion.w)<0.999;// los retrovisores vienen girados: se deforman en coordenadas del coche
+    const m=o.matrix.clone(),mi=m.clone().invert();const v=new V3();
+    for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i);if(rot)v.applyMatrix4(m);let{x,y,z}=v;
+      if(z<zc)z=zc+(z-zc)*1.42;
+      if(y>belt){const s=THREE.MathUtils.smoothstep(z,-0.2,-1.3);const t=(y-belt)/(roofH-belt);y=belt+(y-belt)*1.38;y+=s*Math.max(0,t)*0.32*(1-Math.max(0,t-0.6));if(z<-1.2&&t>0.15)y=Math.max(y,belt+(roofH-belt)*1.38*Math.min(1,t*1.15));}
+      v.set(x,y,z);if(rot)v.applyMatrix4(mi);pa.setXYZ(i,v.x,v.y,v.z);}
+    pa.needsUpdate=true;o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();});
+  const T=prepCarTpl(root,1.14);T.van=true;return T;}
 function prepFerrari(g){if(!g)return null;const root=g.scene;const wn=['wheel_fl','wheel_fr','wheel_rl','wheel_rr'];const w=wn.map(n=>root.getObjectByName(n));if(w.some(x=>!x))return null;
   root.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(root);const sz=box.getSize(new V3());
   const fr=w[0].getWorldPosition(new V3()).add(w[1].getWorldPosition(new V3())).multiplyScalar(0.5);const re=w[2].getWorldPosition(new V3()).add(w[3].getWorldPosition(new V3())).multiplyScalar(0.5);
@@ -73,7 +86,7 @@ async function loadModels(){setLoad('m','Descargando personajes…');
   setLoad('m',`✔ Personajes listos: ${TPL_M.length} hombres y ${TPL_F.length} mujeres`);
   setLoad('h','Descargando manos…');for(const side of ['left','right']){const g=await loadAny(HAND_BASE.map(b=>b+side+'.glb'));HANDTPL[side]=g?g.scene:null;}
   setupHands();setLoad('h',HANDTPL.left&&HANDTPL.right?'✔ Manos listas':'⚠ Manos sencillas');
-  {const g=await loadAny(['assets/models/car_panda.glb']);CARTPL=g?prepCarTpl(g.scene,1.14):null;}
+  {const g=await loadAny(['assets/models/car_panda.glb']);CARTPL=g?prepCarTpl(g.scene,1.14):null;if(g)CARVAN=makeVanTpl(g.scene);}
   {const g=await loadAny(['assets/models/rifle.glb']);if(g){g.scene.updateMatrixWorld(true);let mm=null;g.scene.traverse(o=>{if(o.isMesh&&!mm)mm=o;});
     if(mm){const geo=mm.geometry.clone();geo.applyMatrix4(mm.matrixWorld);for(const k of ['skinIndex','skinWeight'])geo.deleteAttribute(k);geo.computeBoundingBox();const bb=geo.boundingBox;
       // culata hacia -z, cañón hacia +z; el origen en la empuñadura (mano derecha)

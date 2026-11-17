@@ -1800,7 +1800,7 @@ const EXTRA=['Spine','Spine1','Spine2','LeftShoulder','RightShoulder'];
 const BIPMAP={'Pelvis':'Hips','Spine':'Spine','Spine1':'Spine1','Spine2':'Spine2','Neck':'Neck','Head':'Head','L Clavicle':'LeftShoulder','L UpperArm':'LeftArm','L Forearm':'LeftForeArm','L Hand':'LeftHand','L Thigh':'LeftUpLeg','L Calf':'LeftLeg','L Foot':'LeftFoot',
   'R Clavicle':'RightShoulder','R UpperArm':'RightArm','R Forearm':'RightForeArm','R Hand':'RightHand','R Thigh':'RightUpLeg','R Calf':'RightLeg','R Foot':'RightFoot'};
 const cleanName=n=>{n=n.replace(/^mixamorig[:_]?/i,'');const m=/^Bip01[ _](.*)$/.exec(n);if(m){const k=m[1].replace(/_/g,' ');return BIPMAP[k]||('bip_'+k);}return n;};
-const TPL={};let CHAR_TPLS=[];let ferrariTpl=null;const HANDTPL={};let CARTPL=null;
+const TPL={};let CHAR_TPLS=[];let ferrariTpl=null;const HANDTPL={};let CARTPL=null,CARVAN=null;
 const _fx=new V3(),_fy=new V3(),_fz=new V3(),_fm=new M4();
 function frameQ(up,side,out){_fy.copy(up).normalize();_fx.copy(side).addScaledVector(_fy,-side.dot(_fy));if(_fx.lengthSq()<1e-8)_fx.set(1,0,0);_fx.normalize();_fz.crossVectors(_fx,_fy);_fm.makeBasis(_fx,_fy,_fz);return out.setFromRotationMatrix(_fm);}
 function prepTpl(gltf,name){if(!gltf)return null;const root=gltf.scene;root.updateMatrixWorld(true);const bones={};
@@ -1845,6 +1845,19 @@ function prepCarTpl(root,sc){root.scale.setScalar(sc);root.updateMatrixWorld(tru
   const box=new THREE.Box3().setFromObject(root);const ws=parts.Windshield?new THREE.Box3().setFromObject(parts.Windshield):null,mir=parts.Mirrors?new THREE.Box3().setFromObject(parts.Mirrors):null;
   for(const k of ['Windshield','Windows','RearWindow'])if(parts[k]){parts[k].geometry.computeBoundingBox();}
   return{root,wheels,box,ws,mir,wsLocal:parts.Windshield?parts.Windshield.geometry.boundingBox.clone():null,len:box.max.z-box.min.z,halfW:(parts.Car?new THREE.Box3().setFromObject(parts.Car):box).getSize(new V3()).x/2};}
+// furgoneta tipo Kangoo/Berlingo a partir del mismo coche: más larga por detrás, techo alto y trasera cuadrada
+function makeVanTpl(src){const root=src.clone(true);root.scale.setScalar(1);const zc=0.15,belt=0.76,roofH=1.31;
+  root.traverse(o=>{if(!o.isMesh)return;o.geometry=o.geometry.clone();o.material=o.material.clone?o.material.clone():o.material;
+    const pa=o.geometry.attributes.position;const isWheel=/Wheel/.test(o.name);
+    if(isWheel){o.geometry.computeBoundingBox();const cz=(o.geometry.boundingBox.min.z+o.geometry.boundingBox.max.z)/2;if(cz<0){const dz=(zc+(cz-zc)*1.42)-cz;o.geometry.translate(0,0,dz);}return;}
+    const rot=o.quaternion.lengthSq()>0&&Math.abs(o.quaternion.w)<0.999;// los retrovisores vienen girados: se deforman en coordenadas del coche
+    const m=o.matrix.clone(),mi=m.clone().invert();const v=new V3();
+    for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i);if(rot)v.applyMatrix4(m);let{x,y,z}=v;
+      if(z<zc)z=zc+(z-zc)*1.42;
+      if(y>belt){const s=THREE.MathUtils.smoothstep(z,-0.2,-1.3);const t=(y-belt)/(roofH-belt);y=belt+(y-belt)*1.38;y+=s*Math.max(0,t)*0.32*(1-Math.max(0,t-0.6));if(z<-1.2&&t>0.15)y=Math.max(y,belt+(roofH-belt)*1.38*Math.min(1,t*1.15));}
+      v.set(x,y,z);if(rot)v.applyMatrix4(mi);pa.setXYZ(i,v.x,v.y,v.z);}
+    pa.needsUpdate=true;o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();});
+  const T=prepCarTpl(root,1.14);T.van=true;return T;}
 function prepFerrari(g){if(!g)return null;const root=g.scene;const wn=['wheel_fl','wheel_fr','wheel_rl','wheel_rr'];const w=wn.map(n=>root.getObjectByName(n));if(w.some(x=>!x))return null;
   root.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(root);const sz=box.getSize(new V3());
   const fr=w[0].getWorldPosition(new V3()).add(w[1].getWorldPosition(new V3())).multiplyScalar(0.5);const re=w[2].getWorldPosition(new V3()).add(w[3].getWorldPosition(new V3())).multiplyScalar(0.5);
@@ -1861,7 +1874,7 @@ async function loadModels(){setLoad('m','Descargando personajes…');
   setLoad('m',`✔ Personajes listos: ${TPL_M.length} hombres y ${TPL_F.length} mujeres`);
   setLoad('h','Descargando manos…');for(const side of ['left','right']){const g=await loadAny(HAND_BASE.map(b=>b+side+'.glb'));HANDTPL[side]=g?g.scene:null;}
   setupHands();setLoad('h',HANDTPL.left&&HANDTPL.right?'✔ Manos listas':'⚠ Manos sencillas');
-  {const g=await loadAny(['assets/models/car_panda.glb']);CARTPL=g?prepCarTpl(g.scene,1.14):null;}
+  {const g=await loadAny(['assets/models/car_panda.glb']);CARTPL=g?prepCarTpl(g.scene,1.14):null;if(g)CARVAN=makeVanTpl(g.scene);}
   {const g=await loadAny(['assets/models/rifle.glb']);if(g){g.scene.updateMatrixWorld(true);let mm=null;g.scene.traverse(o=>{if(o.isMesh&&!mm)mm=o;});
     if(mm){const geo=mm.geometry.clone();geo.applyMatrix4(mm.matrixWorld);for(const k of ['skinIndex','skinWeight'])geo.deleteAttribute(k);geo.computeBoundingBox();const bb=geo.boundingBox;
       // culata hacia -z, cañón hacia +z; el origen en la empuñadura (mano derecha)
@@ -2917,7 +2930,7 @@ function dirtyGlass(box,wipers){const m=new THREE.MeshStandardMaterial({color:0x
 let WS_MAT=null,WIN_MAT=null;
 const WIPER_GEO=mkG([[bx(0.46,0.012,0.012,0.23,0.012,0.0),0x111111],[bx(0.42,0.004,0.02,0.24,0.02,0.0),0x0a0a0a],[cy(0.016,0.016,0.03,0,0.01,0,8),0x111111]]);
 const MIRROR_GEO=new THREE.PlaneGeometry(0.13,0.085);const mirrorMat=pbr(new THREE.MeshStandardMaterial({color:0x8a9aa8,metalness:1,roughness:0.06,envMapIntensity:2}));
-function makeCar(x,z,yaw,kind,o={}){const T=CARTPL;if(!T)return makeCarProc(x,z,yaw,kind);
+function makeCar(x,z,yaw,kind,o={}){const T=CARVAN&&!o.noVan&&Math.random()<0.28?CARVAN:CARTPL;if(!T)return makeCarProc(x,z,yaw,kind);
   const g=new THREE.Group();const body=new THREE.Group();body.position.y=0.5;g.add(body);const wheels=[];const wreck=o.wreck||0;
   const inner=T.root.clone(true);inner.position.y=-0.5;body.add(inner);const taxi=!wreck&&Math.random()<0.12;const col=taxi?0x111214:wreck>0.9?0x222222:pick(CARCOL);
   let bodyMesh=null,winMesh=[];inner.traverse(q=>{if(!q.isMesh)return;if(q.name==='Car'){q.material=wearMat(q.material,col,Math.random()*50,wreck);q.material.side=THREE.FrontSide;bodyMesh=q;}else if(/Window|Windshield/.test(q.name)){if(!WS_MAT){WS_MAT=dirtyGlass(T.wsLocal,true);WIN_MAT=dirtyGlass(null,false);}q.material=q.name==='Windshield'?WS_MAT:WIN_MAT;q.renderOrder=3;winMesh.push(q);}else if(q.material.side!==THREE.FrontSide){q.material=q.material.clone();q.material.side=THREE.FrontSide;}});
@@ -2931,7 +2944,7 @@ function makeCar(x,z,yaw,kind,o={}){const T=CARTPL;if(!T)return makeCarProc(x,z,
   for(const w of T.wheels){const src=inner.getObjectByName(w.name);if(!src)continue;const piv=new THREE.Group();piv.position.set(w.c.x,w.c.y,w.c.z);piv.rotation.order='YXZ';g.add(piv);piv.attach(src);
     if(wreck&&Math.random()<0.4){piv.rotation.z=R(-0.3,0.3);piv.position.y-=0.08;}wheels.push({node:piv,front:w.front});}
   const y=surfY(x,z);g.position.set(x,y,z);g.rotation.y=yaw;scene.add(g);
-  const car={g,body,bodyMesh,sw:null,swp:null,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:wreck?0:R(5,60),wheels,seat:new V3(0.32,0.3,0.12),eye:1.17,halfW:T.halfW,len:T.len,kind:'panda',searched:false,wreck,gear:0,shift:{gx:0,gz:0,held:null},wheelR:0.29};cars.push(car);return car;}
+  const car={g,body,bodyMesh,sw:null,swp:null,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:wreck?0:R(5,60),wheels,seat:new V3(0.32,0.3,0.12),eye:1.17,halfW:T.halfW,len:T.len,kind:'panda',searched:false,wreck,gear:0,shift:{gx:0,gz:0,held:null},wheelR:0.29};car.isVan=!!T.van;cars.push(car);return car;}
 // el interior y el volante solo se montan cuando te subes (ahorra triángulos en los coches aparcados)
 function carInterior(car){if(car.swp||!car.bodyMesh)return;const b=car.body;const tm=new THREE.Mesh(CARINT.trim,plasticMat),sm=new THREE.Mesh(CARINT.seats,seatMat);tm.position.y=sm.position.y=-0.5;b.add(tm,sm);
   const sc=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.2),screenMat);sc.position.set(0,1.02-0.5,0.86);sc.rotation.set(-0.25,Math.PI,0);b.add(sc);
