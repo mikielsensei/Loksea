@@ -21,7 +21,7 @@ function realShop(u,cx,cz,ux,uz,nx,nz,w){if(!POIG)poiGrid();let best=null,bd=1e9
   for(let i=gx-1;i<=gx+1;i++)for(let j=gz-1;j<=gz+1;j++){const L=POIG.get(i+','+j);if(!L)continue;for(const p of L){if(POIUSED.has(p.k))continue;const dx=p.x-cx,dz=p.z-cz;const along=dx*ux+dz*uz,inw=-(dx*nx+dz*nz);
       if(Math.abs(along)>w/2+4||inw<-9||inw>24)continue;const d=Math.abs(along)*1.5+Math.abs(inw-3)*0.5;if(d<bd){bd=d;best=p;}}}
   if(!best)return;const idx=poiSign(best);if(idx===undefined)return;POIUSED.add(best.k);u.shop.type=best[2]==='super'?'fruteria':best[2];u.shop.name=best[3];u.shop.signIdx=idx;
-  if(['bar','restaurant'].includes(u.shop.type)&&Math.random()<0.4)u.shop.awning=true;}
+  u.shop.awning=['bar','restaurant','fruteria'].includes(u.shop.type)&&Math.random()<0.45;}
 // rótulo de un comercio real: marcas conocidas con sus colores; el resto con estilos variados de rótulo de barrio (caja, letras sueltas, madera, neón apagado...)
 const BRANDS=[[/caixabank|la caixa/i,'#ffffff','#007eae'],[/bbva/i,'#004481','#ffffff'],[/sabadell/i,'#ffffff','#0099cc'],[/santander/i,'#ec0000','#ffffff'],[/bankinter/i,'#ff6600','#ffffff'],[/\bing\b/i,'#ff6200','#ffffff'],[/ibercaja/i,'#003a70','#ffffff'],
   [/mercadona/i,'#ffffff','#0b8a3e','#f39200'],[/lidl/i,'#0050aa','#fff000'],[/bon ?preu/i,'#ffffff','#d50f25','#ffcc00'],[/condis/i,'#ffffff','#e3001b','#e3001b'],[/caprabo/i,'#d6001c','#ffffff'],[/consum/i,'#ffffff','#f07d00','#f07d00'],[/bon[àa]rea/i,'#ffffff','#2e8b3a','#2e8b3a'],
@@ -89,6 +89,7 @@ const SUPERPLAN=new Map();
 // ---------- materiales e instancias de planta baja ----------
 MATS.shutter=photoMat('shutter',{ns:1,roughness:0.6,metalness:0.4});MATS.shutter_rust=photoMat('shutter_rust',{ns:1,roughness:0.7,metalness:0.3});
 MATS.wood_door=photoMat('wood_door',{ns:0.6,roughness:0.6});MATS.wood_dark=photoMat('wood_dark',{ns:0.6,roughness:0.6});
+for(const k of ['shutter','shutter_rust','wood_door','wood_dark'])weatherMat(MATS[k],0.7);
 const signMatS=new THREE.MeshLambertMaterial({map:null,emissive:0xffffff,emissiveIntensity:0,side:THREE.DoubleSide});
 // toldo
 const texAwn=cTex(256,128,(g,w,h)=>{const c=pick(['#2e6b2a','#8a1c1c','#1d4f8a','#c8661a']);for(let x=0;x<w;x+=32){g.fillStyle=(x/32)%2?c:'#efe8d8';g.fillRect(x,0,32,h);}g.fillStyle='rgba(0,0,0,.18)';for(let i=0;i<30;i++){g.beginPath();g.arc(R(0,w),R(0,h),R(3,18),0,7);g.fill();}},{});
@@ -148,7 +149,7 @@ function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const y
     if(u.sup&&u.sup.bandit){const P2=(uu,ww)=>[a[0]+ux*uu-nx*ww,a[1]+uz*uu-nz*ww];u.sup.built={out:P2(mid,-3),in:P2(mid,(u.room.d)/2),ux,uz,nx,nz};}
     if(s.awning&&u.state!=='boarded'){addInst('toldo',cx+nx*0.05,yb+u.y1+0.05,cz+nz*0.05,yaw,w,1,1);}}}
 // instancias de planta baja
-defInst('shopSign',PLANE,new THREE.MeshLambertMaterial(),4,16);// el material se crea al final con el atlas
+defInst('shopSign',PLANE,new THREE.MeshLambertMaterial(),SG_COLS,SG_ROWS);// el material se crea al final con el atlas
 defInst('portalDeco',mkG([[bx(0.06,3.2,0.04,0,1.6,0.02),0x2a1a10],[bx(2.4,0.08,0.05,0,3.2,0.02),0x2a1a10],[bx(0.18,0.05,0.05,-0.22,1.1,0.06),0xc9a227],[bx(0.18,0.05,0.05,0.22,1.1,0.06),0xc9a227],[bx(1.9,0.9,0.02,0,2.55,0.03),0x0c0e10]]),metalMat);
 defInst('buzzer',mkG([[bx(0.16,0.32,0.04,0,0,0.02),0xa8a8a0],[bx(0.1,0.03,0.02,0,0.1,0.045),0x222222]]),metalMat);
 defInst('vado',mkG([[bx(0.5,0.3,0.02,0,0,0.01),0x1d56a8],[bx(0.36,0.12,0.025,0,0.03,0.012),0xffffff]]),paintMat);

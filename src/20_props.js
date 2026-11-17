@@ -125,20 +125,48 @@ defInst('bicingTotem',mkG([[bx(0.5,2.1,0.2,0,1.05,0),0xd0202a],[bx(0.51,0.4,0.21
     [bx(2.3,0.035,0.34,-0.75,0.47,-0.45),0x8d9296],[tube([-1.75,0,-0.45],[-1.75,0.46,-0.45],0.028,8),ST],[tube([0.25,0,-0.45],[0.25,0.46,-0.45],0.028,8),ST],[bx(2.3,0.05,0.04,-0.75,0.44,-0.3),ST]];
   defInst('marquesina',mkG(p),paintMat,1,1,false);
   const gl=mkG([[bx(2.75,1.8,0.02,-0.68,1.27,-0.74),0xffffff]]);defInst('marquesinaGlass',gl,glassMat,1,1,false);
-  defInst('mupi',mkG([[bx(1.12,1.75,0.02,0,0,0),0xffffff]]),new THREE.MeshLambertMaterial({map:null,color:0xffffff,emissive:0xffffff,emissiveIntensity:0.0}),1,1,false);}
+  // cartel del mupi: anuncios descoloridos, algunos rotos o tapados con avisos
+  const texMupi=cTex(1024,1024,(g)=>{const W=256,Hh=512;const ads=[['#0d3b66','#faf0ca','CONCERT','PALAU SANT JORDI · 14 MARÇ'],['#e63946','#f1faee','REBAIXES','-50% EN TOT'],['#2a9d8f','#e9f5f2','BCN NETA','Recicla. Cada dia.'],['#1d1d1d','#f2c94c','ESTRENA','Al cinema aquest divendres'],
+      ['#f4a261','#264653','FESTA MAJOR','Gràcia · agost'],['#6a4c93','#ffffff','MUSEU','Exposició temporal'],['#ffffff','#c1121f','AVÍS','ZONA EVACUADA\nNO ENTREU'],['#3a5a40','#dad7cd','TMB','Servei suspès']];
+    ads.forEach(([bg,fg,t1,t2],k)=>{const x=(k%4)*W,y=Math.floor(k/4)*Hh;g.fillStyle=bg;g.fillRect(x,y,W,Hh);g.fillStyle=fg;g.textAlign='center';g.font='bold 44px Arial,sans-serif';g.fillText(t1,x+W/2,y+170);
+      g.font='18px Arial,sans-serif';t2.split('\n').forEach((l,i)=>g.fillText(l,x+W/2,y+230+i*26));g.fillRect(x+40,y+300,W-80,6);
+      for(let i=0;i<14;i++){g.fillStyle=`rgba(255,255,240,${R(0.05,0.2)})`;g.fillRect(x+R(0,W),y,R(4,30),Hh);}// descolorido
+      if(k%3===1){g.fillStyle='#d8d2c0';g.beginPath();g.moveTo(x+W*R(0.3,0.7),y+Hh);g.lineTo(x+W,y+Hh*R(0.5,0.8));g.lineTo(x+W,y+Hh);g.fill();}// roto
+      g.strokeStyle='rgba(30,30,30,.8)';g.lineWidth=4;g.strokeRect(x+2,y+2,W-4,Hh-4);});},{});
+  const mupiMat=atlasMat(texMupi,texMupi,4,2,{});mupiMat.emissiveIntensity=0.15;
+  defInst('mupi',PLANE.clone().scale(1.12,1.62,1),mupiMat,4,2,false);}
 // poste de parada TMB: cabecera roja y cuadrados de color con las líneas
 const texBus=cTex(256,512,(g)=>{g.fillStyle='#f4f4f2';g.fillRect(0,0,256,512);g.fillStyle='#d8202a';g.fillRect(0,0,256,120);g.fillStyle='#fff';g.font='bold 70px Arial';g.textAlign='center';g.textBaseline='middle';g.fillText('Bus',128,64);
   const L=[['H10','#0d4f9e'],['V13','#5a9b2c'],['D40','#7a2b82'],['7','#d8202a'],['22','#d8202a'],['24','#d8202a']];L.forEach(([t,c],i)=>{const x=22+(i%2)*110,y=140+Math.floor(i/2)*118;g.fillStyle=c;g.beginPath();g.roundRect(x,y,100,100,14);g.fill();g.fillStyle='#fff';g.font='bold '+(t.length>2?42:54)+'px Arial';g.fillText(t,x+50,y+54);});},{});
 defInst('busPole',mkG([[cy(0.045,0.05,2.95,0,1.47,0,12),0x62686c],[bx(0.46,0.9,0.04,0,2.45,0),0xd8202a]]),paintMat,1,1,false);
 defInst('busPlate',(()=>{const a=new THREE.PlaneGeometry(0.42,0.84);a.translate(0,2.45,0.025);const b=new THREE.PlaneGeometry(0.42,0.84);b.rotateY(Math.PI);b.translate(0,2.45,-0.025);return mergeGeometries([a,b]);})(),new THREE.MeshLambertMaterial({map:texBus}),1,1,false);
-// semáforo de Barcelona: báculo oscuro y cabezas amarillas con viseras; el de peatones, más bajo
-{const YE=0xe6b000,PO=0x3b4144,BK=0x121314;const p=[[lathe([[0.1,0],[0.09,0.05],[0.07,0.12],[0.058,0.9],[0.052,3.5],[0.001,3.52]],14),PO]];
-  const visor=(y,z,r)=>{const a=new THREE.CylinderGeometry(r,r,0.17,12,1,true,Math.PI/2+0.25,Math.PI-0.5);a.rotateX(Math.PI/2);a.translate(0,y,z+0.085);const b=a.clone();b.scale(-1,1,1);return[[a,YE],[b,BK]];};
-  p.push([bx(0.1,0.06,0.2,0,3.3,0.1),PO],[bx(0.1,0.06,0.2,0,2.5,0.1),PO]);
-  [[3.24,0x7a1410],[2.92,0x7a5a06],[2.6,0x0c5c2c]].forEach(([y,c])=>{p.push([bx(0.31,0.31,0.2,0,y,0.27),YE],[cy(0.105,0.105,0.03,0,y,0.375,18,Math.PI/2),c],[cy(0.118,0.118,0.012,0,y,0.37,18,Math.PI/2),BK],...visor(y,0.37,0.125));});
-  // peatones (mira hacia el paso, de lado)
-  [[2.12,0x6a1410],[1.84,0x0c5028]].forEach(([y,c])=>{p.push([bx(0.2,0.27,0.27,-0.16,y,0),YE],[bx(0.012,0.18,0.18,-0.262,y,0),c],[bx(0.02,0.215,0.215,-0.256,y,0),BK]);});p.push([bx(0.1,0.05,0.08,-0.06,1.98,0),PO]);
-  defInst('semafor',mkG(p),paintMat,1,1,false);}
+// semáforos de Barcelona: cabezas con carcasa amarilla y frontal negro, montadas a un lado del poste con abrazaderas;
+// en los cruces, báculo curvo que vuela sobre la calzada con otra cabeza colgada. Peatonal más bajo, de lado.
+{const YE=0xd9a400,PO=0x7f8488,BK=0x101112;
+  const head=(x,y,z)=>{const p=[[bx(0.3,0.86,0.2,x,y,z),YE],[bx(0.32,0.88,0.015,x,y,z+0.105),BK]];
+    [[0.28,0x6a1410],[0,0x6a5208],[-0.28,0x0b4f26]].forEach(([dy,c])=>{p.push([cy(0.1,0.1,0.02,x,y+dy,z+0.118,16,Math.PI/2),c]);
+      const v=new THREE.CylinderGeometry(0.125,0.125,0.16,12,1,true,Math.PI/2+0.3,Math.PI-0.6);v.rotateX(Math.PI/2);v.translate(x,y+dy,z+0.19);p.push([v,BK]);});return p;};
+  const ped=(x,y,z,ry)=>{const p=[[bx(0.24,0.5,0.18,0,0,0),YE],[bx(0.26,0.52,0.012,0,0,0.095),BK],[bx(0.15,0.15,0.01,0,0.12,0.103),0x5a1010],[bx(0.15,0.15,0.01,0,-0.12,0.103),0x0b4a24]];
+    return p.map(([g,c])=>{g.rotateY(ry);g.translate(x,y,z);return[g,c];});};
+  const pole=h=>[[lathe([[0.1,0],[0.09,0.05],[0.072,0.12],[0.06,0.9],[0.054,h],[0.001,h+0.02]],14),PO]];
+  // simple (calles de un carril o salida): cabeza al lado del poste y peatonal de lado
+  {const p=pole(3.3);p.push(...head(0.24,2.75,0.02),[bx(0.2,0.05,0.06,0.12,3.05,0),PO],[bx(0.2,0.05,0.06,0.12,2.45,0),PO],...ped(-0.17,2.0,0,-Math.PI/2),[bx(0.1,0.05,0.06,-0.06,2.0,0),PO]);defInst('semafor',mkG(p),paintMat,1,1,false);}
+  // báculo: brazo curvo de 3,6 m sobre la calzada (dos versiones, hacia la izquierda o la derecha del poste)
+  for(const sg of [1,-1]){const p=pole(5.0);const pts=[];for(let k=0;k<=8;k++){const a=k/8*Math.PI/2;pts.push([sg*(1-Math.cos(a))*0.9,4.6+Math.sin(a)*0.55]);}
+    for(let k=0;k<8;k++)p.push([tube([pts[k][0],pts[k][1],0],[pts[k+1][0],pts[k+1][1],0],0.05,8),PO]);p.push([tube([sg*0.9,5.15,0],[sg*4.6,5.55,0],0.042,8),PO],[cy(0.06,0.06,0.12,sg*2.4,5.31,0,8,0,Math.PI/2-0.1*sg),0x2a2c2e]);
+    p.push([tube([sg*4.5,5.54,0],[sg*4.5,5.4,0],0.02,6),PO],...head(sg*4.5,4.95,0.0));
+    p.push(...head(sg*0.24,2.75,0.02),[bx(0.2,0.05,0.06,sg*0.12,3.05,0),PO],[bx(0.2,0.05,0.06,sg*0.12,2.45,0),PO],...ped(-sg*0.17,2.0,0,-sg*Math.PI/2),[bx(0.1,0.05,0.06,-sg*0.06,2.0,0),PO]);
+    defInst(sg>0?'semaforBR':'semaforBL',mkG(p),paintMat,1,1,false);}}
+// placa de dirección de calle (en el poste del semáforo): banda azul con el nombre y flecha con la numeración
+const VSTR_N=['C. Casanova','C. Muntaner','C. Aribau','C. Enric Granados','C. Balmes','Rbla. Catalunya'],HSTR_N=['C. Provença','C. Mallorca','C. València','C. Aragó','C. Consell de Cent'];
+const texStPlate=cTex(1024,512,(g)=>{const W=256,Hh=64;let k=0;for(const s of [...VSTR_N,...HSTR_N])for(const dir of [1,-1]){const x=(k%4)*W,y=Math.floor(k/4)*Hh;k++;
+  g.fillStyle='#f4f4f2';g.fillRect(x+2,y+2,W-4,Hh-4);g.fillStyle='#1b3d7a';g.fillRect(x+2,y+2,W-4,Hh*0.5);g.fillStyle='#fff';g.textAlign='center';g.textBaseline='middle';
+  let fs=22;g.font=`bold ${fs}px Arial,sans-serif`;while(g.measureText(s).width>W-20&&fs>11){fs--;g.font=`bold ${fs}px Arial,sans-serif`;}g.fillText(s,x+W/2,y+Hh*0.27);
+  g.fillStyle='#1b1b1b';g.font='bold 15px Arial,sans-serif';const n=10+(k*37)%180;g.fillText(`${n}/${n+6}`,x+W*0.42,y+Hh*0.76);
+  g.beginPath();const ax=x+W*0.72,ay=y+Hh*0.76;g.moveTo(ax-24*dir,ay-3);g.lineTo(ax+8*dir,ay-3);g.lineTo(ax+8*dir,ay-9);g.lineTo(ax+22*dir,ay);g.lineTo(ax+8*dir,ay+9);g.lineTo(ax+8*dir,ay+3);g.lineTo(ax-24*dir,ay+3);g.closePath();g.fill();}},{});
+texStPlate.wrapS=texStPlate.wrapT=THREE.ClampToEdgeWrapping;
+defInst('stPlate',(()=>{const a=new THREE.PlaneGeometry(0.62,0.155);a.translate(0,0,0.075);const b=new THREE.BoxGeometry(0.64,0.17,0.02);b.translate(0,0,0.062);b.deleteAttribute('uv');b.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(b.attributes.position.count*2).fill(0.999),2));
+  return mergeGeometries([a,b.toNonIndexed().index?b:b.toNonIndexed()].map(g=>g.index?g.toNonIndexed():g));})(),atlasMat(texStPlate,null,4,8),4,8,false);
 // moto aparcada: scooter tipo «SH» (lo que más hay en Barcelona); las piezas blancas toman el color de cada moto
 const MOTOCOL=[0xf2f2f0,0xf2f2f0,0x1a1a1c,0x1a1a1c,0x8e9296,0xb01818,0x22325a,0x6a6e72];
 {const W=0xffffff,BK=0x151515,CH=0x9a9ea2;const p=[];

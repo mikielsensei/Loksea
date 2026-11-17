@@ -18,8 +18,13 @@ MATS.asphalt=photoMat('asphalt',{ns:0.6,color:0x6a6a6a,roughness:0.95});MATS.asp
 MATS.panot4=photoMat('panot4',{ns:1.0,color:0xc8c8c8});MATS.panotflor=photoMat('panotflor',{ns:1.0,color:0xc8c8c8});MATS.panotbotons=photoMat('panotbotons',{ns:1.2});
 MATS.granite=photoMat('granite',{ns:0.6,roughness:0.75});MATS.llambordes=photoMat('llambordes',{ns:1.0});
 // pintura vial: blanca y limpia, con grano y algún desconchón (se ve el asfalto, no manchas negras)
-const texPaint=cTex(256,256,(g,w,h)=>{g.fillStyle='#f2f2ee';g.fillRect(0,0,w,h);const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-0.5)*26;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}g.putImageData(d,0,0);
-  g.globalCompositeOperation='destination-out';for(let i=0;i<160;i++){g.fillStyle=`rgba(0,0,0,${R(0.6,1)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(0.4,1.8),0,7);g.fill();}g.globalCompositeOperation='source-over';},{});
+// pintura vial gastada: zonas peladas por las rodadas, desconchones y grano (se ve el asfalto a través)
+const texPaint=cTex(512,512,(g,w,h)=>{g.fillStyle='#ecebe4';g.fillRect(0,0,w,h);const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-0.5)*30;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}g.putImageData(d,0,0);
+  g.globalCompositeOperation='destination-out';
+  for(let i=0;i<26;i++){const x=R(0,w),y=R(0,h),r=R(10,46);const gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,'rgba(0,0,0,0.95)');gr.addColorStop(0.6,'rgba(0,0,0,0.55)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+  for(let i=0;i<5;i++){const x=R(0,w);g.fillStyle=`rgba(0,0,0,${R(0.25,0.55)})`;g.fillRect(x,0,R(18,40),h);}
+  for(let i=0;i<900;i++){g.fillStyle=`rgba(0,0,0,${R(0.5,1)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(0.6,3.2),0,7);g.fill();}
+  g.globalCompositeOperation='source-over';},{});
 MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,alphaTest:0.3,alphaToCoverage:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6});
 // ---------- utilidades de polígonos ----------
 function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
@@ -89,20 +94,22 @@ function sidewalkRing(bk){const{bp,cp,D}=bk;const cin=offsetPoly(cp,D.map(d=>d>0
   TINT=[1,1,1];addSidewalk(cp);}
 
 // ---------- calles peatonales / superilla: plataforma única ----------
-function pedStrip(s,a0,a1){// franja de toda la calle entre dos cruces (a0..a1 a lo largo)
-  const hw=s.w/2;let P;if(s.ax==='v')P=[[s.pos-hw,a0],[s.pos+hw,a0],[s.pos+hw,a1],[s.pos-hw,a1]];else P=[[a0,s.pos-hw],[a1,s.pos-hw],[a1,s.pos+hw],[a0,s.pos+hw]];
-  const c=centroid(P);const y=(x,z)=>H(x,z)+CURB;
-  // banda central de adoquín (llambordes) y laterales de panot / granito
-  if(s.ax==='v'){const L=[[s.pos-hw,a0],[s.pos-2.2,a0],[s.pos-2.2,a1],[s.pos-hw,a1]],M=[[s.pos-2.2,a0],[s.pos+2.2,a0],[s.pos+2.2,a1],[s.pos-2.2,a1]],Rr=[[s.pos+2.2,a0],[s.pos+hw,a0],[s.pos+hw,a1],[s.pos+2.2,a1]];
-    quadHUp(bufOf(c[0]-5,c[1],'panot4'),...L,y,US('panot4'));quadHUp(bufOf(c[0],c[1],'llambordes'),...M,y,US('llambordes'));quadHUp(bufOf(c[0]+5,c[1],'panot4'),...Rr,y,US('panot4'));}
-  else{const L=[[a0,s.pos-hw],[a1,s.pos-hw],[a1,s.pos-2.2],[a0,s.pos-2.2]],M=[[a0,s.pos-2.2],[a1,s.pos-2.2],[a1,s.pos+2.2],[a0,s.pos+2.2]],Rr=[[a0,s.pos+2.2],[a1,s.pos+2.2],[a1,s.pos+hw],[a0,s.pos+hw]];
-    quadHUp(bufOf(c[0],c[1]-5,'panotflor'),...L,y,US('panotflor'));quadHUp(bufOf(c[0],c[1],'granite'),...M,y,US('granite'));quadHUp(bufOf(c[0],c[1]+5,'panotflor'),...Rr,y,US('panotflor'));}
-  // bordillo en los extremos (donde empieza la calzada del cruce)
-  for(const a of [a0,a1]){const b=bufOf(c[0],c[1],'granite');const sg=a===a0?-1:1;
-    if(s.ax==='v')wallQ(b,s.pos-hw,a,s.pos+hw,a,H(s.pos,a)-0.05,H(s.pos,a)+CURB,H(s.pos,a)-0.05,H(s.pos,a)+CURB,0,sg,US('granite'));
-    else wallQ(b,a,s.pos-hw,a,s.pos+hw,H(a,s.pos)-0.05,H(a,s.pos)+CURB,H(a,s.pos)-0.05,H(a,s.pos)+CURB,sg,0,US('granite'));}
-  addSidewalk(P);MAPD.peds.push(P);return P;}
-
+// calle pacificada (superilla / eje verde): plataforma única que baja en rampa suave hasta la calzada del cruce,
+// con una rigola de granito y embornales en el borde, en vez de un escalón
+const RAMP=2.4;
+function pedStrip(s,a0,a1){const hw=s.w/2;const rect=(l0,l1,b0,b1)=>s.ax==='v'?[[s.pos+l0,b0],[s.pos+l1,b0],[s.pos+l1,b1],[s.pos+l0,b1]]:[[b0,s.pos+l0],[b1,s.pos+l0],[b1,s.pos+l1],[b0,s.pos+l1]];
+  const P=rect(-hw,hw,a0,a1);const c=centroid(P);
+  const along=(x,z)=>s.ax==='v'?z:x;const yR=(x,z)=>{const t=along(x,z);return H(x,z)+CURB*clamp(Math.min(t-a0,a1-t)/RAMP,0,1);};
+  const bands=[[-hw,-2.2,s.ax==='v'?'panot4':'panotflor'],[-2.2,2.2,s.ax==='v'?'llambordes':'granite'],[2.2,hw,s.ax==='v'?'panot4':'panotflor']];
+  const segs=[[a0+0.45,a0+RAMP],[a0+RAMP,a1-RAMP],[a1-RAMP,a1-0.45]];
+  for(const [l0,l1,mat] of bands)for(const [b0,b1] of segs){const Q=rect(l0,l1,b0,b1);const cc=centroid(Q);quadHUp(bufOf(cc[0],cc[1],mat),...Q,yR,US(mat));}
+  // rigola (franja de granito oscuro a nivel de calzada) y embornales cada 4 m
+  for(const [b0,b1] of [[a0,a0+0.45],[a1-0.45,a1]]){const Q=rect(-hw,hw,b0,b1);const cc=centroid(Q);TINT=[0.55,0.55,0.55];quadHUp(bufOf(cc[0],cc[1],'granite'),...Q,(x,z)=>H(x,z)+0.008,US('granite'));TINT=[1,1,1];
+    for(let l=-hw+1.5;l<hw-1;l+=4){const m=(b0+b1)/2;const x=s.ax==='v'?s.pos+l:m,z=s.ax==='v'?m:s.pos+l;addInst('embornal',x,H(x,z)+0.012,z,s.ax==='v'?0:Math.PI/2);}}
+  addSidewalk(P);addFloor(rect(-hw,hw,a0,a0+RAMP),0,yR);addFloor(rect(-hw,hw,a1-RAMP,a1),0,yR);MAPD.peds.push(P);return P;}
+// reja de embornal (fundición con ranuras)
+const texEmb=cTex(128,64,(g,w,h)=>{g.fillStyle='#2a2b2c';g.fillRect(0,0,w,h);g.fillStyle='#0a0a0a';for(let x=8;x<w-6;x+=10)g.fillRect(x,8,5,h-16);g.strokeStyle='#4a4b4c';g.lineWidth=4;g.strokeRect(2,2,w-4,h-4);},{});
+defInst('embornal',(()=>{const g=new THREE.PlaneGeometry(0.8,0.36);g.rotateX(-Math.PI/2);return g;})(),new THREE.MeshLambertMaterial({map:texEmb,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),1,1,false);
 // ---------- calzada: carriles, pasos de cebra, líneas de detención ----------
 // devuelve la descripción de la calzada de un tramo: lista de [d0,d1] (offset transversal desde el eje) por sentido
 function roadBands(s){const hw=s.w/2;if(s.type==='rambla')return[{d0:-hw+s.sw,d1:-5,dir:-1,lanes:2,park:true},{d0:5,d1:hw-s.sw,dir:1,lanes:2,park:true}];
@@ -174,13 +181,14 @@ function sidewalkFurniture(bk){const sides=[[0,1,bk.str[0]],[2,3,bk.str[1]],[4,5
       if(s.type==='superilla')for(let t=14;t<L-10;t+=20){const p=at(t,-6.5);put('jardinera',p[0],p[1],Math.atan2(ux,uz)+Math.PI/2,true,1.2,0.55,0.8);const p2=at(t+6,-6.5);put('banc',p2[0],p2[1],yawSt+Math.PI,true,0.9,0.3,0.9);}
       continue;}
     // árboles cada ~8 m a 1 m del bordillo, farolas cada 3 árboles
-    let k=0;for(let t=7;t<L-7;t+=R(7.5,8.8),k++){const p=at(t,1.0);if(k%3===1){const pl=at(t,0.5);put('fanal',pl[0],pl[1],yawSt+Math.PI,true,0.12,0.12,8);}else tree(p[0],p[1]);
+    const busT=s.bus&&((bk.i+bk.j)%2===0)?L*0.45:-99;
+    let k=0;for(let t=7;t<L-7;t+=R(7.5,8.8),k++){if(Math.abs(t-busT)<4.5||Math.abs(t-busT-4.2)<1)continue;const p=at(t,1.0);if(k%3===1){const pl=at(t,0.5);put('fanal',pl[0],pl[1],yawSt+Math.PI,true,0.12,0.12,8);}else tree(p[0],p[1]);
       if(k%4===2){const pp=at(t+2.2,0.45);put('papelera',pp[0],pp[1],yawSt+Math.PI,true,0.22,0.22,1.1);}}
     {const p=at(L*R(0.35,0.65),0.6);put('parquimetre',p[0],p[1],yawSt+Math.PI,true,0.18,0.12,1.4);}
     if(Math.random()<0.5){const p=at(R(10,L-10),sw-0.35);put('armari',p[0],p[1],yawSt,true,0.45,0.2,1.3);}
     if(Math.random()<0.35){const p=at(R(12,L-12),sw*0.55);put('banc',p[0],p[1],yawSt+Math.PI*(Math.random()<0.5?0:1),true,0.9,0.3,0.9);}
     // parada de bus TMB a mitad de tramo
-    if(s.bus&&((bk.i+bk.j)%2===0)){const t=L*0.45;const p=at(t,1.3);const y=put('marquesina',p[0],p[1],yawSt,false);addInst('marquesinaGlass',p[0],y,p[1],yawSt);solidBox(p[0]-nx*0.6,p[1]-nz*0.6,2.2,0.15,yawSt,y,y+2.6);
+    if(s.bus&&((bk.i+bk.j)%2===0)){const t=L*0.45;const p=at(t,1.3);const y=put('marquesina',p[0],p[1],yawSt,false);addInst('marquesinaGlass',p[0],y,p[1],yawSt);{const lx=[Math.cos(yawSt),-Math.sin(yawSt)],lz=[Math.sin(yawSt),Math.cos(yawSt)];for(const [dz,yy] of [[-0.74+0.085,yawSt],[-0.74-0.085,yawSt+Math.PI]]){const mx=p[0]+lx[0]*1.42+lz[0]*dz,mz=p[1]+lx[1]*1.42+lz[1]*dz;addInst('mupi',mx,y+1.28,mz,yy,1,1,1,RI(0,7),1);}}solidBox(p[0]-nx*0.6,p[1]-nz*0.6,2.2,0.15,yawSt,y,y+2.6);
       const pp=at(t+4.2,0.35);addInst('busPole',pp[0],surfY(pp[0],pp[1]),pp[1],yawSt);addInst('busPlate',pp[0],surfY(pp[0],pp[1]),pp[1],yawSt);solidBox(pp[0],pp[1],0.06,0.06,0,y,y+3);}
     // motos aparcadas en la acera junto al xamfrà
     if(Math.random()<0.55){const t0=R(3,5);for(let q=0;q<R(3,8);q++){const p=at(t0+q*0.95,sw*0.5);{const y=surfY(p[0],p[1]);const yw=Math.atan2(nx,nz)+R(-0.2,0.2);addInst('moto',p[0],y,p[1],yw,1,1,1,0,0,0,pick(MOTOCOL));solidBox(p[0],p[1],0.3,0.9,yw,y,y+1.1);}}}}
@@ -195,13 +203,20 @@ function sidewalkFurniture(bk){const sides=[[0,1,bk.str[0]],[2,3,bk.str[1]],[4,5
       const sx=st.ax==='v'?0:1,sz=st.ax==='v'?1:0;const tox=-ux*t,toz=-uz*t;let toward=Math.sign(sx*tox+sz*toz)||1;
       const q=[p[0]-nx*0.45+ux*t*0.5,p[1]-nz*0.45+uz*t*0.5];const y=surfY(q[0],q[1]);
       const approach=!st.dir||(st.dir===toward);
-      if(approach){const yaw=Math.atan2(-sx*toward,-sz*toward);addInst('semafor',q[0],y,q[1],yaw);solidBox(q[0],q[1],0.08,0.08,0,y,y+3.5);
-        if(st.dir&&Math.random()<0.5)signOn(q[0]-sx*toward*0.07,y+3.75,q[1]-sz*toward*0.07,yaw,3,true);}
+      if(approach){const yaw=Math.atan2(-sx*toward,-sz*toward);const cy0=Math.cos(yaw),sy0=Math.sin(yaw);
+        // báculo hacia el centro de la calzada de esta calle
+        const lat=st.ax==='v'?[Math.sign(st.pos-q[0]),0]:[0,Math.sign(st.pos-q[1])];const side=lat[0]*cy0-lat[1]*sy0;const big=st.w>=20;
+        addInst(big?(side>0?'semaforBR':'semaforBL'):'semafor',q[0],y,q[1],yaw);solidBox(q[0],q[1],0.08,0.08,0,y,y+3.5);
+        // placa con el nombre de la calle que cruza y hacia dónde se puede girar
+        const oi=si===(e-1)/2?((e+1)/2)%4:(e-1)/2;const os=bk.str[oi];
+        if(os&&os.n&&os.dir&&os.type!=='ped'&&os.type!=='superilla'){const k=ALLSTR.indexOf(os);if(k>=0){const ox=os.ax==='v'?0:1,oz=os.ax==='v'?1:0;const dvx=sx*toward,dvz=sz*toward;const rx=-dvz,rz=dvx;const right=(ox*os.dir*rx+oz*os.dir*rz)>0;
+          addInst('stPlate',q[0],y+3.42,q[1],yaw,1,1,1,k*2+(right?0:1));}}
+        if(st.dir&&Math.random()<0.5)signOn(q[0]+sy0*0.075,y+3.8,q[1]+cy0*0.075,yaw,3,true);}
       else if(st.dir){// salida del cruce: dirección prohibida mirando al cruce
-        const yaw=Math.atan2(sx*toward,sz*toward);addInst('signPole',q[0],y,q[1],0);signOn(q[0]+sx*toward*0.04,y+2.75,q[1]+sz*toward*0.04,yaw,1,true);solidBox(q[0],q[1],0.05,0.05,0,y,y+3);
+        const yaw=Math.atan2(sx*toward,sz*toward);addInst('signPole',q[0],y,q[1],0);signOn(q[0]+sx*toward*0.06,y+2.75,q[1]+sz*toward*0.06,yaw,1,true);solidBox(q[0],q[1],0.05,0.05,0,y,y+3);
         // sentido único (flecha) para los que pasan por la otra calle: dos caras
         const oyaw=Math.atan2(sz,sx);const ar=Math.atan2(-Math.cos(oyaw),Math.sin(oyaw));
-        for(const sg of [1,-1]){const yw=oyaw+(sg<0?Math.PI:0);const axx=-Math.cos(yw),azz=Math.sin(yw);const flip=(axx*sx+azz*sz)*(st.dir)<0;signOn(q[0]+Math.sin(yw)*0.02,y+2.1,q[1]+Math.cos(yw)*0.02,yw,0,false,flip);}}}}
+        for(const sg of [1,-1]){const yw=oyaw+(sg<0?Math.PI:0);const axx=-Math.cos(yw),azz=Math.sin(yw);const flip=(axx*sx+azz*sz)*(st.dir)<0;signOn(q[0]+Math.sin(yw)*0.05,y+2.1,q[1]+Math.cos(yw)*0.05,yw,0,false,flip);}}}}
   // placas con el nombre de la calle en las esquinas de los edificios
   for(let e=1;e<8;e+=2){const a=bk.bp[e],b=bk.bp[(e+1)%8];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<3)continue;const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;let nx=-uz,nz=ux;
     if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}

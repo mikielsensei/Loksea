@@ -42,6 +42,25 @@ defInst('ac',mkG([[bx(0.8,0.55,0.3,0,0,0.15),0xd8d8d4]]),plasticMat);
 MATS.plaster_cream=photoMat('plaster_cream',{ns:0.5});MATS.plaster_grey=photoMat('plaster_grey',{ns:0.5});MATS.plaster_ochre=photoMat('plaster_ochre',{ns:0.5});
 MATS.stone_blocks=photoMat('stone_blocks',{ns:0.8});MATS.stone_dark=photoMat('stone_dark',{ns:0.8});MATS.brick=photoMat('brick',{ns:0.8});MATS.concrete_wall=photoMat('concrete_wall',{ns:0.6});
 MATS.trim=new THREE.MeshLambertMaterial({vertexColors:true});
+// años sin mantenimiento: regueros de lluvia bajo cornisas y ventanas, mugre y humedad a pie de calle, manchas de hollín y desconchones
+function weatherMat(m,k=1){m.onBeforeCompile=sh=>{sh.uniforms.uWk={value:k};
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;uniform float uWk;\n'+NOISE_GLSL)
+    .replace('#include <map_fragment>',`#include <map_fragment>
+      vec3 w=vWP;float gy=w.y+w.z*0.012;float hz=w.x+w.z;
+      float streak=zn(vec3(hz*3.1,gy*0.18,0.0))*0.65+zn(vec3(hz*9.0,gy*0.5,3.0))*0.35;
+      float stain=smoothstep(0.55,0.85,streak)*smoothstep(1.2,4.5,gy);
+      float blot=smoothstep(0.58,0.82,zn(w*0.35)*0.7+zn(w*1.3)*0.3);
+      float ground=1.0-smoothstep(0.0,1.6+zn(vec3(hz*0.6,0.0,0.0))*1.2,gy);
+      float soot=smoothstep(0.62,0.9,zn(vec3(hz*0.15,gy*0.08,7.0)));
+      vec3 c=diffuseColor.rgb;
+      c*=1.0-uWk*(stain*0.32+blot*0.18+soot*0.22);
+      c=mix(c,c*vec3(0.62,0.6,0.52),ground*0.55*uWk);
+      // desconchones: aparece el ladrillo/mortero
+      float chip=smoothstep(0.78,0.8,zn(w*2.2+11.0))*uWk;c=mix(c,vec3(0.55,0.4,0.32),chip*0.6);
+      diffuseColor.rgb=c;`);};m.customProgramCacheKey=()=>'weather'+k;return m;}
+for(const k of ['plaster_cream','plaster_grey','plaster_ochre','stone_blocks','stone_dark','brick','concrete_wall'])weatherMat(MATS[k],1);
+weatherMat(MATS.trim,0.8);
 const FACADE_STY=[// combinaciones reales del Eixample: zócalo de piedra + estuco de color, ladrillo visto, piedra entera
   {pb:'stone_blocks',up:'plaster_cream',tints:['#f1e6cf','#e8d6b5','#f2e2c8','#e6d2c0','#efe4d2']},
   {pb:'stone_dark',up:'plaster_ochre',tints:['#e8c98f','#dcb57f','#e2c290','#d9b98a']},

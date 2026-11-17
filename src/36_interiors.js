@@ -101,6 +101,22 @@ function furnishShop(u,P,yF,ceil,ux,uz,nx,nz,u0,u1,d,c){const t=u.shop.type;cons
       lootSpot(p[0],p[1],yF,'fruteria','cajas de fruta');}}
   else if(t==='ferre'||t==='electro'){shelf(u0+1.0,d/2,Math.max(2,d-2.5),true,t==='ferre'?'ferre':'electro','estanterías','box');if(W>5)shelf(u1-1.0,d/2,Math.max(2,d-2.5),true,'ferre','estanterías','box');
     const p=P((u0+u1)/2,1.6);furn('woodf',p[0],yF,p[1],2.2,1.0,0.7,yawF,'#7a6a50');lootSpot(p[0],p[1],yF,'ferre_mostrador','mostrador');}
+  else if(t==='banc'){// oficina bancaria: mostrador con mampara, mesas de gestor, cajero y sillas
+    const p=P((u0+u1)/2,d*0.55);furn('woodf',p[0],yF,p[1],Math.max(1.5,W-2),1.05,0.7,yawU===yawU?yawF:yawF,'#e4e2dc');const Bq=bufOf(p[0],p[1],'glassb');const A=P(u0+1,d*0.55-0.3),B=P(u1-1,d*0.55-0.3);wall(Bq,A[0],A[1],B[0],B[1],yF+1.05,yF+1.9,nx,nz,1);
+    for(let uu=u0+1.2;uu<u1-1;uu+=2.4){const q=P(uu,1.9);furn('woodf',q[0],yF,q[1],1.4,0.74,0.75,yawF,'#d8d4cc');const c2=P(uu,1.3);furn('metal',c2[0],yF,c2[1],0.45,0.85,0.45,yawF,'#1d4a8a');}
+    const at=P(u0+0.35,0.9);furn('metal',at[0],yF,at[1],0.35,1.6,0.6,yawU,'#5a6066');lootSpot(p[0],p[1],yF,'mesita','mostrador del banco');}
+  else if(t==='roba'){// tienda de ropa: burras con prendas y mostrador
+    for(let ww=1.6;ww<d-1;ww+=1.6){const q=P((u0+u1)/2,ww);furn('metal',q[0],yF+1.4,q[1],Math.max(1,W-2.5),0.04,0.04,yawF,'#9a9ea2',false);
+      for(let uu=u0+1.4;uu<u1-1.2;uu+=0.12){if(Math.random()<(looted?0.6:0.15))continue;const g=P(uu,ww);furn('furn',g[0],yF+0.75,g[1],0.08,0.62,0.42,yawU,pick(['#2a3a5a','#8a1a1a','#d8d0c0','#3a3a3a','#5a6a3a','#c8a080']),false);}}
+    const p=P(u1-1.2,d-1.2);furn('woodf',p[0],yF,p[1],1.6,1.0,0.6,yawU,'#e8e4dc');lootSpot(p[0],p[1],yF,'mesita','mostrador');}
+  else if(t==='perruqueria'){// sillones frente a espejos y lavacabezas
+    for(let ww=1.5;ww<d-1.5;ww+=1.3){const m=P(u0+0.25,ww);furn('furn',m[0],yF+0.9,m[1],0.04,0.9,0.9,yawF,'#c8d4dc',false);const t2=P(u0+0.4,ww);furn('woodf',t2[0],yF+0.75,t2[1],0.35,0.05,1.0,yawF,'#e8e4dc');
+      const c2=P(u0+1.2,ww);furn('metal',c2[0],yF,c2[1],0.55,0.95,0.55,yawF,'#1a1a1a');}lootSpot(P(u0+0.4,1.5)[0],P(u0+0.4,1.5)[1],yF,'mesita','tocador');}
+  else if(t==='optica'||t==='immo'||t==='locutori'){// mesas con sillas y vitrinas en la pared
+    for(let ww=1.8;ww<d-1;ww+=2.2){const q=P((u0+u1)/2,ww);furn('woodf',q[0],yF,q[1],1.3,0.74,0.75,yawF,'#d8d4cc');const c2=P((u0+u1)/2,ww-0.7);furn('metal',c2[0],yF,c2[1],0.45,0.85,0.45,yawF,'#3a3a3a');}
+    const p2=P(u1-0.25,d/2);furn('furn',p2[0],yF,p2[1],0.35,2.0,d-2,yawF,'#f0eee8');lootSpot(p2[0],p2[1],yF,'mesita','vitrinas');}
+  else if(t==='bugaderia'){// lavadoras en batería
+    for(let ww=1.2;ww<d-0.8;ww+=0.7){const q=P(u0+0.4,ww);furn('metal',q[0],yF,q[1],0.65,0.9,0.6,yawF,'#e8e8e4');const q2=P(u1-0.4,ww);furn('metal',q2[0],yF,q2[1],0.65,0.9,0.6,yawF,'#e8e8e4');}}
   else{// genérico: mostrador + estantes
     const p=P((u0+u1)/2,Math.min(2.4,d*0.4));furn('woodf',p[0],yF,p[1],Math.max(1.2,W-2.2),1.0,0.6,yawF,'#a89070');const p2=P((u0+u1)/2,d-0.35);furn('furn',p2[0],yF,p2[1],W-0.6,2.1,0.4,yawF,'#d8d4cc');
     lootSpot(p[0],p[1],yF,t==='estanc'?'estanc':'mesita','mostrador');if(Math.random()<0.5)lootSpot(p2[0],p2[1],yF,'cocina','armario del fondo');}
