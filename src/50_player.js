@@ -203,15 +203,20 @@ function applyHC(){for(const side of ['left','right']){const hr=hands[side];if(!
 // CUERPO DEL JUGADOR: piernas que caminan y brazos que llegan a tus manos (IK)
 // =====================================================================
 let body=null;
+// ropa del avatar: textura original + microdetalle fotográfico de tejido (vaquero, Poly Haven CC0) a escala real
+const texFabDet=ltex('fabric_det.jpg',false);
+function fabricBodyMat(b){const m=new THREE.MeshStandardMaterial({map:b&&b.map||null,color:b&&b.color?b.color.clone():0xffffff,roughness:0.95,metalness:0});
+  m.onBeforeCompile=sh=>{sh.uniforms.uDet={value:texFabDet};sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform sampler2D uDet;')
+    .replace('#include <map_fragment>','#include <map_fragment>\n#ifdef USE_MAP\n{float d=texture2D(uDet,vMapUv*18.0).r;diffuseColor.rgb*=0.68+0.64*d;}\n#endif');};m.customProgramCacheKey=()=>'fabdet1';return m;}
 function setupBody(){const tpl=TPL.p_m2||TPL_M[0]||CHAR_TPLS[0];if(!tpl)return;const h=newRec(tpl);H_.pop();charSlot--;body=h;h.type='player';h.gp={lean:0,droop:0,tilt:0,arms:'swing',limp:0,sway:1,twitch:0,speedMul:1};
-  h.s=1;h.pr={};for(const k in tpl.pr){const v=tpl.pr[k];h.pr[k]=v.isVector3?v.clone():v;}for(let k=0;k<STICKS.length;k++)h.rest[k]=tpl.CB[STICKS[k][0]].distanceTo(tpl.CB[STICKS[k][1]]);h.kp.fill(1);h.kl.fill(1);h.inner.quaternion.copy(tpl.qFix);h.inner.position.set(0,-tpl.minY,0);for(const m of h.meshes)m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,'good',0,tpl)):charMat(m.userData.base,'good',0,tpl);
+  h.s=1;h.pr={};for(const k in tpl.pr){const v=tpl.pr[k];h.pr[k]=v.isVector3?v.clone():v;}for(let k=0;k<STICKS.length;k++)h.rest[k]=tpl.CB[STICKS[k][0]].distanceTo(tpl.CB[STICKS[k][1]]);h.kp.fill(1);h.kl.fill(1);h.inner.quaternion.copy(tpl.qFix);h.inner.position.set(0,-tpl.minY,0);for(const m of h.meshes)m.material=Array.isArray(m.userData.base)?m.userData.base.map(fabricBodyMat):fabricBodyMat(m.userData.base);
   h.y=0;h.bones.Head.scale.setScalar(0.001);h.bones.LeftArm.scale.setScalar(0.001);h.bones.RightArm.scale.setScalar(0.001);setupSleeves();h.holder.visible=false;h.phase=0;h.mode='kin';h.k=1;h.yawB=0;}
 const _bw=new V3(),_bh=new V3();
 // Mangas: dos tubos por brazo (hombro→codo→muñeca) que se orientan y estiran cada fotograma: la mano nunca se separa del brazo
 const sleeves={};
-function setupSleeves(){const mat=photoMat('fabric',{vertexColors:false,color:0x39414c,roughness:0.95,ns:0.6});
+function setupSleeves(){const mat=photoMat('jacket',{vertexColors:false,roughness:0.97,ns:0.9});// algodón de camisa (foto Poly Haven, CC0) a juego con el torso, con mugre y sangre seca
   const seg=(r0,r1,cuff)=>{const gs=[new THREE.CylinderGeometry(r1,r0,1,12,1,true).translate(0,0.5,0)];if(cuff)gs.push(new THREE.CylinderGeometry(r1+0.004,r1+0.004,0.09,12,1,false).translate(0,0.955,0));
-    const g=gs.length>1?mergeGeometries(gs):gs[0];const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*2,uv.getY(i)*2.5);return g;};
+    const g=gs.length>1?mergeGeometries(gs):gs[0];const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*1.2,uv.getY(i)*1.6);return g;};
   const gU=seg(0.062,0.05,false),gF=seg(0.05,0.037,true),gJ=new THREE.SphereGeometry(0.051,10,8);
   for(const side of ['left','right']){const up=new THREE.Mesh(gU,mat),fo=new THREE.Mesh(gF,mat),el=new THREE.Mesh(gJ,mat),sh=new THREE.Mesh(gJ,mat);sh.scale.setScalar(1.22);
     for(const m of [up,fo,el,sh]){m.frustumCulled=false;m.visible=false;scene.add(m);}sleeves[side]={up,fo,el,sh};}}
