@@ -130,14 +130,22 @@ function roadSegment(s,a0,a1,crossA,crossB){const bands=roadBands(s);const ua=s.
     for(const [aZ,isEnd] of [[a0+5,false],[a1-5,true]]){const ss=4,dz=W;for(let d=B.d0+0.3;d<B.d1-0.3;d+=1.0){const q=SP(s,aZ,d+0.25);paintRect(q[0],q[1],ua[0],ua[1],ss,0.5,PAINTW);}
       const approaching=(B.dir>0)===isEnd;if(approaching){const aS=isEnd?aZ-3.2:aZ+3.2;const q=SP(s,aS,(t0+t1)/2);paintRect(q[0],q[1],ua[0],ua[1],0.4,t1-t0,PAINTW);
         // flechas de dirección
-        for(let k=0;k<lanes;k++){const d=t0+(k+0.5)*lw;const aa=isEnd?aS-9:aS+9;const q2=SP(s,aa,d);arrowPaint(q2[0],q2[1],ua[0]*B.dir,ua[1]*B.dir);}}}
+        const pat=(TURNPAT[s.n]||'').split('|');for(let k=0;k<lanes;k++){const d=t0+(k+0.5)*lw;const aa=isEnd?aS-9:aS+9;const q2=SP(s,aa,d);const r=parkSide<0?k:lanes-1-k;const ty=pat[pat.length-1-r]||'through';arrowPaint(q2[0],q2[1],ua[0]*B.dir,ua[1]*B.dir,ty==='none'?'through':ty);}}}
     // contenido del carril de aparcamiento
     parkingLane(s,B,a0,a1,p0,p1,parkSide);}
   MAPD.roads.push([SP(s,a0,0),SP(s,a1,0),s.w]);}
 // flecha de carril reglamentaria (5 m): fuste largo y punta maciza
 function paintTri(A,B,C){const c=[(A[0]+B[0]+C[0])/3,(A[1]+B[1]+C[1])/3];const b=bufOf(c[0],c[1],'paint');TINT=hexTint(PAINTW);quadHUp(b,A,B,C,C,(x,z)=>H(x,z)+0.012,0.25);TINT=[1,1,1];}
-function arrowPaint(cx,cz,ux,uz){const vx=-uz,vz=ux;paintRect(cx-ux*0.9,cz-uz*0.9,ux,uz,3.5,0.16,PAINTW);
-  const P=(a,b)=>[cx+ux*a+vx*b,cz+uz*a+vz*b];paintTri(P(0.82,-0.33),P(0.82,0.33),P(2.5,0));paintTri(P(0.82,-0.08),P(0.82,0.08),P(0.6,0));}
+// flechas reales por calle (OpenStreetMap turn:lanes, el patrón más repetido de cada calle; de izquierda a derecha según el sentido)
+const TURNPAT={'C. de Balmes':'through|through|through;right','C. de València':'through;left|through|through',"C. d'Aragó":'left;through|through|through|through|through;right',
+  'C. de Muntaner':'through|through|through|through;right','C. de Provença':'through|through;right|right','C. de Mallorca':'through|through|right;through',"C. d'Aribau":'through|through|through|right;through'};
+function arrowPaint(cx,cz,ux,uz,type='through'){const vx=-uz,vz=ux;// v = derecha del sentido
+  const T=/through/.test(type),Rt=/right/.test(type),Lt=/left/.test(type);const P=(a,b)=>[cx+ux*a+vx*b,cz+uz*a+vz*b];
+  if(T){paintRect(cx-ux*0.9,cz-uz*0.9,ux,uz,3.5,0.16,PAINTW);paintTri(P(0.82,-0.33),P(0.82,0.33),P(2.5,0));paintTri(P(0.82,-0.08),P(0.82,0.08),P(0.6,0));}
+  else paintRect(cx-ux*1.5,cz-uz*1.5,ux,uz,2.3,0.16,PAINTW);
+  for(const [on,sg] of [[Rt,1],[Lt,-1]]){if(!on)continue;const dx=(ux+vx*sg)*Math.SQRT1_2,dz=(uz+vz*sg)*Math.SQRT1_2,px=-dz,pz=dx;const b0=T?-0.9:-0.35;const o=P(b0,0);
+    const c=[o[0]+dx*0.55,o[1]+dz*0.55];paintRect(c[0],c[1],dx,dz,1.1,0.16,PAINTW);const h=[o[0]+dx*1.05,o[1]+dz*1.05];
+    paintTri([h[0]+px*0.3,h[1]+pz*0.3],[h[0]-px*0.3,h[1]-pz*0.3],[h[0]+dx*1.1,h[1]+dz*1.1]);}}
 // aparcamiento: contenedores con su caja amarilla, Bicing, carga y descarga, coches
 const CONTSET=['resta','resta','organica','envasos','paper','vidre'];
 let bicingCount=0;
