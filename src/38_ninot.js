@@ -140,6 +140,7 @@ function buildNinot(bk){const{x0,x1,z0,z1}=bk;const cx=(x0+x1)/2,F=z1,zb=F-NINOT
   // suciedad: hojas, papeles y basura que entran por la puerta rota, cristales
   for(let i=0;i<70;i++){const x=cx+R(-NINOT_HW+1,NINOT_HW-1),z=F-R(1,NINOT_DEPTH-1);if(Math.abs(x-cx)<2.5||Math.random()<0.5)addInst(pick(['leafLitter','paper','paper','leafLitter']),x,yF+0.01,z,R(0,6.28));}
   for(let i=0;i<10;i++)addInst(pick(['bolsas','caja2','ropa']),cx+R(-2.3,2.3),yF,F-R(10,44),R(0,6.28));
+  for(let i=0;i<9;i++){const s=R(0.6,1.6);addInst('sangreSeca',cx+R(-30,30),yF+0.012,F-R(3,45),R(0,6.28),s,1,s*R(0.6,1.5));}
   // patios: furgonetas y coches de los paradistas, palés y cajas
   for(const sx of [-1,1]){const px=cx+sx*(NINOT_HW+9);CARSPOTS.push({x:px,z:F-22,yaw:R(-0.3,0.3)},{x:px+sx*2,z:F-36,yaw:Math.PI+R(-0.3,0.3)});
     for(let k=0;k<5;k++){const x=px+R(-6,6),z=F-R(8,50);addInst(pick(['pale','crate','caja2','sacos']),x,yG(x,z),z,R(0,6.28));}}

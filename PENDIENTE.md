@@ -75,3 +75,16 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 
 - Pistola: revisar en VR que la empuñadura encaje con las manos nuevas (no comprobado en render plano).
 - (v9.3 `61_dyn.js`) Peso y gravedad: cajas, bolsas, maletas, cascos, carenados, palés, ramas y contenedores pasan a cuerpos con física al arrollarlos (impulso por masas), los ligeros se patean al andar, y en VR se cogen con la mano izquierda (o la derecha si vas sin arma) y se lanzan con la velocidad de la mano. Falta: que las balas los empujen, y coger con la mano real (no la muñeca).
+
+## Hecho en v9.x-v10.5 (17-nov tarde, Opus)
+- Motos rehechas (`scooterParts`, motoN, motoX), caídas con restos; furgonetas (`makeVanTpl`); coches quemados (hollín, llantas, mancha `scorch`, humo).
+- Física de objetos (`61_dyn.js`): coches arrollan/empujan, patadas, coger y lanzar en VR, las balas los empujan (`dynShot`).
+- Machete con amputaciones (`trySever`), bares completos, maniquíes, cajeros, banderolas, balcones x4, flechas de giro reales, rótulos 640 celdas.
+- Manos: piel sin costuras con venas; mangas de algodón fotográfico; tejido real en la ropa.
+- Rendimiento (v10.2-10.3): menos polígonos en props, culling por niebla de zonas y personajes, lo pequeño se corta antes (`SMALLI`).
+- Sangre seca en aceras, locales y el Ninot; comidas en corro en las bases.
+
+## Siguiente
+- Semáforos en posiciones reales: Overpass caído al intentarlo (probar `maps.mail.ru` u `overpass-api.de` con node["highway"="traffic_signals"]).
+- Menos draw calls (~470): agrupar instancias de varias zonas.
+- Comprobar en las Quest: pistola en la mano, mangas, coger/lanzar, machete.

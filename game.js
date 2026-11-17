@@ -1459,7 +1459,13 @@ defInst('ivy',(()=>{const g=new THREE.PlaneGeometry(1,1);g.translate(0,-0.5,0);r
 // papeles y plásticos
 defInst('paper',(()=>{const g=new THREE.PlaneGeometry(0.28,0.2);g.rotateX(-Math.PI/2);g.translate(0,0.01,0);return g;})(),new THREE.MeshLambertMaterial({color:0xffffff}),1,1,false);
 const LEAFCOL=[0xffffff,0xe8d8b8,0xd8c8a0,0xf0e0c0];
+// sangre seca (mancha marrón oscura, mate) en aceras, junto a coches y dentro de locales
+defInst('sangreSeca',(()=>{const g=new THREE.PlaneGeometry(1,1);g.rotateX(-Math.PI/2);return g;})(),new THREE.MeshLambertMaterial({map:texBlood,color:0xffd8c8,emissive:0x1a0806,transparent:true,opacity:0.7,alphaTest:0.3,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),1,1,false);
 function decayWorld(){
+  // sangre seca: en aceras al azar (con regueros), dentro de los locales con interior
+  for(const bk of BLOCKS){if(bk.outer)continue;for(let k=0;k<5;k++){const e=RI(0,7);const A=bk.cp[e],B=bk.cp[(e+1)%8];const t=Math.random();const c=centroid(bk.bp);let x=A[0]+(B[0]-A[0])*t,z=A[1]+(B[1]-A[1])*t;const dx=x-c[0],dz=z-c[1],l=Math.hypot(dx,dz)||1;x+=dx/l*R(1,3.5);z+=dz/l*R(1,3.5);
+    const s=R(0.6,1.8);addInst('sangreSeca',x,surfY(x,z)+0.008,z,R(0,6.28),s,1,s*R(0.6,1.4));if(Math.random()<0.4){const a=R(0,6.28);for(let j=1;j<4;j++)addInst('sangreSeca',x+Math.cos(a)*j*0.5,surfY(x,z)+0.008,z+Math.sin(a)*j*0.5,R(0,6.28),0.3,1,0.3);}}}
+  for(const S of SHOPS)if(Math.random()<0.25){const x=S.x-S.nx*R(3,6),z=S.z-S.nz*R(3,6);const s=R(0.5,1.4);INTERIOR=true;addInst('sangreSeca',x,surfY(x,z,surfY(S.x,S.z)+0.3)+0.01,z,R(0,6.28),s,1,s);INTERIOR=false;}
   // hojas: alrededor de cada árbol y amontonadas junto al bordillo
   for(const t of TREES){const n=RI(3,7);for(let k=0;k<n;k++){const a=R(0,6.28),r=R(0.5,4.5);const x=t.x+Math.cos(a)*r,z=t.z+Math.sin(a)*r;addInst('leafLitter',x,surfY(x,z),z,R(0,6.28),R(0.7,1.6),1,R(0.7,1.6),0,0,0,pick(LEAFCOL));}
     if(Math.random()<0.6){const a=R(0,6.28);addInst('weed',t.x+Math.cos(a)*0.45,t.y,t.z+Math.sin(a)*0.45,R(0,6),R(0.6,1.3),R(0.6,1.4),R(0.6,1.3));}}
@@ -1716,6 +1722,7 @@ function buildNinot(bk){const{x0,x1,z0,z1}=bk;const cx=(x0+x1)/2,F=z1,zb=F-NINOT
   // suciedad: hojas, papeles y basura que entran por la puerta rota, cristales
   for(let i=0;i<70;i++){const x=cx+R(-NINOT_HW+1,NINOT_HW-1),z=F-R(1,NINOT_DEPTH-1);if(Math.abs(x-cx)<2.5||Math.random()<0.5)addInst(pick(['leafLitter','paper','paper','leafLitter']),x,yF+0.01,z,R(0,6.28));}
   for(let i=0;i<10;i++)addInst(pick(['bolsas','caja2','ropa']),cx+R(-2.3,2.3),yF,F-R(10,44),R(0,6.28));
+  for(let i=0;i<9;i++){const s=R(0.6,1.6);addInst('sangreSeca',cx+R(-30,30),yF+0.012,F-R(3,45),R(0,6.28),s,1,s*R(0.6,1.5));}
   // patios: furgonetas y coches de los paradistas, palés y cajas
   for(const sx of [-1,1]){const px=cx+sx*(NINOT_HW+9);CARSPOTS.push({x:px,z:F-22,yaw:R(-0.3,0.3)},{x:px+sx*2,z:F-36,yaw:Math.PI+R(-0.3,0.3)});
     for(let k=0;k<5;k++){const x=px+R(-6,6),z=F-R(8,50);addInst(pick(['pale','crate','caja2','sacos']),x,yG(x,z),z,R(0,6.28));}}
