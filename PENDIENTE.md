@@ -3,6 +3,10 @@
 Juego: https://mikielsensei.github.io/Loksea/ · código en `src/*.js`, se une con `python3 build.py` en `game.js`.
 Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node --check game.js`, commit y push a `main`.
 
+
+## TUS PETICIONES (escribe aquí lo que quieras; lo leo antes de empezar cada tanda)
+- 
+
 ## Hecho en v5 (16-nov)
 - Personajes realistas (Rocketbox, `assets/models/p_*.glb`); zombis sin armas, piel cadavérica, sangre en boca y manos (`charMat` en `40_chars.js`).
 - Ragdoll con tono muscular (`MINC`, `h.rig`): caen estirados, no plegados.
