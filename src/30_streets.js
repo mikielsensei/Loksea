@@ -167,9 +167,10 @@ function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const
   fillCars(s,cur,end_,dm,yawAlong,B.dir);}
 // moto aparcada: modelo al azar, a veces tirada; las que están en pie y enteras se pueden coger
 const MOTOS=[];
-function placeMoto(x,y,z,yaw,fallen){const model=pick(['moto','moto','moto','motoN','motoX']);const col=pick(MOTOCOL);const side=Math.random()<0.5?1:-1;
+function placeMoto(x,y,z,yaw,fallen){const model=pick(['moto','motoT','motoT','moto','motoN','motoX']);const col=pick(MOTOCOL);const side=Math.random()<0.5?1:-1;
   const ref=addInst(model,x,y+(fallen?0.22:0),z,yaw,1,1,1,0,0,fallen?0:0,col);if(fallen){const L=INST[model].lists.get(ref[1]);const t=L[ref[2]];t[9]=0;t[3]=yaw;t.roll=side;}
-  if(fallen){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=side*1.45;}
+  if(fallen){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=side*1.45;}else if(model==='moto'||model==='motoT'){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=-0.09;}// apoyada en la pata de cabra
+  if(fallen){for(let k=0;k<3;k++)addInst('shards',x+R(-1,1),y+0.01,z+R(-1.2,1.2),R(0,6.28));addInst('carenado',x+R(-1.2,1.2),y,z+R(-1.5,1.5),R(0,6.28),1,1,1,0,0,0,col);if(Math.random()<0.5)addInst('casco',x+R(-2,2),y,z+R(-2,2),R(0,6.28),1,1,1,0,R(-1.2,1.2),0,pick([0xffffff,0x1a1a1a,0xb01818,0x2a4a8a]));}
   else solidBox(x,z,0.3,0.9,yaw,y,y+1.1);MOTOS.push({x,y,z,yaw,model,col,ref,fallen,ok:!fallen&&Math.random()<0.6});}
 function fillCars(s,a,b,dm,yaw,dir){for(let t=a+3;t<b-3;t+=5.4){if(Math.random()<0.42){const q=SP(s,t,dm+R(-0.15,0.15));CARSPOTS.push({x:q[0],z:q[1],yaw:(dir>0?0:Math.PI)+(s.ax==='v'?0:Math.PI/2)+R(-0.05,0.05)});}}}
 

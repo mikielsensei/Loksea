@@ -4,7 +4,7 @@
 const BDEPTH=20;// profundidad edificable alrededor del patio de manzana
 // ---------- rótulos: atlas 4x16 celdas de 512x128 ----------
 // atlas de rótulos: 8x32 celdas de 384x96 (se dibujan como si fueran de 512x128)
-const SG_COLS=16,SG_ROWS=32,SG_W=256,SG_H=64;// 512 celdas de 256x64 (4096x2048)
+const SG_COLS=16,SG_ROWS=40,SG_W=256,SG_H=64;// 640 celdas de 256x64 (4096x2560)
 const SIGNC=document.createElement('canvas');SIGNC.width=SG_COLS*SG_W;SIGNC.height=SG_ROWS*SG_H;const sgc=SIGNC.getContext('2d');let signN=0;const SIGNIDX={};
 function signCell(key,draw){if(SIGNIDX[key]!==undefined)return SIGNIDX[key];if(signN>=SG_COLS*SG_ROWS)return undefined;const i=signN++;const x=(i%SG_COLS)*SG_W,y=Math.floor(i/SG_COLS)*SG_H;sgc.save();sgc.translate(x,y);sgc.beginPath();sgc.rect(0,0,SG_W,SG_H);sgc.clip();sgc.scale(SG_W/512,SG_H/128);draw(sgc,512,128);sgc.restore();SIGNIDX[key]=i;return i;}
 function textSign(key,text,bg,fg,o={}){return signCell(key,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);if(o.stripe){g.fillStyle=o.stripe;g.fillRect(0,h-16,w,16);}
@@ -34,7 +34,7 @@ const SIGNSTY=[{bg:'#1a1a1a',fg:'#f2f2f2',font:'Georgia,serif',w:''},{bg:'#f4f1e
   {bg:'#ffffff',fg:'#2a6db0',font:'Verdana,sans-serif',w:'bold'},{bg:'#3a3a3a',fg:'#f2c23a',font:'Arial,sans-serif',w:'bold'},{bg:null,fg:'#ffffff',font:'cursive',w:'bold',sh:true},{bg:'#5b2a4a',fg:'#f2e6f0',font:'Georgia,serif',w:''}];
 const hashStr=t=>{let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
 function poiSign(p){const name=p[3],ty=p[2],h=hashStr(name);
-  return signCell('poi'+p.k,(g,w,hh)=>{const br=BRANDS.find(b=>b[0].test(name));let st,txt=name;
+  return signCell('poi:'+name,(g,w,hh)=>{const br=BRANDS.find(b=>b[0].test(name));let st,txt=name;
     if(br)st={bg:br[1],fg:br[2],font:'Arial Black,Arial,sans-serif',w:'900',stripe:br[3]};
     else if(ty==='farmacia')st={bg:'#ffffff',fg:'#19a347',font:'Arial,sans-serif',w:'bold',pharm:true};
     else{st=SIGNSTY[h%SIGNSTY.length];if(ty==='bar'&&h%3===0)txt=name.toUpperCase();if(h%5===0&&!st.neon)txt=txt.toUpperCase();}

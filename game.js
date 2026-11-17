@@ -488,28 +488,73 @@ defInst('stPlate',(()=>{const a=new THREE.PlaneGeometry(0.62,0.155);a.translate(
   return mergeGeometries([a,b.toNonIndexed().index?b:b.toNonIndexed()].map(g=>g.index?g.toNonIndexed():g));})(),atlasMat(texStPlate,null,4,8),4,8,false);
 // moto aparcada: scooter tipo «SH» (lo que más hay en Barcelona); las piezas blancas toman el color de cada moto
 const MOTOCOL=[0xf2f2f0,0xf2f2f0,0x1a1a1c,0x1a1a1c,0x8e9296,0xb01818,0x22325a,0x6a6e72];
-{const W=0xffffff,BK=0x151515,CH=0x9a9ea2;const p=[];
-  for(const z of [-0.6,0.62]){p.push([tor(0.2,0.055,0,0.27,z,Math.PI/2,16),BK],[cy(0.13,0.13,0.07,0,0.27,z,12,0,Math.PI/2),CH]);}
-  p.push([ell(0.17,0.38,0.12,0,0.72,0.42,10),W],// escudo delantero
-    [bx(0.3,0.06,0.5,0,0.4,0.05),BK],[bx(0.32,0.04,0.48,0,0.43,0.05),0x2a2a2a],// plataforma
-    [ell(0.2,0.2,0.48,0,0.62,-0.38,10),W],[ell(0.16,0.07,0.36,0,0.86,-0.3,10),BK],// carenado trasero y asiento
-    [tube([0,0.6,0.5],[0,1.0,0.47],0.03,6),CH],[tube([-0.32,1.04,0.43],[0.32,1.04,0.43],0.014,6),BK],[ell(0.1,0.07,0.07,0,1.0,0.5,8),W],[bx(0.11,0.06,0.03,0,0.97,0.56),0xe8eef2],
-    [tube([0,0.27,0.62],[0,0.62,0.52],0.022,6),CH],[ell(0.09,0.03,0.2,0,0.5,0.62,8),W],// horquilla y guardabarros
-    [tube([0.12,1.04,0.43],[0.2,1.18,0.42],0.008,4),BK],[tube([-0.12,1.04,0.43],[-0.2,1.18,0.42],0.008,4),BK],[bx(0.07,0.04,0.02,0.21,1.19,0.42),BK],[bx(0.07,0.04,0.02,-0.21,1.19,0.42),BK],
-    [bx(0.14,0.05,0.03,0,0.72,-0.86),0xb01010],[cy(0.035,0.04,0.38,0.14,0.36,-0.45,8,Math.PI/2),0x3a3a3a],[tube([0.1,0.12,0.05],[0.16,0.02,-0.05],0.012,4),BK]);
-  defInst('moto',mkG(p),paintMat,1,1,false);}
-// moto naked (tipo MT/Z) y maxiscooter (tipo TMAX), las otras motos que más se ven
-{const W=0xffffff,BK=0x141414,CH=0x9a9ea2,EN=0x3a3a3c;const p=[];
-  for(const z of [-0.68,0.72]){p.push([tor(0.24,0.07,0,0.31,z,Math.PI/2,18),BK],[cy(0.17,0.17,0.05,0,0.31,z,14,0,Math.PI/2),0x2a2a2a]);}
-  p.push([ell(0.17,0.13,0.3,0,0.84,0.18,10),W],[ell(0.14,0.06,0.32,0,0.86,-0.22,10),BK],[ell(0.1,0.07,0.28,0,0.86,-0.5,8),W],
-    [bx(0.26,0.3,0.36,0,0.48,0.05),EN],[cy(0.04,0.04,0.5,0.14,0.42,-0.3,8,Math.PI/2-0.25),CH],[cy(0.05,0.06,0.22,0.15,0.5,-0.6,10,Math.PI/2),0x5a5a5a],
-    [tube([0,0.31,0.72],[0,0.95,0.52],0.025,6),CH],[tube([-0.32,1.0,0.42],[0.32,1.0,0.42],0.014,6),BK],[ell(0.08,0.07,0.06,0,0.92,0.62,8),0xe8eef2],[tube([0,0.33,-0.68],[0,0.55,-0.1],0.03,6),CH],[ell(0.1,0.03,0.22,0,0.62,0.74,8),W]);
-  defInst('motoN',mkG(p),paintMat,1,1,false);}
-{const W=0xffffff,BK=0x141414,CH=0x9a9ea2;const p=[];
-  for(const z of [-0.7,0.72]){p.push([tor(0.22,0.07,0,0.29,z,Math.PI/2,18),BK],[cy(0.15,0.15,0.05,0,0.29,z,14,0,Math.PI/2),0x2a2a2a]);}
-  p.push([ell(0.24,0.42,0.16,0,0.82,0.5,10),W],[ell(0.2,0.05,0.12,0,1.23,0.56,8),0x5a7080],[bx(0.42,0.08,0.7,0,0.42,0.0),BK],[ell(0.26,0.26,0.62,0,0.68,-0.4,10),W],[ell(0.2,0.08,0.44,0,0.94,-0.36,10),BK],
-    [tube([-0.34,1.06,0.4],[0.34,1.06,0.4],0.014,6),BK],[ell(0.16,0.05,0.04,0,0.88,0.66,8),0xe8eef2],[bx(0.2,0.05,0.03,0,0.74,-1.0),0xb01010],[cy(0.04,0.045,0.42,0.18,0.36,-0.5,8,Math.PI/2),0x3a3a3a]);
-  defInst('motoX',mkG(p),paintMat,1,1,false);}
+// perfiles laterales extruidos con bisel (z hacia delante, y arriba): carrocería redondeada de verdad, no cajas
+function xS(pts,w,bev,x=0){const g=extrudeX(shapeFrom(pts),w,bev);g.translate(x,0,0);return g;}
+function wheelParts(p,z,r,tw,BK,RIM,disc){p.push([tor(r,tw,0,r+tw,z,Math.PI/2,20),BK],[cy(r-0.02,r-0.02,0.07,0,r+tw,z,16,0,Math.PI/2),RIM],[cy(0.05,0.05,0.16,0,r+tw,z,8,0,Math.PI/2),0x8a8e92]);
+  for(let k=0;k<5;k++){const a=k/5*Math.PI*2;p.push([bx(0.035,r*0.9,0.075,0,r+tw+Math.cos(a)*r*0.45,z+Math.sin(a)*r*0.45,a),RIM]);}
+  if(disc)p.push([cy(0.11,0.11,0.006,0.075,r+tw,z,16,0,Math.PI/2),0xb8bcc0]);}
+function scooterParts(top){const W=0xffffff,BK=0x161616,GR=0x2c2c2e,CH=0xa8acb0,RIM=0x3a3c3e;const p=[];
+  wheelParts(p,0.68,0.235,0.072,BK,RIM,true);wheelParts(p,-0.66,0.235,0.072,BK,RIM,false);
+  // escudo delantero y frontal
+  p.push([xS([[0.3,0.4],[0.52,0.44],[0.64,0.62,0.68,0.8],[0.66,0.97],[0.6,1.02],[0.5,1.0],[0.44,0.86,0.36,0.62],[0.3,0.5]],0.38,0.035),W]);
+  p.push([xS([[0.34,0.42],[0.44,0.82],[0.46,0.92],[0.42,0.93],[0.3,0.52]],0.3,0.02,0),GR]);// contraescudo interior
+  // plataforma (piso plano del SH) y faldón
+  p.push([xS([[-0.2,0.34],[0.36,0.34],[0.38,0.43],[-0.2,0.43]],0.36,0.02),GR],[xS([[-0.2,0.24],[0.34,0.26],[0.36,0.36],[-0.2,0.36]],0.3,0.03),W]);
+  // carenado trasero
+  p.push([xS([[-0.22,0.36],[-0.08,0.42],[0.02,0.58,0.06,0.76],[-0.2,0.8],[-0.7,0.84],[-0.92,0.83],[-0.98,0.78],[-0.9,0.64],[-0.62,0.48],[-0.36,0.38]],0.33,0.04),W]);
+  for(const sx of [-1,1])p.push([xS([[-0.86,0.66],[-0.3,0.47],[-0.28,0.49],[-0.84,0.69]],0.01,0,sx*0.168),0xb8bcc0]);
+  // sillín biplaza
+  p.push([xS([[0.06,0.77],[0.02,0.84,-0.08,0.87],[-0.34,0.885],[-0.42,0.9],[-0.66,0.915],[-0.8,0.9],[-0.84,0.86],[-0.78,0.83],[0.04,0.76]],0.3,0.035),0x2a2420]);
+  // horquilla, guardabarros y amortiguador trasero
+  for(const sx of [-1,1])p.push([tube([sx*0.075,0.31,0.68],[sx*0.06,0.86,0.56],0.022,8),CH]);
+  p.push([xS([[0.48,0.47],[0.62,0.6,0.78,0.6],[0.92,0.5],[0.9,0.47],[0.77,0.565,0.62,0.565],[0.5,0.44]],0.15,0.012),W]);
+  p.push([tube([-0.12,0.32,-0.66],[-0.13,0.66,-0.48],0.028,8),0xb02020],[tube([-0.12,0.32,-0.66],[-0.12,0.42,-0.2],0.05,8),0x5a5c5e]);// muelle rojo y basculante/motor
+  p.push([xS([[-0.18,0.24],[0.0,0.26],[0.04,0.42],[-0.3,0.45],[-0.62,0.4],[-0.66,0.28],[-0.5,0.2]],0.12,0.02,-0.1),0x4a4c4e]);// cárter del motor
+  p.push([cy(0.055,0.06,0.42,0.16,0.4,-0.62,10,Math.PI/2-0.12),0x3a3a3a],[cy(0.062,0.062,0.08,0.16,0.42,-0.82,10,Math.PI/2-0.12),CH]);// escape
+  // cubremanillar con faro, manillar, puños, maneta y retrovisores
+  p.push([xS([[0.42,1.0],[0.5,1.08],[0.64,1.1],[0.72,1.04],[0.7,0.98],[0.58,0.96],[0.44,0.96]],0.5,0.03),W]);
+  p.push([xS([[0.66,1.0],[0.72,1.03],[0.735,1.0],[0.7,0.975]],0.24,0.01),0xe6edf2]);// faro
+  p.push([tube([-0.38,1.05,0.46],[0.38,1.05,0.46],0.017,8),BK]);for(const sx of [-1,1]){p.push([tube([sx*0.3,1.05,0.46],[sx*0.42,1.05,0.46],0.023,8),BK],[tube([sx*0.2,1.07,0.5],[sx*0.36,1.06,0.53],0.008,4),0x8a8e92]);
+    p.push([tube([sx*0.2,1.08,0.5],[sx*0.27,1.22,0.47],0.008,4),BK],[ell(0.075,0.05,0.02,sx*0.29,1.25,0.47,10),BK],[ell(0.065,0.042,0.004,sx*0.29,1.25,0.458,10),0xc8d0d6]);}
+  // intermitentes, piloto, matrícula y caballete
+  for(const sx of [-1,1])p.push([ell(0.03,0.02,0.035,sx*0.2,1.0,0.64,6),0xe89a20],[ell(0.025,0.018,0.03,sx*0.12,0.76,-0.97,6),0xe89a20]);
+  p.push([xS([[-0.92,0.74],[-0.99,0.77],[-1.0,0.72],[-0.93,0.7]],0.22,0.008),0xb81010],[bx(0.2,0.14,0.01,0,0.58,-0.97,0.25),0xf2f2ee],[bx(0.22,0.02,0.04,0,0.66,-0.95),BK]);
+  p.push([tube([-0.1,0.3,-0.05],[-0.2,0.02,-0.14],0.012,4),BK]);
+  if(top){p.push([xS([[-0.68,0.93],[-0.62,1.12,-0.72,1.24],[-1.0,1.25],[-1.08,1.12],[-1.04,0.93]],0.4,0.05),BK],[bx(0.25,0.03,0.012,0,1.08,-1.08),0xb81010],[bx(0.3,0.03,0.42,0,0.92,-0.86),GR]);}
+  return p;}
+const motoMat=pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.42,metalness:0.12}));// plástico pintado brillante
+defInst('moto',mkG(scooterParts(false)),motoMat,1,1,false);defInst('motoT',mkG(scooterParts(true)),motoMat,1,1,false);
+// casco tirado y trozos de carenado (junto a las motos caídas)
+defInst('casco',mkG([[ell(0.14,0.13,0.16,0,0.13,0,12),0xffffff],[ell(0.12,0.06,0.02,0,0.14,0.15,10),0x1a1e22],[bx(0.2,0.02,0.05,0,0.03,0.08),0x141414]]),motoMat,1,1,false);
+defInst('carenado',mkG([[xS([[0,0],[0.25,0.02],[0.32,0.1],[0.1,0.14]],0.12,0.01),0xffffff],[xS([[0.4,0],[0.55,0.03],[0.5,0.08]],0.08,0.006,0.25),0xffffff],[xS([[0.1,0],[0.2,0.01],[0.18,0.05]],0.04,0.004,-0.2),0xb81010]]),motoMat,1,1,false);
+// moto naked (tipo MT-07) y maxiscooter (tipo TMAX), las otras motos que más se ven en Barcelona
+{const W=0xffffff,BK=0x141414,CH=0xa8acb0,EN=0x3a3a3c,RIM=0x2a2a2c;const p=[];
+  wheelParts(p,0.72,0.24,0.075,BK,RIM,true);wheelParts(p,-0.7,0.24,0.085,BK,RIM,true);
+  p.push([xS([[0.02,0.86],[0.12,0.98],[0.38,0.99],[0.48,0.9],[0.44,0.8],[0.08,0.78]],0.34,0.05),W]);// depósito
+  for(const sx of [-1,1])p.push([xS([[0.3,0.82],[0.46,0.88],[0.5,0.74],[0.36,0.66]],0.02,0.008,sx*0.16),W]);// tapas laterales del depósito
+  p.push([xS([[0.02,0.86],[-0.1,0.88],[-0.42,0.89],[-0.48,0.86],[-0.4,0.82],[0.04,0.8]],0.26,0.04),0x1c1a18]);// asiento
+  p.push([xS([[-0.42,0.84],[-0.6,0.9],[-0.86,0.96],[-0.88,0.92],[-0.62,0.84],[-0.46,0.78]],0.16,0.02),W]);// colín
+  p.push([xS([[-0.08,0.32],[0.32,0.34],[0.38,0.62],[0.3,0.76],[0.0,0.76],[-0.16,0.6]],0.3,0.03),EN]);// motor
+  for(let k=0;k<2;k++)p.push([cy(0.04,0.04,0.22,-0.04+k*0.09,0.7,0.32,8),0x6a6c6e]);// cilindros
+  for(const sx of [-1,1])p.push([tube([sx*0.12,0.86,0.42],[sx*0.12,0.42,-0.1],0.016,6),0x8a1a1a],[tube([sx*0.12,0.86,0.42],[sx*0.1,0.8,-0.3],0.016,6),0x8a1a1a],[tube([sx*0.08,0.36,0.72],[sx*0.07,0.92,0.52],0.026,8),0xc8a040]);// chasis tubular y horquilla dorada
+  p.push([tube([0,0.34,-0.7],[0.1,0.45,-0.1],0.03,6),CH],[tube([0.12,0.3,0.2],[0.16,0.28,-0.3],0.035,8),0x4a4a4a],[cy(0.06,0.07,0.3,0.16,0.3,-0.42,10,Math.PI/2),0x2a2a2a]);// basculante y escape
+  p.push([xS([[0.5,0.92],[0.6,0.98],[0.66,0.92],[0.62,0.84],[0.52,0.84]],0.2,0.02),BK],[xS([[0.6,0.91],[0.665,0.93],[0.67,0.88],[0.63,0.86]],0.14,0.008),0xe6edf2]);// faro
+  p.push([tube([-0.36,1.04,0.44],[0.36,1.04,0.44],0.014,6),BK]);for(const sx of [-1,1])p.push([tube([sx*0.28,1.04,0.44],[sx*0.38,1.04,0.44],0.022,8),BK],[tube([sx*0.22,1.05,0.44],[sx*0.26,1.22,0.42],0.008,4),BK],[ell(0.06,0.04,0.015,sx*0.27,1.25,0.42,8),BK]);
+  p.push([xS([[0.56,0.58],[0.72,0.64],[0.88,0.58],[0.86,0.55],[0.72,0.6],[0.58,0.55]],0.13,0.01),W],[bx(0.18,0.13,0.01,0,0.72,-0.9,0.3),0xf2f2ee],[xS([[-0.86,0.93],[-0.9,0.95],[-0.91,0.91],[-0.87,0.9]],0.14,0.006),0xb81010]);
+  defInst('motoN',mkG(p),motoMat,1,1,false);}
+{const W=0xffffff,BK=0x141414,GR=0x2a2a2c,CH=0xa8acb0,RIM=0x2c2c2e;const p=[];
+  wheelParts(p,0.76,0.22,0.075,BK,RIM,true);wheelParts(p,-0.72,0.22,0.08,BK,RIM,false);
+  p.push([xS([[0.22,0.42],[0.56,0.44],[0.74,0.6,0.8,0.86],[0.76,1.02],[0.62,1.1],[0.42,1.08],[0.4,0.86],[0.34,0.6]],0.6,0.05),W]);// carenado frontal ancho
+  p.push([xS([[0.62,1.08],[0.72,1.22],[0.66,1.36],[0.6,1.34],[0.56,1.12]],0.42,0.01),0x5a6a74]);// cúpula ahumada
+  for(const sx of [-1,1])p.push([xS([[0.74,0.88],[0.8,0.92],[0.81,0.86],[0.76,0.84]],0.12,0.008,sx*0.15),0xe6edf2]);// doble faro
+  p.push([xS([[-0.3,0.4],[0.36,0.42],[0.38,0.5],[-0.3,0.5]],0.44,0.02),GR],[xS([[-0.2,0.48],[0.3,0.5],[0.34,0.72],[0.1,0.76],[-0.2,0.7]],0.2,0.04),W]);// piso y túnel central
+  p.push([xS([[-0.24,0.42],[-0.1,0.5],[-0.04,0.8],[-0.4,0.86],[-0.86,0.9],[-1.06,0.86],[-1.02,0.7],[-0.7,0.52],[-0.4,0.42]],0.42,0.05),W]);// cola
+  p.push([xS([[-0.04,0.79],[-0.12,0.87],[-0.36,0.88],[-0.46,0.94],[-0.78,0.97],[-0.88,0.94],[-0.82,0.89],[-0.04,0.77]],0.36,0.04),0x1c1a18]);// asiento escalonado
+  p.push([tube([0.08,0.3,-0.72],[0.1,0.44,-0.1],0.05,8),0x4a4c4e],[cy(0.05,0.06,0.46,0.2,0.38,-0.64,10,Math.PI/2-0.15),0x3a3a3a]);
+  for(const sx of [-1,1])p.push([tube([sx*0.08,0.3,0.76],[sx*0.07,0.92,0.58],0.024,8),CH],[tube([sx*0.24,1.06,0.46],[sx*0.38,1.06,0.46],0.022,8),BK],[tube([sx*0.28,1.0,0.6],[sx*0.36,1.14,0.58],0.008,4),BK],[ell(0.07,0.045,0.016,sx*0.37,1.16,0.58,8),BK]);
+  p.push([tube([-0.26,1.06,0.46],[0.26,1.06,0.46],0.016,6),BK],[xS([[0.5,0.48],[0.66,0.58,0.82,0.58],[0.96,0.5],[0.94,0.47],[0.8,0.55,0.66,0.55],[0.52,0.45]],0.14,0.01),W]);
+  p.push([bx(0.2,0.14,0.01,0,0.62,-1.04,0.25),0xf2f2ee],[xS([[-1.0,0.82],[-1.07,0.85],[-1.08,0.8],[-1.02,0.78]],0.3,0.008),0xb81010]);
+  defInst('motoX',mkG(p),motoMat,1,1,false);}
 // basura de calle abandonada: cajas de cartón, bolsas, ropa, ramas, tronco caído, contenedor quemado y volcado, colchón, maleta
 {const C=0xa8845a,T=0xc8b58a;defInst('caja2',mkG([[bx(0.55,0.4,0.42,0,0.2,0),C],[bx(0.56,0.05,0.12,0,0.4,0),T],[bx(0.5,0.3,0.36,0.05,0.55,0.03,0,0.3,0.1),0x9a7a50]]),plasticMat,1,1,false);
  defInst('cajaPlana',mkG([[bx(0.9,0.04,0.65,0,0.02,0),C],[bx(0.6,0.04,0.5,0.1,0.06,0.05,0,0.4),0xb8946a]]),plasticMat,1,1,false);
@@ -781,9 +826,10 @@ function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const
   fillCars(s,cur,end_,dm,yawAlong,B.dir);}
 // moto aparcada: modelo al azar, a veces tirada; las que están en pie y enteras se pueden coger
 const MOTOS=[];
-function placeMoto(x,y,z,yaw,fallen){const model=pick(['moto','moto','moto','motoN','motoX']);const col=pick(MOTOCOL);const side=Math.random()<0.5?1:-1;
+function placeMoto(x,y,z,yaw,fallen){const model=pick(['moto','motoT','motoT','moto','motoN','motoX']);const col=pick(MOTOCOL);const side=Math.random()<0.5?1:-1;
   const ref=addInst(model,x,y+(fallen?0.22:0),z,yaw,1,1,1,0,0,fallen?0:0,col);if(fallen){const L=INST[model].lists.get(ref[1]);const t=L[ref[2]];t[9]=0;t[3]=yaw;t.roll=side;}
-  if(fallen){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=side*1.45;}
+  if(fallen){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=side*1.45;}else if(model==='moto'||model==='motoT'){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=-0.09;}// apoyada en la pata de cabra
+  if(fallen){for(let k=0;k<3;k++)addInst('shards',x+R(-1,1),y+0.01,z+R(-1.2,1.2),R(0,6.28));addInst('carenado',x+R(-1.2,1.2),y,z+R(-1.5,1.5),R(0,6.28),1,1,1,0,0,0,col);if(Math.random()<0.5)addInst('casco',x+R(-2,2),y,z+R(-2,2),R(0,6.28),1,1,1,0,R(-1.2,1.2),0,pick([0xffffff,0x1a1a1a,0xb01818,0x2a4a8a]));}
   else solidBox(x,z,0.3,0.9,yaw,y,y+1.1);MOTOS.push({x,y,z,yaw,model,col,ref,fallen,ok:!fallen&&Math.random()<0.6});}
 function fillCars(s,a,b,dm,yaw,dir){for(let t=a+3;t<b-3;t+=5.4){if(Math.random()<0.42){const q=SP(s,t,dm+R(-0.15,0.15));CARSPOTS.push({x:q[0],z:q[1],yaw:(dir>0?0:Math.PI)+(s.ax==='v'?0:Math.PI/2)+R(-0.05,0.05)});}}}
 
@@ -979,7 +1025,7 @@ const POIS=[[5.5126,2.9508,"ferre","Servei Estació","doityourself"],[3.5931,3.2
 const BDEPTH=20;// profundidad edificable alrededor del patio de manzana
 // ---------- rótulos: atlas 4x16 celdas de 512x128 ----------
 // atlas de rótulos: 8x32 celdas de 384x96 (se dibujan como si fueran de 512x128)
-const SG_COLS=16,SG_ROWS=32,SG_W=256,SG_H=64;// 512 celdas de 256x64 (4096x2048)
+const SG_COLS=16,SG_ROWS=40,SG_W=256,SG_H=64;// 640 celdas de 256x64 (4096x2560)
 const SIGNC=document.createElement('canvas');SIGNC.width=SG_COLS*SG_W;SIGNC.height=SG_ROWS*SG_H;const sgc=SIGNC.getContext('2d');let signN=0;const SIGNIDX={};
 function signCell(key,draw){if(SIGNIDX[key]!==undefined)return SIGNIDX[key];if(signN>=SG_COLS*SG_ROWS)return undefined;const i=signN++;const x=(i%SG_COLS)*SG_W,y=Math.floor(i/SG_COLS)*SG_H;sgc.save();sgc.translate(x,y);sgc.beginPath();sgc.rect(0,0,SG_W,SG_H);sgc.clip();sgc.scale(SG_W/512,SG_H/128);draw(sgc,512,128);sgc.restore();SIGNIDX[key]=i;return i;}
 function textSign(key,text,bg,fg,o={}){return signCell(key,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);if(o.stripe){g.fillStyle=o.stripe;g.fillRect(0,h-16,w,16);}
@@ -1009,7 +1055,7 @@ const SIGNSTY=[{bg:'#1a1a1a',fg:'#f2f2f2',font:'Georgia,serif',w:''},{bg:'#f4f1e
   {bg:'#ffffff',fg:'#2a6db0',font:'Verdana,sans-serif',w:'bold'},{bg:'#3a3a3a',fg:'#f2c23a',font:'Arial,sans-serif',w:'bold'},{bg:null,fg:'#ffffff',font:'cursive',w:'bold',sh:true},{bg:'#5b2a4a',fg:'#f2e6f0',font:'Georgia,serif',w:''}];
 const hashStr=t=>{let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
 function poiSign(p){const name=p[3],ty=p[2],h=hashStr(name);
-  return signCell('poi'+p.k,(g,w,hh)=>{const br=BRANDS.find(b=>b[0].test(name));let st,txt=name;
+  return signCell('poi:'+name,(g,w,hh)=>{const br=BRANDS.find(b=>b[0].test(name));let st,txt=name;
     if(br)st={bg:br[1],fg:br[2],font:'Arial Black,Arial,sans-serif',w:'900',stripe:br[3]};
     else if(ty==='farmacia')st={bg:'#ffffff',fg:'#19a347',font:'Arial,sans-serif',w:'bold',pharm:true};
     else{st=SIGNSTY[h%SIGNSTY.length];if(ty==='bar'&&h%3===0)txt=name.toUpperCase();if(h%5===0&&!st.neon)txt=txt.toUpperCase();}
@@ -2887,7 +2933,7 @@ function makeCarProc(x,z,yaw,kind){const g=new THREE.Group();const body=new THRE
   const car={g,body,sw:swm,swp,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:R(5,60),wheels,seat:new V3(0.38,0.3,-0.22),eye:1.13,halfW:0.92,len:4.3,kind,searched:false};cars.push(car);return car;}
 const _eu2=new THREE.Euler();
 // moto como vehículo: carrocería del mismo modelo que la aparcada, se inclina en las curvas
-function makeMoto(m){const g=new THREE.Group();const body=new THREE.Group();g.add(body);const mat=paintMat.clone();mat.color.set(m.col);const me=new THREE.Mesh(INST[m.model].geo,mat);body.add(me);
+function makeMoto(m){const g=new THREE.Group();const body=new THREE.Group();g.add(body);const mat=(INST[m.model].mat||paintMat).clone();mat.color.set(m.col);const me=new THREE.Mesh(INST[m.model].geo,mat);body.add(me);
   g.position.set(m.x,m.y,m.z);g.rotation.y=m.yaw;scene.add(g);const c={g,body,sw:null,swp:null,x:m.x,z:m.z,y:m.y,yaw:m.yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:R(15,60),wheels:[],
     seat:new V3(0,0,-0.18),eye:1.42,halfW:0.35,len:1.9,kind:'moto',searched:true,wreck:0,gear:1,shift:{gx:0,gz:0,held:null},wheelR:0.27,auto:true};cars.push(c);return c;}
 function steerMoto(car){if(!inVR)return null;const gl=gripBySide.left,gr=gripBySide.right;if(!gl||!gr||!IN.lgHeld||!IN.rgHeld)return null;gl.getWorldPosition(_v);gr.getWorldPosition(_v1);
@@ -3196,7 +3242,7 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={VOL,setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}
