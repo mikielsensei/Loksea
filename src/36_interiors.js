@@ -19,7 +19,7 @@ defInst('fruit',(()=>{const g=new THREE.BoxGeometry(0.55,0.14,0.38);g.translate(
 defInst('lightPanel',(()=>{const g=new THREE.PlaneGeometry(0.6,1.2);g.rotateX(Math.PI/2);return g;})(),new THREE.MeshBasicMaterial({color:0xe8eef0}));
 function lootSpot(x,z,y,sub,label,refs){LOOT.push({x,z,y,kind:'cont',sub,label,looted:false,refs:refs||[]});}
 // mueble: caja en un buffer con colisión
-function furn(mat,x,y,z,w,h,d,yaw,col,coll=true){const B=bufOf(x,z,mat);TINT=hexTint(col);boxGeoInto(B,x,y+h/2,z,w,h,d,yaw,mat==='woodf'?US('wood_dark'):1);TINT=[1,1,1];if(coll)addOBB(x,z,w/2,d/2,yaw,y,y+h);}
+function furn(mat,x,y,z,w,h,d,yaw,col,coll=true,us){const B=bufOf(x,z,mat);TINT=hexTint(col);boxGeoInto(B,x,y+h/2,z,w,h,d,yaw,us||(mat==='woodf'?US('wood_dark'):1));TINT=[1,1,1];if(coll)addOBB(x,z,w/2,d/2,yaw,y,y+h);}
 // ---------- construir el local detrás del hueco ----------
 function makeShopInterior(lot,seg,u,ux,uz,boarded){INTERIOR=true;try{makeShopInterior2(lot,seg,u,ux,uz,boarded);}finally{INTERIOR=false;}}
 function makeShopInterior2(lot,seg,u,ux,uz,boarded){const{a,nx,nz}=seg;const yb=lot.yb;const ix=-nx,iz=-nz;const d=u.room.d;const w=u.u1-u.u0;

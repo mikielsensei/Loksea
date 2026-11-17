@@ -61,7 +61,7 @@ function escola(cy0){const{x0,x1,z0,z1}=cy0;const cx=(x0+x1)/2;const W=Math.min(
   const sign=signCell('escola',(g,w,h)=>{g.fillStyle='#f4efe2';g.fillRect(0,0,w,h);g.fillStyle='#7a2a1a';g.font='bold 54px Georgia';g.textAlign='center';g.textBaseline='middle';g.fillText("ESCOLA DE L'EIXAMPLE",w/2,h/2);});
   addInst('shopSign',cx,y+5,z0+11.05,0,6,1.5,1,sign);
   return{cx,cz:(z0+11+z1)/2,y};}
-function buildBases(){for(const bp of BASEPLAN){const bk=BLOCKS.find(b=>b.i===bp.bi&&b.j===bp.bj);if(!bk||!bk.passage)continue;const cyd=courtyard(bk);const pas=bk.passage;
+function buildBases(){for(const bp of BASEPLAN){const bk=BLOCKS.find(b=>b.i===bp.bi&&b.j===bp.bj);if(bk&&bk.ninot){const m=bk.ninot;baseCamp({name:bp.name,type:'good',x:m.cx,z:m.cz,r:7,n:8,beds:[],gate:m.gate,posts:[[m.cx-5,m.F+2],[m.cx+5,m.F+2],[m.cx,m.F-20]]});continue;}if(!bk||!bk.passage)continue;const cyd=courtyard(bk);const pas=bk.passage;
     if(bp.kind==='mercat'){const m=mercatHall(cyd);baseCamp({name:bp.name,type:'good',x:m.cx,z:m.cz+4,r:11,n:8,beds:[],gate:pas.gate,posts:[pas.inside,pas.gate,[m.cx-12,m.cz]]});}
     else{const s=escola(cyd);baseCamp({name:bp.name,type:'good',x:s.cx,z:s.cz,r:10,n:7,beds:[],gate:pas.gate,posts:[pas.inside,pas.gate]});}}
   // Mercadona de los bandidos en Aragó: barricada de sacos, palés y coches cruzados

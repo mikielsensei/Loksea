@@ -4,7 +4,7 @@
 const BDEPTH=20;// profundidad edificable alrededor del patio de manzana
 // ---------- rótulos: atlas 4x16 celdas de 512x128 ----------
 // atlas de rótulos: 8x32 celdas de 384x96 (se dibujan como si fueran de 512x128)
-const SG_COLS=8,SG_ROWS=32,SG_W=384,SG_H=96;
+const SG_COLS=16,SG_ROWS=32,SG_W=256,SG_H=64;// 512 celdas de 256x64 (4096x2048)
 const SIGNC=document.createElement('canvas');SIGNC.width=SG_COLS*SG_W;SIGNC.height=SG_ROWS*SG_H;const sgc=SIGNC.getContext('2d');let signN=0;const SIGNIDX={};
 function signCell(key,draw){if(SIGNIDX[key]!==undefined)return SIGNIDX[key];if(signN>=SG_COLS*SG_ROWS)return undefined;const i=signN++;const x=(i%SG_COLS)*SG_W,y=Math.floor(i/SG_COLS)*SG_H;sgc.save();sgc.translate(x,y);sgc.beginPath();sgc.rect(0,0,SG_W,SG_H);sgc.clip();sgc.scale(SG_W/512,SG_H/128);draw(sgc,512,128);sgc.restore();SIGNIDX[key]=i;return i;}
 function textSign(key,text,bg,fg,o={}){return signCell(key,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);if(o.stripe){g.fillStyle=o.stripe;g.fillRect(0,h-16,w,16);}
@@ -163,8 +163,10 @@ function buildBlock(bk){const{x0,x1,z0,z1}=bk;const D=BDEPTH,c=CHAMF;
   const sides=[{k:0,a:[x0+D,z0],b:[x1-D,z0],n:[0,-1],inw:[0,1],str:bk.str[0]},{k:1,a:[x1,z0+D],b:[x1,z1-D],n:[1,0],inw:[-1,0],str:bk.str[1]},
     {k:2,a:[x1-D,z1],b:[x0+D,z1],n:[0,1],inw:[0,-1],str:bk.str[2]},{k:3,a:[x0,z1-D],b:[x0,z0+D],n:[-1,0],inw:[1,0],str:bk.str[3]}];
   const vis=s=>!bk.outer||(s.str&&!s.str.outer&&s.str.n);
+  const NIN=BASEPLAN.find(b=>b.kind==='mercat'&&b.bi===bk.i&&b.bj===bk.j);// el Mercat del Ninot ocupa la mitad de Mallorca de su manzana
+  if(NIN){sides[1].b=[x1,z1-NINOT_CUT];sides[3].a=[x0,z1-NINOT_CUT];}
   const lots=[];
-  for(const s of sides){if(!vis(s))continue;const L=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);const ux=(s.b[0]-s.a[0])/L,uz=(s.b[1]-s.a[1])/L;
+  for(const s of sides){if(!vis(s)||(NIN&&s.k===2))continue;const L=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);const ux=(s.b[0]-s.a[0])/L,uz=(s.b[1]-s.a[1])/L;
     // trocear en parcelas de 12-22 m
     const cuts=[0];let t=0;while(L-t>26){t+=R(12,21);cuts.push(t);}cuts.push(L);
     const sp=SUPERPLAN.get(bk.i+','+bk.j+','+s.k);
@@ -172,15 +174,16 @@ function buildBlock(bk){const{x0,x1,z0,z1}=bk;const D=BDEPTH,c=CHAMF;
       const lot=Object.assign(lotStyle(),{bk,side:s,u0,u1,facades:[],rooms:[],A,B,ux,uz,n:s.n,inw:s.inw,corner:false});
       lot.yb=Math.max(H(A[0],A[1]),H(B[0],B[1]))+CURB+0.02;
       lot.superHere=sp&&q===Math.min(sp.lotIdx,cuts.length-2)?sp:null;
-      const bpl=BASEPLAN.find(b=>b.bi===bk.i&&b.bj===bk.j&&b.side===s.k);lot.passageHere=bpl&&q===Math.floor((cuts.length-1)/2)?bpl:null;if(lot.passageHere)lot.superHere=null;lots.push(lot);}}
+      const bpl=BASEPLAN.find(b=>b.bi===bk.i&&b.bj===bk.j&&b.side===s.k);lot.passageHere=bpl&&bpl.kind!=='mercat'&&q===Math.floor((cuts.length-1)/2)?bpl:null;if(lot.passageHere)lot.superHere=null;lots.push(lot);}}
   // esquinas (xamfrà): N-E, S-E, S-W, N-W
   const corners=[{a:[x1-D,z0],m1:[x1-c,z0],m2:[x1,z0+c],b:[x1,z0+D],sN:0,sE:1},{a:[x1,z1-D],m1:[x1,z1-c],m2:[x1-c,z1],b:[x1-D,z1],sN:1,sE:2},
     {a:[x0+D,z1],m1:[x0+c,z1],m2:[x0,z1-c],b:[x0,z1-D],sN:2,sE:3},{a:[x0,z0+D],m1:[x0,z0+c],m2:[x0+c,z0],b:[x0+D,z0],sN:3,sE:0}];
-  for(const C of corners){const s1=sides[C.sN],s2=sides[C.sE];if(!vis(s1)&&!vis(s2))continue;const lot=Object.assign(lotStyle(),{bk,corner:true,C,facades:[],rooms:[]});lot.F=RI(6,7);
+  for(const C of corners){const s1=sides[C.sN],s2=sides[C.sE];if(!vis(s1)&&!vis(s2))continue;if(NIN&&(C.sN===1||C.sN===2))continue;const lot=Object.assign(lotStyle(),{bk,corner:true,C,facades:[],rooms:[]});lot.F=RI(6,7);
     lot.yb=Math.max(H(C.m1[0],C.m1[1]),H(C.m2[0],C.m2[1]))+CURB+0.02;lots.push(lot);}
   // alturas similares entre vecinos, con alguna discordante (medianeras a la vista)
   for(const lot of lots)if(Math.random()<0.15)lot.F+=pick([-2,-1,1]);
   for(const lot of lots){LOTS.push(lot);if(lot.corner)buildCornerLot(lot);else buildSideLot(lot);}
+  if(NIN)bk.ninot=buildNinot(bk);
   // medianeras: entre parcelas contiguas de distinta altura
   for(const lot of lots){if(lot.corner)continue;const top=l=>l.yb+l.gf+l.F*l.fh+0.6;}
 }
