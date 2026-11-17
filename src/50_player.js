@@ -267,7 +267,7 @@ function fireGun(o,d){if(!G.chamber){sfx('click');if(!inVR)toast(G.mag>0?'Pulsa 
   let tb=rayWorld(o,d,150);const pn=rayPanes(o,d,tb);if(pn&&pn.t<tb){breakPane(pn.p);tb=pn.t+0.05;tb=rayWorld(o,d,150);}const r=rayChars(o,d,tb);_e2.copy(o).addScaledVector(d,r.h?r.t:tb);tracer(o,_e2);
   if(r.h){const head=r.part==='head';const dmg=head?999:r.part==='body'?(r.h.type==='zombie'?30:45):50;
     hitChar(r.h,r.part,dmg,_imp.copy(d).multiplyScalar(head?6:4.5),r.pi,'player',_e2,d);spray(_e2,d,head?18:8);sfx(head?'hithead':'hit',0.6);}
-  else impactPuff(_e2);}
+  else{const td=dynShot(o,d,tb);if(td>=0)_e2.copy(o).addScaledVector(d,td);impactPuff(_e2);}}
 function ejectMag(drop){if(G.mag<0)return null;const n=G.mag;G.mag=-1;sfx('magout');const gun=inVR?vrGun:vmGun;
   if(drop){gun.userData.magwell.getWorldPosition(_v);const m=makeMag();m.userData.bullet.visible=m.userData.tip.visible=n>0;gun.getWorldQuaternion(m.quaternion);dropObj(m,_v,_v1.set(0,-1.2,0),true,n);if(!inVR&&n>0)addItem('balas',n,'gift');}
   return n;}

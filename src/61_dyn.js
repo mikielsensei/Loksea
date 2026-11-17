@@ -49,6 +49,12 @@ function dynCarBlock(car,nx,nz){const s=Math.sin(car.yaw),co=Math.cos(car.yaw);c
   dynEach(nx,nz,car.len*0.6+2,(name,key,i,t,D)=>{const dx=t[0]-nx,dz=t[2]-nz;const lx=dx*co-dz*s,lz=dx*s+dz*co;if(Math.abs(lx)>car.halfW+D.r*1.3+0.2||Math.abs(lz)>car.len/2+D.r*1.3+0.6)return;
     const k=2*Mc/(Mc+D.m);const b=dynActivate(name,key,i);dynImpulse(b,vx*k*0.7,D.cont?0.3:Math.min(5,sp*0.35)+1,vz*k*0.7);car.speed*=1-Math.min(0.5,D.m/(Mc+D.m));any=true;if(D.m>20)sfx('crash',clamp(sp/15,0.2,0.8)*volAt(t[0],t[2],40));});
   return any;}
+// disparo: empuja lo suelto que encuentre la bala (devuelve la distancia del impacto o -1)
+const _ro=new V3();function dynShot(o,d,tmax){let best=-1,bt=tmax,bb=null,bi=null;
+  const hitS=(cx,cy,cz,r)=>{_ro.set(cx-o.x,cy-o.y,cz-o.z);const t=_ro.dot(d);if(t<0||t>bt)return -1;const d2=_ro.lengthSq()-t*t;return d2<r*r?t:-1;};
+  for(const b of DYN){if(b.held)continue;const q=b.o.position;const t=hitS(q.x,q.y+b.h*0.5,q.z,Math.max(0.15,b.r*0.7));if(t>=0&&t<bt){bt=t;bb=b;bi=null;}}
+  for(let s=0;s<Math.min(tmax,40);s+=1.5){const x=o.x+d.x*s,z=o.z+d.z*s;dynEach(x,z,0.8,(name,key,i,t,D)=>{if(D.m>40)return;const tt=hitS(t[0],t[1]+D.h*0.5,t[2],Math.max(0.15,D.r*0.7));if(tt>=0&&tt<bt){bt=tt;bi=[name,key,i];bb=null;}});}
+  if(bi)bb=dynActivate(...bi);if(bb){const k=5/Math.sqrt(bb.m);dynImpulse(bb,d.x*k,d.y*k+0.6,d.z*k);best=bt;}return best;}
 // coger con la mano (VR): devuelve el cuerpo agarrado
 function dynGrab(handP){let best=null,bd=0.32;for(const b of DYN){if(b.held||b.m>16)continue;const d=b.o.position.distanceTo(handP)-b.r*0.5;if(d<bd){bd=d;best=b;}}
   if(!best){let pick=null,pd=0.45;dynEach(handP.x,handP.z,0.4,(name,key,i,t,D)=>{if(D.m>16||D.cont)return;const d=Math.hypot(t[0]-handP.x,t[2]-handP.z,(t[1]+D.h*0.5)-handP.y);if(d<pd){pd=d;pick=[name,key,i];}});if(pick)best=dynActivate(...pick);}

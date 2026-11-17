@@ -1720,7 +1720,7 @@ function buildNinot(bk){const{x0,x1,z0,z1}=bk;const cx=(x0+x1)/2,F=z1,zb=F-NINOT
   for(const sx of [-1,1]){const px=cx+sx*(NINOT_HW+9);CARSPOTS.push({x:px,z:F-22,yaw:R(-0.3,0.3)},{x:px+sx*2,z:F-36,yaw:Math.PI+R(-0.3,0.3)});
     for(let k=0;k<5;k++){const x=px+R(-6,6),z=F-R(8,50);addInst(pick(['pale','crate','caja2','sacos']),x,yG(x,z),z,R(0,6.28));}}
   // la figura del ninot (mascarón de proa) sobre su peana junto a la entrada
-  furn('stone_blocks',cx+8.6,yF,F+0.9,0.9,1.2,0.9,0,'#cfc6b6',true);
+  furn('stone_blocks',cx+8.6,yF,F+0.9,0.9,1.2,0.9,0,'#cfc6b6',true);addInst('maniqui',cx+8.6,yF+1.2,F+0.9,0,1,1,1,0,0,0,0x2a4a7a);// reproducción del ninot (mascarón de un marinero) sobre su peana
   return{cx,cz:F-5,y:yF,gate:[cx,F+5],F};}
 
 // =====================================================================
@@ -2524,7 +2524,7 @@ function fireGun(o,d){if(!G.chamber){sfx('click');if(!inVR)toast(G.mag>0?'Pulsa 
   let tb=rayWorld(o,d,150);const pn=rayPanes(o,d,tb);if(pn&&pn.t<tb){breakPane(pn.p);tb=pn.t+0.05;tb=rayWorld(o,d,150);}const r=rayChars(o,d,tb);_e2.copy(o).addScaledVector(d,r.h?r.t:tb);tracer(o,_e2);
   if(r.h){const head=r.part==='head';const dmg=head?999:r.part==='body'?(r.h.type==='zombie'?30:45):50;
     hitChar(r.h,r.part,dmg,_imp.copy(d).multiplyScalar(head?6:4.5),r.pi,'player',_e2,d);spray(_e2,d,head?18:8);sfx(head?'hithead':'hit',0.6);}
-  else impactPuff(_e2);}
+  else{const td=dynShot(o,d,tb);if(td>=0)_e2.copy(o).addScaledVector(d,td);impactPuff(_e2);}}
 function ejectMag(drop){if(G.mag<0)return null;const n=G.mag;G.mag=-1;sfx('magout');const gun=inVR?vrGun:vmGun;
   if(drop){gun.userData.magwell.getWorldPosition(_v);const m=makeMag();m.userData.bullet.visible=m.userData.tip.visible=n>0;gun.getWorldQuaternion(m.quaternion);dropObj(m,_v,_v1.set(0,-1.2,0),true,n);if(!inVR&&n>0)addItem('balas',n,'gift');}
   return n;}
@@ -3416,6 +3416,12 @@ function dynCarBlock(car,nx,nz){const s=Math.sin(car.yaw),co=Math.cos(car.yaw);c
   dynEach(nx,nz,car.len*0.6+2,(name,key,i,t,D)=>{const dx=t[0]-nx,dz=t[2]-nz;const lx=dx*co-dz*s,lz=dx*s+dz*co;if(Math.abs(lx)>car.halfW+D.r*1.3+0.2||Math.abs(lz)>car.len/2+D.r*1.3+0.6)return;
     const k=2*Mc/(Mc+D.m);const b=dynActivate(name,key,i);dynImpulse(b,vx*k*0.7,D.cont?0.3:Math.min(5,sp*0.35)+1,vz*k*0.7);car.speed*=1-Math.min(0.5,D.m/(Mc+D.m));any=true;if(D.m>20)sfx('crash',clamp(sp/15,0.2,0.8)*volAt(t[0],t[2],40));});
   return any;}
+// disparo: empuja lo suelto que encuentre la bala (devuelve la distancia del impacto o -1)
+const _ro=new V3();function dynShot(o,d,tmax){let best=-1,bt=tmax,bb=null,bi=null;
+  const hitS=(cx,cy,cz,r)=>{_ro.set(cx-o.x,cy-o.y,cz-o.z);const t=_ro.dot(d);if(t<0||t>bt)return -1;const d2=_ro.lengthSq()-t*t;return d2<r*r?t:-1;};
+  for(const b of DYN){if(b.held)continue;const q=b.o.position;const t=hitS(q.x,q.y+b.h*0.5,q.z,Math.max(0.15,b.r*0.7));if(t>=0&&t<bt){bt=t;bb=b;bi=null;}}
+  for(let s=0;s<Math.min(tmax,40);s+=1.5){const x=o.x+d.x*s,z=o.z+d.z*s;dynEach(x,z,0.8,(name,key,i,t,D)=>{if(D.m>40)return;const tt=hitS(t[0],t[1]+D.h*0.5,t[2],Math.max(0.15,D.r*0.7));if(tt>=0&&tt<bt){bt=tt;bi=[name,key,i];bb=null;}});}
+  if(bi)bb=dynActivate(...bi);if(bb){const k=5/Math.sqrt(bb.m);dynImpulse(bb,d.x*k,d.y*k+0.6,d.z*k);best=bt;}return best;}
 // coger con la mano (VR): devuelve el cuerpo agarrado
 function dynGrab(handP){let best=null,bd=0.32;for(const b of DYN){if(b.held||b.m>16)continue;const d=b.o.position.distanceTo(handP)-b.r*0.5;if(d<bd){bd=d;best=b;}}
   if(!best){let pick=null,pd=0.45;dynEach(handP.x,handP.z,0.4,(name,key,i,t,D)=>{if(D.m>16||D.cont)return;const d=Math.hypot(t[0]-handP.x,t[2]-handP.z,(t[1]+D.h*0.5)-handP.y);if(d<pd){pd=d;pick=[name,key,i];}});if(pick)best=dynActivate(...pick);}

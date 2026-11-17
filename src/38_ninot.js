@@ -144,7 +144,7 @@ function buildNinot(bk){const{x0,x1,z0,z1}=bk;const cx=(x0+x1)/2,F=z1,zb=F-NINOT
   for(const sx of [-1,1]){const px=cx+sx*(NINOT_HW+9);CARSPOTS.push({x:px,z:F-22,yaw:R(-0.3,0.3)},{x:px+sx*2,z:F-36,yaw:Math.PI+R(-0.3,0.3)});
     for(let k=0;k<5;k++){const x=px+R(-6,6),z=F-R(8,50);addInst(pick(['pale','crate','caja2','sacos']),x,yG(x,z),z,R(0,6.28));}}
   // la figura del ninot (mascarón de proa) sobre su peana junto a la entrada
-  furn('stone_blocks',cx+8.6,yF,F+0.9,0.9,1.2,0.9,0,'#cfc6b6',true);
+  furn('stone_blocks',cx+8.6,yF,F+0.9,0.9,1.2,0.9,0,'#cfc6b6',true);addInst('maniqui',cx+8.6,yF+1.2,F+0.9,0,1,1,1,0,0,0,0x2a4a7a);// reproducción del ninot (mascarón de un marinero) sobre su peana
   return{cx,cz:F-5,y:yF,gate:[cx,F+5],F};}
 
 // =====================================================================
