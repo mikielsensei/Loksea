@@ -42,7 +42,7 @@ function zoneName(x,z){let best='',bd=1e9;for(const st of VSTR){const d=Math.abs
 let panel=null,panelStack=[];
 const MAIN=[{l:()=>'Inventario',a:()=>pushPanel('inv')},{l:()=>'Estado de salud',a:()=>pushPanel('status')},{l:()=>'Mapa',a:()=>pushPanel('map')},
   {l:()=>'Mear',a:()=>{closePanel();doPee();}},{l:()=>'Cagar',a:()=>{closePanel();doPoop();}},{l:()=>'Dormir 8 horas',a:()=>doSleep()},
-  {l:()=>`Repostar coche (bidones: ${countItem('gasolina')})`,a:()=>doRefuel()},{l:()=>'Ajustes de partida',a:()=>pushPanel('set')},{l:()=>'Ajustar posición de las manos',a:()=>pushPanel('hands')},{l:()=>'Cerrar',a:()=>closePanel()}];
+  {l:()=>`Repostar coche (bidones: ${countItem('gasolina')})`,a:()=>doRefuel()},{l:()=>'Ajustes de partida',a:()=>pushPanel('set')},{l:()=>'Ajustar posición de las manos',a:()=>pushPanel('hands')},{l:()=>'Recolocar altura y vista',a:()=>{closePanel();recenter();}},{l:()=>'Desatascar jugador (volver a la calle)',a:()=>{closePanel();unstick();}},{l:()=>'Cerrar',a:()=>closePanel()}];
 function panelItems(){if(!panel)return[];const m=panel.mode;if(m==='main')return MAIN;
   if(m==='inv'){if(!P.items.length)return[{l:()=>'(Inventario vacío)'}];return P.items.map(e=>({l:()=>itemLabel(e),a:()=>useEntry(e),adj:d=>{if(d<0)dropEntry(e);}}));}
   if(m==='set')return SET_DEFS.filter(d=>!d.start).map(d=>({l:()=>`◀ ▶  ${d.l}: ${fmtS(d)}`,adj:dd=>{const i=d.o.indexOf(S[d.k]);S[d.k]=d.o[clamp(i+dd,0,d.o.length-1)];saveS();}}));
@@ -202,6 +202,9 @@ function talkTo(h){const b=h.base,day=dayNum();
   else toast(`${h.name}: «${pick(['¿Has visto a mi hermano? Se llama Pere.','Echo de menos el ruido del metro.','Dicen que en Montjuïc hay gente armada.'])}»`,4);}
 function exitCar(){const c=P.inCar;if(!c)return;if(Math.abs(c.speed)>3)return toast('Vas demasiado rápido para bajar');P.inCar=null;c.speed=0;headlight.intensity=0;
   const s=Math.sin(c.yaw),co=Math.cos(c.yaw);const pt={x:c.x+co*2.3,z:c.z-s*2.3};collide(pt,0.4,surfY(pt.x,pt.z)+0.2,surfY(pt.x,pt.z)+1.7);rig.position.set(pt.x,surfY(pt.x,pt.z),pt.z);P.feetY=rig.position.y;P.yaw=c.yaw+Math.PI;toast('Bajas del coche');}
+// desatascar: si te has quedado bajo el suelo o dentro de algo, vuelves al punto libre más cercano en la acera (o al inicio)
+function unstick(){if(P.inCar)exitCar();camera.getWorldPosition(_v);let best=null,bd=1e9;for(const bk of BLOCKS){if(bk.outer)continue;for(const p of bk.cp){const c=centroid(bk.bp);const x=p[0]+(p[0]-c[0])*0.02,z=p[1]+(p[1]-c[1])*0.02;const d=Math.hypot(x-_v.x,z-_v.z);if(d<bd&&!insideVol(x,surfY(x,z)+1,z)){bd=d;best=[x,z];}}}
+  P.feetY=undefined;P.hOff=0;P.crouchOff=0;P.crouchToggle=false;if(best){const y=surfY(best[0],best[1]);rig.position.set(best[0]-(_v.x-rig.position.x),y,best[1]-(_v.z-rig.position.z));P.feetY=y;}P.lastSafe.copy(camW);toast('Te recolocas en la calle',1.5);}
 // recolocar altura y vista (mantener pulsado el joystick izquierdo, o V)
 function recenter(){camera.getWorldPosition(_v);P.feetY=surfY(_v.x,_v.z,_v.y+0.2);P.crouchToggle=false;P.crouchOff=0;P.hOff=inVR?clamp(1.62-camera.position.y,-0.4,1.1):0;P.standEye=1.6;
   if(inVR){camera.getWorldDirection(_v1);const look=Math.atan2(-_v1.x,-_v1.z);P.yaw+=-(look-P.yaw)*0+0;}rig.position.y=P.feetY+(P.hOff||0);toast('Altura y vista recolocadas',1.5);}
@@ -548,20 +551,28 @@ const clouds=new THREE.Mesh(new THREE.SphereGeometry(1,32,12,0,Math.PI*2,0,Math.
   vertexShader:`varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
   fragmentShader:`varying vec3 vD;uniform float uTime,uDay,uCov;uniform vec3 uSun,uFog;
     float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
-    float fbm(vec2 p){float v=0.0,a=0.5;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=0.5;}return v;}
-    void main(){vec3 d=normalize(vD);if(d.y<0.01)discard;vec2 p=d.xz/d.y*0.9+vec2(uTime*0.004,uTime*0.0015);
-      float c=fbm(p*1.6);float c2=fbm(p*1.6+vec2(0.12,0.08));float dens=smoothstep(1.0-uCov,1.0-uCov+0.35,c);if(dens<0.01)discard;
-      float lit=clamp(0.55+(c-c2)*4.0*sign(uSun.y+0.001)+uSun.y*0.3,0.2,1.2);
-      vec3 col=mix(vec3(0.12,0.12,0.15),vec3(0.86,0.84,0.8),uDay)*lit;col=mix(col,col*vec3(1.0,0.82,0.65),(1.0-abs(uSun.y)*3.0)*uDay*0.6);
-      float hor=smoothstep(0.01,0.25,d.y);col=mix(uFog,col,hor);gl_FragColor=vec4(col,dens*hor*0.95);}`}));
+    float fbm(vec2 p){float v=0.0,a=0.5;for(int i=0;i<5;i++){v+=a*n(p);p=mat2(1.6,1.2,-1.2,1.6)*p+vec2(1.7,9.2);a*=0.5;}return v;}
+    float dens(vec2 p){vec2 q=vec2(fbm(p*0.7+uTime*0.002),fbm(p*0.7+vec2(5.2,1.3)));float c=fbm(p*1.3+q*1.4);return smoothstep(1.0-uCov,1.0-uCov+0.32,c);}
+    void main(){vec3 d=normalize(vD);if(d.y<0.0)discard;float hy=max(d.y,0.03);vec2 p=d.xz/hy*0.75+vec2(uTime*0.005,uTime*0.002);
+      float c=dens(p);if(c<0.005)discard;
+      // luz: cuánto se aclara la nube hacia el sol (bordes plateados) y transluciencia cerca del sol
+      vec2 sd=normalize(uSun.xz+1e-4)*0.06;float cs=dens(p+sd);float edge=clamp((c-cs)*3.0+0.35,0.0,1.0);
+      float toSun=max(dot(d,normalize(uSun)),0.0);float glow=pow(toSun,6.0)*(1.0-c*0.6)+pow(toSun,40.0)*1.5;
+      float lowSun=1.0-smoothstep(0.0,0.45,uSun.y);
+      vec3 under=mix(vec3(0.05,0.05,0.07),vec3(0.24,0.24,0.27),uDay);
+      vec3 lit=mix(vec3(0.75,0.74,0.72),vec3(1.0,0.66,0.38),lowSun)*mix(0.25,1.25,uDay);
+      vec3 col=mix(under,lit,edge*edge)+vec3(1.0,0.62,0.3)*glow*uDay*(0.6+lowSun);
+      col*=1.0-c*0.35;
+      float hor=smoothstep(0.0,0.22,d.y);col=mix(uFog*mix(1.0,1.3,glow),col,hor);
+      gl_FragColor=vec4(col,clamp(c*1.15,0.0,1.0)*mix(0.75,1.0,hor));}`}));
 clouds.renderOrder=-1;clouds.frustumCulled=false;scene.add(clouds);
 function updateSky(){const h=hourF();const ang=(h-6)/24*Math.PI*2;const sy=Math.sin(ang),sx=Math.cos(ang);const day=THREE.MathUtils.smoothstep(sy,-0.1,0.2);nightF=1-day;
-  _sunDir.set(sx*0.9,sy,0.35).normalize();su.sunPosition.value.copy(_sunDir);su.rayleigh.value=0.6+day*1.4;su.turbidity.value=4+(1-day)*5;
+  _sunDir.set(sx*0.9,sy,0.35).normalize();su.sunPosition.value.copy(_sunDir);su.rayleigh.value=0.5+day*0.9;su.turbidity.value=9+(1-day)*4;su.mieCoefficient.value=0.012+(S.haze||0)*0.004;su.mieDirectionalG.value=0.88;
   sky.position.copy(camW);stars.position.copy(camW);starMat.opacity=clamp(nightF*1.3-0.3,0,1);
   sun.position.copy(rig.position).addScaledVector(_sunDir,150);sun.target.position.copy(rig.position);sun.intensity=day*2.3;sun.color.setRGB(1,0.8+0.2*day,0.62+0.38*day);
   hemi.intensity=0.08+day*0.9;cFog.copy(cNight).lerp(cDay,day);cFog.lerp(cDusk,clamp(1-Math.abs(sy)/0.28,0,1)*0.5);{const hz=S.haze||0;cFog.lerp(cHaze,[0,0.35,0.55,0.75,0.85][hz]*(0.4+day*0.6));scene.fog.color.copy(cFog);const vf=S.view||6000;const hf=[6000,420,200,110,70][hz];const far=Math.min(vf,hf*(0.45+day*0.55),vf);scene.fog.far=far;scene.fog.near=far*(hz?0.05:0.3);
     const cf=(S.view||3000)+60;if(Math.abs(camera.far-cf)>1){camera.far=cf;camera.updateProjectionMatrix();}sky.scale.setScalar(Math.min(1200,cf*0.85));
-    clouds.position.copy(camW);clouds.scale.setScalar(Math.min(900,cf*0.8));CU.uTime.value=clockT;CU.uSun.value.copy(_sunDir);CU.uDay.value=day;CU.uCov.value=[0,0.42,0.72][S.clouds??2]+hz*0.04;CU.uFog.value.copy(cFog);clouds.visible=(S.clouds??2)>0;}
+    clouds.position.copy(camW);clouds.scale.setScalar(Math.min(900,cf*0.8));CU.uTime.value=clockT;CU.uSun.value.copy(_sunDir);CU.uDay.value=day;CU.uCov.value=[0,0.45,0.8][S.clouds??2]+hz*0.03;CU.uFog.value.copy(cFog);clouds.visible=(S.clouds??2)>0;}
   renderer.toneMappingExposure=(0.72+day*0.2)*(S.filter===1?1.08:1)+10*(S.filter||0);winMat.emissiveIntensity=nightF*1.0;if(SIGN_MAT)SIGN_MAT.emissiveIntensity=0.05+nightF*0.35;for(const m of PBR)m.envMapIntensity=0.1+0.9*day;
   flashlight.intensity=P.light&&!inVR?32:0;vrFlash.intensity=P.light&&inVR?32:0;windU.value=clockT;}
 
@@ -740,7 +751,7 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}

@@ -18,7 +18,7 @@ const CONDN=['fresco','rancio','podrido'];
 const P={};
 const G={mag:12,chamber:true,locked:false,kick:0};let BELT=[12,12];let leftHold=null,slideGrab=null;
 function resetPlayer(){Object.assign(P,{hp:100,food:80,water:80,bladder:20,bowels:20,energy:90,mood:70,sick:0,infected:false,infT:0,
-  items:[],bag:false,weapon:'bate',alive:true,inCar:null,light:false,sleeping:false,sleepLeft:0,kills:0,yaw:0,pitch:0,carYaw:0,sprinting:false,crouch:false,crouchToggle:false,crouchOff:0,deadT:0,accT:0,peeT:0,stepT:0,vomitT:2,lastSafe:new V3()});
+  items:[],bag:false,weapon:'bate',alive:true,inCar:null,light:false,sleeping:false,sleepLeft:0,kills:0,yaw:0,pitch:0,carYaw:0,sprinting:false,crouch:false,crouchToggle:false,crouchOff:0,feetY:undefined,hOff:0,deadT:0,accT:0,peeT:0,stepT:0,vomitT:2,lastSafe:new V3()});
   addItem('judias',1,'gift');addItem('agua',2,'gift');addItem('vendas',1,'gift');addItem('balas',14,'gift');addItem('papel',1,'gift');
   G.mag=12;G.chamber=true;G.locked=false;BELT=[12,12];leftHold=null;slideGrab=null;
   const b=BASES.find(x=>x.name&&x.name.includes('Ninot'))||BASES.find(x=>x.type==='good')||{x:0,z:0,r:10};const g0=b.gate||[b.x,b.z-26];let sx=g0[0],sz=g0[1];
