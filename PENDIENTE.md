@@ -92,3 +92,7 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 - Semáforos en posiciones reales: Overpass caído al intentarlo (probar `maps.mail.ru` u `overpass-api.de` con node["highway"="traffic_signals"]).
 - Menos draw calls (~470): agrupar instancias de varias zonas.
 - Comprobar en las Quest: pistola en la mano, mangas, coger/lanzar, machete.
+
+## Datos de la zona (del usuario, 17-nov)
+- `docs/zona/zona-vissir.kml`: polígono exacto de la zona a recrear (lon/lat WGS84). Ábrelo en Google Earth para ir a Street View de esas calles (escaparates, rótulos, semáforos).
+- `docs/zona/MapaVissir.qgs`: proyecto QGIS del visor Vissir del ICGC (ETRS89 / UTM 31N, EPSG:25831) con el mapa topográfico WMS `https://geoserveis.icgc.cat/servei/catalunya/mapa-base/wms`. No trae altitudes: para las pendientes reales hay que pedir el modelo de elevaciones del ICGC (MDT) de esa misma zona.

@@ -1,0 +1,12 @@
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<Placemark id="7zPaUJj8iqBGXIs3I5W8MEIS6SUtzkYV">
+<ExtendedData>
+  <Data name="portColor"><value>#c800ff</value></Data></ExtendedData>
+  <Polygon>
+<outerBoundaryIs>
+  <LinearRing><coordinates>2.1507195221655024,41.38810912692878
+2.149694934424531,41.389304864036774
+2.158432390993596,41.393297612548565
+2.165917573657339,41.38736178006863
+2.158261626370347,41.382194175310985
+2.1507195221655024,41.38810912692878</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark></Document></kml>
