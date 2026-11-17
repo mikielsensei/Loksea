@@ -3,8 +3,10 @@
 // =====================================================================
 const BDEPTH=20;// profundidad edificable alrededor del patio de manzana
 // ---------- rótulos: atlas 4x16 celdas de 512x128 ----------
-const SIGNC=document.createElement('canvas');SIGNC.width=2048;SIGNC.height=2048;const sgc=SIGNC.getContext('2d');let signN=0;const SIGNIDX={};
-function signCell(key,draw){if(SIGNIDX[key]!==undefined)return SIGNIDX[key];const i=signN++;const x=(i%4)*512,y=Math.floor(i/4)*128;sgc.save();sgc.translate(x,y);sgc.beginPath();sgc.rect(0,0,512,128);sgc.clip();draw(sgc,512,128);sgc.restore();SIGNIDX[key]=i;return i;}
+// atlas de rótulos: 8x32 celdas de 384x96 (se dibujan como si fueran de 512x128)
+const SG_COLS=8,SG_ROWS=32,SG_W=384,SG_H=96;
+const SIGNC=document.createElement('canvas');SIGNC.width=SG_COLS*SG_W;SIGNC.height=SG_ROWS*SG_H;const sgc=SIGNC.getContext('2d');let signN=0;const SIGNIDX={};
+function signCell(key,draw){if(SIGNIDX[key]!==undefined)return SIGNIDX[key];if(signN>=SG_COLS*SG_ROWS)return undefined;const i=signN++;const x=(i%SG_COLS)*SG_W,y=Math.floor(i/SG_COLS)*SG_H;sgc.save();sgc.translate(x,y);sgc.beginPath();sgc.rect(0,0,SG_W,SG_H);sgc.clip();sgc.scale(SG_W/512,SG_H/128);draw(sgc,512,128);sgc.restore();SIGNIDX[key]=i;return i;}
 function textSign(key,text,bg,fg,o={}){return signCell(key,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);if(o.stripe){g.fillStyle=o.stripe;g.fillRect(0,h-16,w,16);}
   if(o.border){g.strokeStyle=o.border;g.lineWidth=8;g.strokeRect(6,6,w-12,h-12);}
   g.fillStyle=fg;g.textAlign='center';g.textBaseline='middle';let fs=o.fs||74;const font=o.font||'Arial';g.font=`${o.weight||'bold'} ${fs}px ${font}`;while(g.measureText(text).width>w-(o.pad||50)&&fs>20){fs-=2;g.font=`${o.weight||'bold'} ${fs}px ${font}`;}
@@ -12,6 +14,40 @@ function textSign(key,text,bg,fg,o={}){return signCell(key,(g,w,h)=>{g.fillStyle
   else g.fillText(text,w/2,h/2+(o.stripe?-6:4));
   // suciedad
   for(let i=0;i<40;i++){g.fillStyle=`rgba(40,30,20,${R(0.03,0.12)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(4,30),0,7);g.fill();}});}
+// ---------- comercios reales (OpenStreetMap): cada local toma el comercio que hay de verdad en ese punto de la calle ----------
+let POIG=null;const POIUSED=new Set();
+function poiGrid(){POIG=new Map();POIS.forEach((p,k)=>{const x=SX0+p[0]*BP,z=SZ0+p[1]*BP;p.x=x;p.z=z;p.k=k;const key=Math.floor(x/20)+','+Math.floor(z/20);let L=POIG.get(key);if(!L)POIG.set(key,L=[]);L.push(p);});}
+function realShop(u,cx,cz,ux,uz,nx,nz,w){if(!POIG)poiGrid();let best=null,bd=1e9;const gx=Math.floor(cx/20),gz=Math.floor(cz/20);
+  for(let i=gx-1;i<=gx+1;i++)for(let j=gz-1;j<=gz+1;j++){const L=POIG.get(i+','+j);if(!L)continue;for(const p of L){if(POIUSED.has(p.k))continue;const dx=p.x-cx,dz=p.z-cz;const along=dx*ux+dz*uz,inw=-(dx*nx+dz*nz);
+      if(Math.abs(along)>w/2+4||inw<-9||inw>24)continue;const d=Math.abs(along)*1.5+Math.abs(inw-3)*0.5;if(d<bd){bd=d;best=p;}}}
+  if(!best)return;const idx=poiSign(best);if(idx===undefined)return;POIUSED.add(best.k);u.shop.type=best[2]==='super'?'fruteria':best[2];u.shop.name=best[3];u.shop.signIdx=idx;
+  if(['bar','restaurant'].includes(u.shop.type)&&Math.random()<0.4)u.shop.awning=true;}
+// rótulo de un comercio real: marcas conocidas con sus colores; el resto con estilos variados de rótulo de barrio (caja, letras sueltas, madera, neón apagado...)
+const BRANDS=[[/caixabank|la caixa/i,'#ffffff','#007eae'],[/bbva/i,'#004481','#ffffff'],[/sabadell/i,'#ffffff','#0099cc'],[/santander/i,'#ec0000','#ffffff'],[/bankinter/i,'#ff6600','#ffffff'],[/\bing\b/i,'#ff6200','#ffffff'],[/ibercaja/i,'#003a70','#ffffff'],
+  [/mercadona/i,'#ffffff','#0b8a3e','#f39200'],[/lidl/i,'#0050aa','#fff000'],[/bon ?preu/i,'#ffffff','#d50f25','#ffcc00'],[/condis/i,'#ffffff','#e3001b','#e3001b'],[/caprabo/i,'#d6001c','#ffffff'],[/consum/i,'#ffffff','#f07d00','#f07d00'],[/bon[àa]rea/i,'#ffffff','#2e8b3a','#2e8b3a'],
+  [/aldi/i,'#00005f','#ffffff','#f8a71b'],[/spar/i,'#ffffff','#e2001a','#007a3d'],[/veritas/i,'#ffffff','#5c8a2b'],[/sorli/i,'#ffffff','#d3122a','#2b6cb0'],[/carrefour/i,'#ffffff','#1e4fa0','#e1001a'],[/dia\b/i,'#e3001b','#ffffff'],[/alcampo/i,'#ffffff','#e2001a','#009640'],
+  [/zara\b/i,'#000000','#ffffff'],[/mango/i,'#ffffff','#000000'],[/starbucks/i,'#00704a','#ffffff'],[/mcdonald/i,'#da291c','#ffc72c'],[/burger king/i,'#502314','#ff8732'],[/telepizza/i,'#e30613','#ffffff'],[/rossmann/i,'#c3002f','#ffffff'],[/druni/i,'#1a1a1a','#e4007c'],
+  [/farggi/i,'#5a2d1a','#f2e6c8'],[/caf[eè] de l.?ateneu/i,'#1a1a1a','#d8b86a'],[/365/,'#ffffff','#e2001a'],[/granier/i,'#4a2a17','#f2d39c'],[/fornet/i,'#7a1e1e','#ffffff']];
+const SIGNSTY=[{bg:'#1a1a1a',fg:'#f2f2f2',font:'Georgia,serif',w:''},{bg:'#f4f1e8',fg:'#1a1a1a',font:'Georgia,serif',w:'bold'},{bg:'#0f3b5f',fg:'#ffffff',font:'Arial,sans-serif',w:'bold'},{bg:'#7a1e1e',fg:'#f2e6c8',font:'Georgia,serif',w:'bold'},
+  {bg:null,fg:'#f0f0ea',font:'Arial,sans-serif',w:'bold',sh:true},{bg:null,fg:'#1c1c1c',font:'Georgia,serif',w:'',sh:true},{bg:null,fg:'#d8b86a',font:'Georgia,serif',w:'bold',sh:true},{bg:'#2e4a3a',fg:'#e8dcc0',font:'"Times New Roman",serif',w:'italic bold'},
+  {bg:'wood',fg:'#f2e6c8',font:'Georgia,serif',w:'bold'},{bg:'#e8e4da',fg:'#b0302a',font:'Arial,sans-serif',w:'900'},{bg:'#111',fg:'#ff4fa0',font:'Arial,sans-serif',w:'bold',neon:true},{bg:'#c8a96a',fg:'#2a1a10',font:'Georgia,serif',w:'bold'},
+  {bg:'#ffffff',fg:'#2a6db0',font:'Verdana,sans-serif',w:'bold'},{bg:'#3a3a3a',fg:'#f2c23a',font:'Arial,sans-serif',w:'bold'},{bg:null,fg:'#ffffff',font:'cursive',w:'bold',sh:true},{bg:'#5b2a4a',fg:'#f2e6f0',font:'Georgia,serif',w:''}];
+const hashStr=t=>{let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
+function poiSign(p){const name=p[3],ty=p[2],h=hashStr(name);
+  return signCell('poi'+p.k,(g,w,hh)=>{const br=BRANDS.find(b=>b[0].test(name));let st,txt=name;
+    if(br)st={bg:br[1],fg:br[2],font:'Arial Black,Arial,sans-serif',w:'900',stripe:br[3]};
+    else if(ty==='farmacia')st={bg:'#ffffff',fg:'#19a347',font:'Arial,sans-serif',w:'bold',pharm:true};
+    else{st=SIGNSTY[h%SIGNSTY.length];if(ty==='bar'&&h%3===0)txt=name.toUpperCase();if(h%5===0&&!st.neon)txt=txt.toUpperCase();}
+    if(st.bg==='wood'){g.fillStyle='#5a3a22';g.fillRect(0,0,w,hh);for(let i=0;i<40;i++){g.strokeStyle=`rgba(30,15,5,${R(0.1,0.35)})`;g.lineWidth=R(1,3);g.beginPath();g.moveTo(0,R(0,hh));g.bezierCurveTo(w*0.3,R(0,hh),w*0.6,R(0,hh),w,R(0,hh));g.stroke();}}
+    else if(st.bg){g.fillStyle=st.bg;g.fillRect(0,0,w,hh);}else g.clearRect(0,0,w,hh);
+    if(st.stripe){g.fillStyle=st.stripe;g.fillRect(0,hh-16,w,16);}
+    g.textAlign='center';g.textBaseline='middle';
+    if(st.pharm){g.fillStyle='#19a347';g.fillRect(56,24,24,80);g.fillRect(28,52,80,24);g.font='bold 54px Arial,sans-serif';g.fillText('FARMÀCIA',w/2+50,hh*0.4);g.fillStyle='#1a1a1a';let f=26;g.font=`${f}px Arial,sans-serif`;g.fillText(txt.replace(/^farm[àa]cia\s*/i,'').slice(0,26),w/2+50,hh*0.78);return;}
+    let fs=st.neon?70:84;const F=()=>`${st.w} ${fs}px ${st.font}`;g.font=F();while(g.measureText(txt).width>w-44&&fs>18){fs-=2;g.font=F();}
+    if(st.sh){g.fillStyle='rgba(0,0,0,0.55)';g.fillText(txt,w/2+3,hh/2+6);}
+    if(st.neon){g.shadowColor=st.fg;g.shadowBlur=14;}
+    g.fillStyle=st.fg;g.fillText(txt,w/2,hh/2+(st.stripe?-4:3));g.shadowBlur=0;
+    if(st.bg&&!st.neon)for(let i=0;i<30;i++){g.fillStyle=`rgba(40,30,20,${R(0.03,0.1)})`;g.beginPath();g.arc(R(0,w),R(0,hh),R(4,26),0,7);g.fill();}});}
 // supermercados reales de Barcelona (solo el nombre con sus colores, sin logotipos)
 const SUPERS=[
   {n:'Mercadona',s:()=>textSign('mercadona','MERCADONA','#ffffff','#0b8a3e',{stripe:'#f39200',font:'Arial Black'})},
@@ -91,6 +127,7 @@ function buildFacade(lot,seg,units){const{a,b,nx,nz}=seg;const L=Math.hypot(b[0]
   lot.facades.push({a,b,nx,nz,L});}
 // ---------- unidades de planta baja: portal, local (persiana / cristal / roto / tapiado), garaje ----------
 function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const yaw=Math.atan2(nx,nz);const mid=(u.u0+u.u1)/2;const cx=a[0]+ux*mid,cz=a[1]+uz*mid;const w=u.u1-u.u0;
+  if(u.kind==='shop'&&u.shop&&!u.shop.brand)realShop(u,cx,cz,ux,uz,nx,nz,w);
   const sign=(idx,y)=>{if(idx===undefined)return;{const sw=Math.min(w*0.85,3.4);addInst('shopSign',cx+nx*0.08,y,cz+nz*0.08,yaw,sw,sw/4,1,idx);}};
   if(u.kind==='passage'){lot.bk.passage=passageInterior(lot,seg,u,ux,uz);addInst('shopSign',cx+nx*0.08,yb+u.y1+0.5,cz+nz*0.08,yaw,4.2,1.05,1,signCell('ninot'+lot.bk.i,(g,w,h)=>{g.fillStyle='#2c3a30';g.fillRect(0,0,w,h);g.fillStyle='#f2e6c8';g.font='bold 56px Georgia';g.textAlign='center';g.textBaseline='middle';g.fillText(lot.passageHere.name.toUpperCase(),w/2,h/2);}));}
   else if(u.kind==='portal'){fillQuad('wood_dark',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.34);// portal de madera doble
@@ -185,5 +222,5 @@ function buildCornerLot(lot){const C=lot.C;const pts=[C.a,C.m1,C.m2,C.b];const y
     buildFacade(lot,{a:p,b:q,nx,nz},units);}
   addPolyV(poly,yb-2,lotTop(lot));
   const Bq=bufOf(cen[0],cen[1],'concrete_wall');TINT=[0.7,0.68,0.64];capPoly(Bq,poly,lotTop(lot),0.3);TINT=[1,1,1];}
-function finishSigns(){const t=new THREE.CanvasTexture(SIGNC);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=atlasMat(t,t,4,16,{});m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;INST.shopSign.mat=m;SIGN_MAT=m;}
+function finishSigns(){const t=new THREE.CanvasTexture(SIGNC);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=atlasMat(t,t,SG_COLS,SG_ROWS,{alphaTest:0.4});m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;INST.shopSign.mat=m;SIGN_MAT=m;}
 let SIGN_MAT=null;

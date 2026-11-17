@@ -19,6 +19,9 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 - Recolocar altura y vista: mantener joystick izquierdo o V (`recenter`).
 - Flechas de carril macizas (`arrowPaint`), pintura limpia, señales en el xamfrà (`signOn`), semáforos orientados al tráfico, placas de mármol en el pilar del xamfrà.
 - Coche nuevo (`CARGEO` lofted, lunas, interior con relojes), física con agarre, derrape, balanceo y cabeceo (`moveCar`), volante que se agarra con los grips (`steerByHands`); en VR se baja con A.
+- Manzanas a escala real: `BP=133.3` (113,3 m de manzana + 20 m de calle).
+- Comercios reales de OpenStreetMap (`src/33_pois.js`, ~850 puntos, convertidos con la cuadrícula real de cruces); `realShop` asigna a cada local el comercio más cercano y `poiSign` le hace el rótulo (marcas con sus colores, resto con 16 estilos). Atlas de rótulos 8x32 (256 celdas).
+- Mobiliario instanciado por zonas (no global): de 1,75 M a ~0,75 M triángulos.
 
 ## Pendiente (por orden)
 1. Probar en las Quest lo anterior (no verificado en el visor): manos contra paredes, agarre de puertas con grip, agacharse, HUD.
@@ -29,4 +32,5 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 6. Balcones con más variedad (`32_facades.js`).
 7. Armas solo donde toca (comisarías, coches de policía, bandidos); mejor pistola y rifle (Poly Haven `service_pistol`, `bolt_action_rifle_7_62`).
 8. Rutinas de NPC más claras.
-9. Cartografía real del barrio desde OpenStreetMap (cambia la base del mundo: `30_streets.js`, `34_buildings.js`).
+9. Supermercados reales en su sitio (ahora los grandes súper siguen en `SUPERPLAN` aleatorio); interiores de bar; balcones; armas en su sitio.
+10. Ampliar el mapa a más barrios (la cuadrícula real ya está calculada en `w/osm/grid.json`).
