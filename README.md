@@ -11,3 +11,4 @@ Survival zombi en WebXR para Meta Quest 3. Se juega abriendo la página de GitHu
 
 ## Datos
 Comercios y nombres de calles: © OpenStreetMap contributors, licencia ODbL (https://www.openstreetmap.org/copyright).
+- Fusil 'Lightning pump action rifle' (CC0, OpenGameArt) → assets/models/rifle.glb

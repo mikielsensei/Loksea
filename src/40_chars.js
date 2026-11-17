@@ -74,6 +74,11 @@ async function loadModels(){setLoad('m','Descargando personajes…');
   setLoad('h','Descargando manos…');for(const side of ['left','right']){const g=await loadAny(HAND_BASE.map(b=>b+side+'.glb'));HANDTPL[side]=g?g.scene:null;}
   setupHands();setLoad('h',HANDTPL.left&&HANDTPL.right?'✔ Manos listas':'⚠ Manos sencillas');
   {const g=await loadAny(['assets/models/car_panda.glb']);CARTPL=g?prepCarTpl(g.scene,1.14):null;}
+  {const g=await loadAny(['assets/models/rifle.glb']);if(g){g.scene.updateMatrixWorld(true);let mm=null;g.scene.traverse(o=>{if(o.isMesh&&!mm)mm=o;});
+    if(mm){const geo=mm.geometry.clone();geo.applyMatrix4(mm.matrixWorld);for(const k of ['skinIndex','skinWeight'])geo.deleteAttribute(k);geo.computeBoundingBox();const bb=geo.boundingBox;
+      // culata hacia -z, cañón hacia +z; el origen en la empuñadura (mano derecha)
+      const len=bb.max.z-bb.min.z;geo.translate(-(bb.min.x+bb.max.x)/2,-bb.max.y+0.04,-(bb.min.z+len*0.3));const m=mm.material;const mat=new THREE.MeshStandardMaterial({map:m.map,normalMap:m.normalMap,roughnessMap:m.roughnessMap,metalnessMap:m.metalnessMap,roughness:1,metalness:1});
+      RIFLE_T={geo,mat};}}}
   for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
   modelsReady=true;enableStart();}
 
@@ -173,7 +178,8 @@ function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=
   if(h.prop){h.prop.visible=h.armed;}else if(h.armed){h.prop=makeRifle();scene.add(h.prop);}
   poseTargets(h,0);for(let i=0;i<NP;i++){h.sim[i].copy(h.tgt[i]);h.prev[i].copy(h.tgt[i]);}driveBones(h);return h;}
 function despawn(h){h.active=false;h.holder.visible=false;if(h.prop)h.prop.visible=false;for(const w of h.wounds)w.parent&&w.parent.remove(w);h.wounds=[];if(h.base){const i=h.base.members.indexOf(h);if(i>=0)h.base.members.splice(i,1);}}
-function makeRifle(){const g=mkG([[bx(0.05,0.07,0.75,0,0,0.2),0x222426],[bx(0.045,0.12,0.25,0,-0.03,-0.25),0x4a3424],[bx(0.03,0.12,0.05,0,-0.08,0.05),0x1a1a1a],[cy(0.012,0.012,0.35,0,0.015,0.7,6,Math.PI/2),0x111111]]);return new THREE.Mesh(g,metalMat);}
+let RIFLE_T=null;
+function makeRifle(){if(RIFLE_T){const m=new THREE.Mesh(RIFLE_T.geo,RIFLE_T.mat);m.castShadow=false;return m;}const g=mkG([[bx(0.05,0.07,0.75,0,0,0.2),0x222426],[bx(0.045,0.12,0.25,0,-0.03,-0.25),0x4a3424],[bx(0.03,0.12,0.05,0,-0.08,0.05),0x1a1a1a],[cy(0.012,0.012,0.35,0,0.015,0.7,6,Math.PI/2),0x111111]]);return new THREE.Mesh(g,metalMat);}
 
 // ---------- IK y poses procedurales ----------
 const _ia=new V3(),_ib=new V3(),_ic=new V3(),_id=new V3();

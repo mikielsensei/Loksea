@@ -1616,6 +1616,11 @@ async function loadModels(){setLoad('m','Descargando personajes…');
   setLoad('h','Descargando manos…');for(const side of ['left','right']){const g=await loadAny(HAND_BASE.map(b=>b+side+'.glb'));HANDTPL[side]=g?g.scene:null;}
   setupHands();setLoad('h',HANDTPL.left&&HANDTPL.right?'✔ Manos listas':'⚠ Manos sencillas');
   {const g=await loadAny(['assets/models/car_panda.glb']);CARTPL=g?prepCarTpl(g.scene,1.14):null;}
+  {const g=await loadAny(['assets/models/rifle.glb']);if(g){g.scene.updateMatrixWorld(true);let mm=null;g.scene.traverse(o=>{if(o.isMesh&&!mm)mm=o;});
+    if(mm){const geo=mm.geometry.clone();geo.applyMatrix4(mm.matrixWorld);for(const k of ['skinIndex','skinWeight'])geo.deleteAttribute(k);geo.computeBoundingBox();const bb=geo.boundingBox;
+      // culata hacia -z, cañón hacia +z; el origen en la empuñadura (mano derecha)
+      const len=bb.max.z-bb.min.z;geo.translate(-(bb.min.x+bb.max.x)/2,-bb.max.y+0.04,-(bb.min.z+len*0.3));const m=mm.material;const mat=new THREE.MeshStandardMaterial({map:m.map,normalMap:m.normalMap,roughnessMap:m.roughnessMap,metalnessMap:m.metalnessMap,roughness:1,metalness:1});
+      RIFLE_T={geo,mat};}}}
   for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
   modelsReady=true;enableStart();}
 
@@ -1715,7 +1720,8 @@ function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=
   if(h.prop){h.prop.visible=h.armed;}else if(h.armed){h.prop=makeRifle();scene.add(h.prop);}
   poseTargets(h,0);for(let i=0;i<NP;i++){h.sim[i].copy(h.tgt[i]);h.prev[i].copy(h.tgt[i]);}driveBones(h);return h;}
 function despawn(h){h.active=false;h.holder.visible=false;if(h.prop)h.prop.visible=false;for(const w of h.wounds)w.parent&&w.parent.remove(w);h.wounds=[];if(h.base){const i=h.base.members.indexOf(h);if(i>=0)h.base.members.splice(i,1);}}
-function makeRifle(){const g=mkG([[bx(0.05,0.07,0.75,0,0,0.2),0x222426],[bx(0.045,0.12,0.25,0,-0.03,-0.25),0x4a3424],[bx(0.03,0.12,0.05,0,-0.08,0.05),0x1a1a1a],[cy(0.012,0.012,0.35,0,0.015,0.7,6,Math.PI/2),0x111111]]);return new THREE.Mesh(g,metalMat);}
+let RIFLE_T=null;
+function makeRifle(){if(RIFLE_T){const m=new THREE.Mesh(RIFLE_T.geo,RIFLE_T.mat);m.castShadow=false;return m;}const g=mkG([[bx(0.05,0.07,0.75,0,0,0.2),0x222426],[bx(0.045,0.12,0.25,0,-0.03,-0.25),0x4a3424],[bx(0.03,0.12,0.05,0,-0.08,0.05),0x1a1a1a],[cy(0.012,0.012,0.35,0,0.015,0.7,6,Math.PI/2),0x111111]]);return new THREE.Mesh(g,metalMat);}
 
 // ---------- IK y poses procedurales ----------
 const _ia=new V3(),_ib=new V3(),_ic=new V3(),_id=new V3();
@@ -2761,17 +2767,20 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
   // al derrapar la cola se va un poco más y se pierde velocidad
   car.yr+=-vl*0.06*dt*Math.sign(car.speed||1);car.speed-=Math.sign(car.speed)*Math.min(Math.abs(car.speed),Math.abs(vl)*0.6*dt);car.vLat=vl*Math.pow(0.6,dt);
   const latA=car.speed*car.yr,lonA=(car.speed-vs)/Math.max(dt,1e-3);
-  const rT=car.kind==='moto'?clamp(latA*0.09,-0.75,0.75):clamp(-latA*0.016,-0.09,0.09);car.rollV+=((rT-car.roll)*55-car.rollV*7)*dt;car.roll+=car.rollV*dt;car.pitchV+=((clamp(lonA*0.008,-0.06,0.06)-car.pitch)*60-car.pitchV*8)*dt;car.pitch+=car.pitchV*dt;
+  // balanceo realista: ~3° a 0,8 g, amortiguado casi crítico (coche con peso: no se levanta al girar)
+  const moto=car.kind==='moto';car.latS=(car.latS||0)+(latA-(car.latS||0))*Math.min(1,dt*4);car.lonS=(car.lonS||0)+(lonA-(car.lonS||0))*Math.min(1,dt*3);
+  const rT=moto?clamp(latA*0.09,-0.75,0.75):clamp(-car.latS*0.0055,-0.055,0.055);const kR=moto?55:38,cR=moto?7:2*Math.sqrt(38)*0.95;car.rollV+=((rT-car.roll)*kR-car.rollV*cR)*dt;car.roll+=car.rollV*dt;if(!moto)car.roll=clamp(car.roll,-0.07,0.07);
+  car.pitchV+=((clamp(car.lonS*0.0035,-0.035,0.035)-car.pitch)*42-car.pitchV*12.5)*dt;car.pitch+=car.pitchV*dt;car.pitch=clamp(car.pitch,-0.05,0.05);
   car.yaw+=car.yr*dt;const s=Math.sin(car.yaw),c=Math.cos(car.yaw);const vx=s*car.speed+c*car.vLat,vz=c*car.speed-s*car.vLat;const nx=car.x+vx*dt,nz=car.z+vz*dt;let blocked=false;
   for(const off of [-1.5,0,1.5]){const pt={x:nx+s*off,z:nz+c*off};if(collide(pt,car.halfW+0.05,car.y+0.4,car.y+1.3)){blocked=true;break;}}
   for(const o of cars){if(o===car)continue;const dn=Math.hypot(o.x-nx,o.z-nz);if(dn<3.4&&dn<Math.hypot(o.x-car.x,o.z-car.z)){blocked=true;o.speed+=vs*0.35;o.vLat+=car.vLat*0.3;}}
-  if(blocked){const hit=Math.hypot(vs,car.vLat);if(hit>7&&player){sfx('crash',clamp(hit/20,0.3,1));damagePlayer(hit*0.8,'accidente');toast('¡Choque!');}car.speed=-vs*0.25;car.vLat*=-0.2;car.yr*=0.3;car.rollV+=car.vLat*0.3;car.pitchV-=vs*0.04;}else{car.x=nx;car.z=nz;}
+  if(blocked){const hit=Math.hypot(vs,car.vLat);if(hit>7&&player){sfx('crash',clamp(hit/20,0.3,1));damagePlayer(hit*0.8,'accidente');toast('¡Choque!');}car.speed=-vs*0.25;car.vLat*=-0.2;car.yr*=0.3;car.rollV+=clamp(car.vLat*0.04,-0.15,0.15);car.pitchV-=clamp(vs*0.012,-0.25,0.25);}else{car.x=nx;car.z=nz;}
   if(!car.fixedY)car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
   if(Math.abs(car.speed)>2.2)for(const h of H_){if(!h.active)continue;const hx=h.sim[PELVIS].x,hz=h.sim[PELVIS].z;const dx=hx-car.x,dz=hz-car.z;if(dx*dx+dz*dz>9)continue;
     const lx=dx*c-dz*s,lz=dx*s+dz*c;if(Math.abs(lx)<car.halfW+0.2&&Math.abs(lz)<car.len/2+0.1&&clockT-h.lastHitT>0.4){const sp=Math.abs(car.speed);
       _imp.set(s*car.speed,0,c*car.speed).multiplyScalar(1.15);_imp.y=1+sp*0.12;_e2.copy(h.sim[LKNEE]);hitChar(h,'body',sp*5,_imp,LKNEE,player?'player':'car',_e2,_v.set(s,0,c));applyImp(h,_imp.set(s*car.speed*0.9,1+sp*0.1,c*car.speed*0.9),RKNEE);applyImp(h,_imp.set(s*car.speed*0.25,sp*0.18,c*car.speed*0.25),CHEST);h.k=0;
       if(!h.dead){h.headHp-=sp*1.5;if(h.headHp<=0)die(h,player?'player':'car');}h.lastHitT=clockT;sfx('hit',volAt(hx,hz,50));spray(h.sim[CHEST],_v.set(s,0,c),10);car.speed*=0.9;}}
-  car.g.position.set(car.x,car.y,car.z);car.g.rotation.y=car.yaw;if(car.body){car.body.rotation.set(-car.pitch,0,car.roll);if(car.sw)car.sw.rotation.z=car.wheelRot;}if(car.wreck)car.g.rotation.z=car.flip||0;
+  car.g.position.set(car.x,car.y,car.z);car.g.rotation.y=car.yaw;if(car.body){const bd=car.body;if(bd.userData.p0===undefined)bd.userData.p0=bd.position.clone();const hp=car.kind==='moto'?0:0.55;bd.rotation.set(-car.pitch,0,car.roll);bd.position.set(bd.userData.p0.x+hp*Math.sin(car.roll),bd.userData.p0.y+hp*(2-Math.cos(car.roll)-Math.cos(car.pitch)),bd.userData.p0.z+hp*Math.sin(car.pitch));if(car.sw)car.sw.rotation.z=car.wheelRot;}if(car.wreck)car.g.rotation.z=car.flip||0;
   for(const w of car.wheels){w.node.rotation.x+=car.speed*dt/(car.wheelR||WR);if(w.front)w.node.rotation.y=car.steer;}}
 
 // =====================================================================
