@@ -140,7 +140,8 @@ function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const y
   else if(u.kind==='shop'){const s=u.shop;sign(s.signIdx,yb+u.y1+0.42);
     // banderolas perpendiculares a la fachada: cruz verde de farmacia, la «T» del estanco, cerveza en los bares
     {const bt=s.type==='farmacia'?'banCreu':s.type==='estanc'?'banEstanc':(s.type==='bar'||s.type==='restaurant')&&Math.random()<0.35?'banBirra':null;
-      if(bt){const ed=Math.random()<0.5?u.u0+0.25:u.u1-0.25;addInst(bt,a[0]+ux*ed,yb+u.y1+0.95,a[1]+uz*ed,yaw);}}
+      if(bt){const ed=Math.random()<0.5?u.u0+0.25:u.u1-0.25;addInst(bt,a[0]+ux*ed,yb+u.y1+0.95,a[1]+uz*ed,yaw);}
+      if(s.type==='banc'&&w>3.5){const ed=u.u1-0.7;addInst('cajero',a[0]+ux*ed+nx*0.01,yb,a[1]+uz*ed+nz*0.01,yaw);}}
     if(u.state==='closed'||u.state==='half'){const top=yb+u.y1;const half=u.state==='half'&&u.room;const y0=half?yb+1.15:yb;const sd=half?0.1:0.3;fillQuad(Math.random()<0.7?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,y0,top,sd);
       if(Math.random()<0.75){const gh=Math.min(w*0.8*0.8,2.1,(top-y0)*0.86),gw=gh/0.8;addInst('graffiti',cx-nx*(sd-0.025),y0+(top-y0)*0.5,cz-nz*(sd-0.025),yaw,gw,gh,1,(Math.random()*16)|0);}
       if(half){solidBox(cx-nx*sd,cz-nz*sd,w/2,0.05,yaw,y0,top);makeShopInterior(lot,seg,u,ux,uz);}

@@ -1184,7 +1184,8 @@ function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const y
   else if(u.kind==='shop'){const s=u.shop;sign(s.signIdx,yb+u.y1+0.42);
     // banderolas perpendiculares a la fachada: cruz verde de farmacia, la «T» del estanco, cerveza en los bares
     {const bt=s.type==='farmacia'?'banCreu':s.type==='estanc'?'banEstanc':(s.type==='bar'||s.type==='restaurant')&&Math.random()<0.35?'banBirra':null;
-      if(bt){const ed=Math.random()<0.5?u.u0+0.25:u.u1-0.25;addInst(bt,a[0]+ux*ed,yb+u.y1+0.95,a[1]+uz*ed,yaw);}}
+      if(bt){const ed=Math.random()<0.5?u.u0+0.25:u.u1-0.25;addInst(bt,a[0]+ux*ed,yb+u.y1+0.95,a[1]+uz*ed,yaw);}
+      if(s.type==='banc'&&w>3.5){const ed=u.u1-0.7;addInst('cajero',a[0]+ux*ed+nx*0.01,yb,a[1]+uz*ed+nz*0.01,yaw);}}
     if(u.state==='closed'||u.state==='half'){const top=yb+u.y1;const half=u.state==='half'&&u.room;const y0=half?yb+1.15:yb;const sd=half?0.1:0.3;fillQuad(Math.random()<0.7?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,y0,top,sd);
       if(Math.random()<0.75){const gh=Math.min(w*0.8*0.8,2.1,(top-y0)*0.86),gw=gh/0.8;addInst('graffiti',cx-nx*(sd-0.025),y0+(top-y0)*0.5,cz-nz*(sd-0.025),yaw,gw,gh,1,(Math.random()*16)|0);}
       if(half){solidBox(cx-nx*sd,cz-nz*sd,w/2,0.05,yaw,y0,top);makeShopInterior(lot,seg,u,ux,uz);}
@@ -1306,6 +1307,10 @@ defInst('prodBottle',(()=>{const g=new THREE.CylinderGeometry(0.04,0.045,0.3,5);
 const texFruit=cTex(256,256,(g,w,h)=>{g.fillStyle='#6b4a2a';g.fillRect(0,0,w,h);const c=pick(['#c8261a','#e8a020','#8ac83a','#e8d020','#6a2a6a']);for(let i=0;i<70;i++){const x=R(10,w-10),y=R(10,h-10),r=R(12,20);const gr=g.createRadialGradient(x-r*0.3,y-r*0.3,2,x,y,r);gr.addColorStop(0,'#fff8');gr.addColorStop(0.25,c);gr.addColorStop(1,'#0006');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();}},{});
 defInst('fruit',(()=>{const g=new THREE.BoxGeometry(0.55,0.14,0.38);g.translate(0,0.07,0);return g;})(),new THREE.MeshLambertMaterial({map:texFruit}));
 // bar de barrio: taburetes, cafetera, tirador de cerveza, vitrina de tapas, tragaperras, tele, jamones y pizarra
+// maniquí de escaparate (algunos volcados) y cajero automático del banco
+defInst('maniqui',mkG([[ell(0.17,0.3,0.11,0,1.22,0,10),0xffffff],[ell(0.07,0.09,0.07,0,1.62,0,8),0xe8e2d8],[cy(0.025,0.025,0.12,0,1.5,0,6),0xe8e2d8],[ell(0.15,0.2,0.1,0,0.88,0,8),0xffffff],
+  [cy(0.05,0.035,0.8,-0.08,0.42,0,6),0x2a2a30],[cy(0.05,0.035,0.8,0.08,0.42,0,6),0x2a2a30],[cy(0.03,0.025,0.55,-0.22,1.15,0,6,0,0.15),0xe8e2d8],[cy(0.03,0.025,0.55,0.22,1.15,0,6,0,-0.15),0xe8e2d8],[cy(0.16,0.16,0.02,0,0.01,0,10),0x5a5a5a],[cy(0.012,0.012,0.4,0,0.2,-0.12,4),0x8a8a8a]]),plasticMat,1,1,false);
+defInst('cajero',mkG([[bx(0.75,1.05,0.06,0,1.15,0.0),0xa8acb0],[bx(0.4,0.28,0.02,0,1.4,0.04),0x0e1418],[bx(0.22,0.14,0.08,0,1.08,0.06,0.4),0x2a2c2e],[bx(0.3,0.03,0.04,0,0.9,0.05),0x1a1a1a],[bx(0.75,0.12,0.12,0,1.72,0.04),0x0a5a9a]]),metalMat,1,1,false);
 defInst('tabure',mkG([[cy(0.17,0.17,0.05,0,0.76,0,12),0x7a2a22],[cy(0.025,0.025,0.72,0,0.38,0,6),0xa8acb0],[cy(0.2,0.22,0.03,0,0.015,0,12),0x6a6e72],[(()=>{const g=new THREE.TorusGeometry(0.13,0.008,4,12);g.rotateX(Math.PI/2);g.translate(0,0.3,0);return g;})(),0xa8acb0]]),metalMat,1,1,false);
 defInst('cafetera',mkG([[bx(0.75,0.45,0.5,0,0.22,0),0x9a9ea2],[bx(0.77,0.06,0.52,0,0.47,0),0x2a2a2a],[bx(0.6,0.12,0.02,0,0.36,0.26),0x1a1a1a],...[-0.22,0,0.22].map(x=>[cy(0.03,0.04,0.08,x,0.2,0.22,8),0x2a2a2a]),[bx(0.75,0.02,0.3,0,0.06,0.25),0x6a6e72]]),metalMat,1,1,false);
 defInst('tirador',mkG([[cy(0.04,0.05,0.35,0,0.17,0,10),0xb8bcc0],[bx(0.2,0.04,0.06,0,0.35,0),0xb8bcc0],[cy(0.012,0.012,0.12,0,0.42,0.04,6),0x111111],[bx(0.08,0.1,0.01,0,0.46,0.045),0xc8102e],[bx(0.25,0.02,0.16,0,0.0,0.06),0x9aa0a4]]),metalMat,1,1,false);
@@ -1412,7 +1417,8 @@ function furnishShop(u,P,yF,ceil,ux,uz,nx,nz,u0,u1,d,c){const t=u.shop.type;cons
   else if(t==='roba'){// tienda de ropa: burras con prendas y mostrador
     for(let ww=1.6;ww<d-1;ww+=1.6){const q=P((u0+u1)/2,ww);furn('metal',q[0],yF+1.4,q[1],Math.max(1,W-2.5),0.04,0.04,yawF,'#9a9ea2',false);
       for(let uu=u0+1.4;uu<u1-1.2;uu+=0.12){if(Math.random()<(looted?0.6:0.15))continue;const g=P(uu,ww);furn('furn',g[0],yF+0.75,g[1],0.08,0.62,0.42,yawU,pick(['#2a3a5a','#8a1a1a','#d8d0c0','#3a3a3a','#5a6a3a','#c8a080']),false);}}
-    const p=P(u1-1.2,d-1.2);furn('woodf',p[0],yF,p[1],1.6,1.0,0.6,yawU,'#e8e4dc');lootSpot(p[0],p[1],yF,'mesita','mostrador');}
+    const p=P(u1-1.2,d-1.2);furn('woodf',p[0],yF,p[1],1.6,1.0,0.6,yawU,'#e8e4dc');lootSpot(p[0],p[1],yF,'mesita','mostrador');
+    for(let uu=u0+0.9;uu<u1-0.6;uu+=1.1){const q=P(uu,0.9);const fallen=Math.random()<0.3;addInst('maniqui',q[0],yF+(fallen?0.12:0),q[1],yawF+R(-0.4,0.4),1,1,1,0,0,fallen?Math.PI/2:0,pick([0xd8d0c0,0x2a3a5a,0x8a1a1a,0x3a3a3a,0xc8a080]));}}
   else if(t==='perruqueria'){// sillones frente a espejos y lavacabezas
     for(let ww=1.5;ww<d-1.5;ww+=1.3){const m=P(u0+0.25,ww);furn('furn',m[0],yF+0.9,m[1],0.04,0.9,0.9,yawF,'#c8d4dc',false);const t2=P(u0+0.4,ww);furn('woodf',t2[0],yF+0.75,t2[1],0.35,0.05,1.0,yawF,'#e8e4dc');
       const c2=P(u0+1.2,ww);furn('metal',c2[0],yF,c2[1],0.55,0.95,0.55,yawF,'#1a1a1a');}lootSpot(P(u0+0.4,1.5)[0],P(u0+0.4,1.5)[1],yF,'mesita','tocador');}
