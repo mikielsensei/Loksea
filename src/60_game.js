@@ -261,7 +261,9 @@ function survivorAI(h,dt,p){h.think-=dt;const b=h.base;
   if(!b){wanderAI(h,dt);return;}
   const night=isNight();const idx=b.members.indexOf(h);
   let goal=null,act='stand',face=null;
-  if(night&&!(h.role==='guard'&&idx%2===0)){const bed=b.beds[idx%Math.max(1,b.beds.length)];if(bed){goal=bed;act='sleep';}}
+  const hr=hourF();const meal=(hr>=8&&hr<8.6)||(hr>=14&&hr<15)||(hr>=21&&hr<21.8);// comidas: todos (menos la guardia) en corro alrededor del fuego
+  if(meal&&!night&&h.role!=='guard'&&h.role!=='scavenger'&&h.role!=='raider'){const n=Math.max(4,b.members.length),a=idx/n*Math.PI*2;goal=[b.fire[0]+Math.cos(a)*2.1,b.fire[1]+Math.sin(a)*2.1];act=idx%3===0?'stand':'squat';face=b.fire;}
+  else if(night&&!(h.role==='guard'&&idx%2===0)){const bed=b.beds[idx%Math.max(1,b.beds.length)];if(bed){goal=bed;act='sleep';}}
   else if(h.role==='guard'){const post=b.posts[idx%b.posts.length];goal=post;act='aim';face=[post[0]*2-b.x,post[1]*2-b.z];}
   else if(h.role==='cook'){goal=[b.fire[0]+1.2,b.fire[1]];act='squat';face=b.fire;}
   else if(h.role==='leader'){goal=h.lgoal||(h.lgoal=[b.fire[0]+R(-3,3),b.fire[1]+R(2,4)]);act=(clockT-(h.talkT||-99))<4?'stand':'stand';face=[camW.x,camW.z];}
@@ -373,7 +375,8 @@ const gaugeMat=new THREE.MeshBasicMaterial({map:texGauges});
 const wheelMat=pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.75,metalness:0.3}));const cars=[];
 const CARCOL=[0xe9e9e6,0xe9e9e6,0xa9adb1,0xa9adb1,0x5d6266,0x111214,0x111214,0x1c2b4a,0x8c1218,0x2d3f2f,0xcfc6b0];
 // carrocería: color de serie y años de abandono encima (polvo en las superficies de arriba, mugre, óxido abajo y en los bordes)
-function wearMat(base,col,seed,wreck){const m=base.clone();m.color.set(col);m.roughness=0.5;m.metalness=0.25;m.envMapIntensity=0.9;
+const BURNT_RIM=new THREE.MeshStandardMaterial({color:0x3a2416,roughness:1,metalness:0.1});
+function wearMat(base,col,seed,wreck){const m=base.clone();m.color.set(col);m.roughness=wreck>0.9?1:0.5;m.metalness=wreck>0.9?0:0.25;m.envMapIntensity=wreck>0.9?0.15:0.9;if(wreck>0.9)PBR.delete(m);
   m.onBeforeCompile=sh=>{sh.uniforms.uSeed={value:seed};sh.uniforms.uWr={value:wreck};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vCP;varying vec3 vCN;').replace('#include <begin_vertex>','#include <begin_vertex>\nvCP=position;vCN=normal;');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vCP;varying vec3 vCN;uniform float uSeed,uWr;\n'+NOISE_GLSL)
@@ -389,7 +392,8 @@ function wearMat(base,col,seed,wreck){const m=base.clone();m.color.set(col);m.ro
         // polvo y hojas en las superficies horizontales
         float up=smoothstep(0.55,0.9,vCN.y);c=mix(c,vec3(0.55,0.5,0.42),up*smoothstep(0.3,0.7,n1)*0.75);
         // quemado
-        c=mix(c,vec3(0.05,0.045,0.04)*(0.6+n2),uWr>0.9?0.85:0.0);
+        if(uWr>0.9){vec3 soot=vec3(0.035,0.032,0.03)*(0.6+n2);vec3 rust=vec3(0.32,0.15,0.07)*(0.7+n3*0.6);vec3 ash=vec3(0.42,0.4,0.37);
+          float rz=smoothstep(0.5,0.85,n1*0.6+n2*0.4+(0.5-vCP.y)*0.3);c=mix(soot,rust,rz*0.75);c=mix(c,ash,smoothstep(0.82,0.95,n3)*0.35*vCN.y);}
         diffuseColor.rgb=c;`);};m.customProgramCacheKey=()=>'carwear';return m;}
 // interior (salpicadero, relojes, asientos, consola, palanca) para el coche de la comunidad
 const CARINT=(()=>{const P=[],S=[];const B=(w,h,d,x,y,z,c,rx=0,ry=0,rz=0)=>P.push([bx(w,h,d,x,y,z,rx,ry,rz),c]);const SB=(w,h,d,x,y,z,rx=0)=>S.push([bx(w,h,d,x,y,z,rx),0x55585e]);
@@ -449,7 +453,7 @@ function makeCar(x,z,yaw,kind,o={}){const T=CARVAN&&!o.noVan&&Math.random()<0.28
   if(wreck&&Math.random()<0.6)for(const w of winMesh)w.visible=false;// lunas reventadas
   // ruedas: cada una en su pivote
   for(const w of T.wheels){const src=inner.getObjectByName(w.name);if(!src)continue;const piv=new THREE.Group();piv.position.set(w.c.x,w.c.y,w.c.z);piv.rotation.order='YXZ';g.add(piv);piv.attach(src);
-    if(wreck&&Math.random()<0.4){piv.rotation.z=R(-0.3,0.3);piv.position.y-=0.08;}wheels.push({node:piv,front:w.front});}
+    if(wreck&&Math.random()<0.4){piv.rotation.z=R(-0.3,0.3);piv.position.y-=0.08;}if(wreck>0.95)piv.traverse(q=>{if(q.isMesh)q.material=BURNT_RIM;});wheels.push({node:piv,front:w.front});}
   const y=surfY(x,z);g.position.set(x,y,z);g.rotation.y=yaw;scene.add(g);
   const car={g,body,bodyMesh,sw:null,swp:null,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:wreck?0:R(5,60),wheels,seat:new V3(0.32,0.3,0.12),eye:1.17,halfW:T.halfW,len:T.len,kind:'panda',searched:false,wreck,gear:0,shift:{gx:0,gz:0,held:null},wheelR:0.29};car.isVan=!!T.van;cars.push(car);return car;}
 // el interior y el volante solo se montan cuando te subes (ahorra triángulos en los coches aparcados)
@@ -480,11 +484,16 @@ function placeCars(){const spots=CARSPOTS.slice();for(let i=spots.length-1;i>0;i
   spots.sort((a,b)=>(b.crash?1:0)-(a.crash?1:0));let n=0;for(const s of spots){if(n>=70)break;if(cars.some(c=>Math.hypot(c.x-s.x,c.z-s.z)<5.2))continue;const c=makeCar(s.x,s.z,s.yaw,'proc');if(s.crash){c.crashed=true;c.fuel=0;}n++;}
   const b=BASES.find(x=>x.type==='good');if(b)makeCar(b.x+8,b.z-30,Math.PI/2,'proc').fuel=55;}
 // coches abandonados y siniestrados en mitad de la calzada (algunos volcados o quemados)
+// mancha de hollín en el asfalto bajo los coches quemados
+const texScorch=cTex(256,256,(g,w,h)=>{g.clearRect(0,0,w,h);for(let i=0;i<26;i++){const x=w/2+R(-60,60),y=h/2+R(-80,80),r=R(30,90);const gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,'rgba(12,10,8,0.55)');gr.addColorStop(1,'rgba(12,10,8,0)');g.fillStyle=gr;g.fillRect(0,0,w,h);}},{});
+defInst('scorch',(()=>{const g=new THREE.PlaneGeometry(3.6,5.6);g.rotateX(-Math.PI/2);return g;})(),new THREE.MeshLambertMaterial({map:texScorch,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}),1,1,true);
 function placeWrecks(){let n=0;for(let tries=0;tries<120&&n<26;tries++){const v=Math.random()<0.5;const L=v?VSTR:HSTR;const st=pick(L);if(st.type==='ped'||st.type==='superilla')continue;const k=RI(0,(v?NZS:NXS)-2);
     const a0=(v?HSTR[k]:VSTR[k]).pos+14,a1=(v?HSTR[k+1]:VSTR[k+1]).pos-14;const along=R(a0,a1);const lat=R(-1,1)*(st.w/2-st.sw-1.6);const x=v?st.pos+lat:along,z=v?along:st.pos+lat;
     if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<5))continue;const wreck=Math.random()<0.35?1:R(0.5,0.85);const c=makeCar(x,z,R(0,6.28),'proc',{wreck});if(!c)continue;
     const r=Math.random();c.flip=r<0.1?Math.PI:r<0.22?Math.PI/2*(Math.random()<0.5?1:-1):0;if(c.flip){c.g.rotation.z=c.flip;c.g.position.y+=Math.abs(c.flip)>3?1.5:c.halfW;c.y=c.g.position.y;c.fixedY=true;}
+    if(wreck===1){addInst('scorch',x,surfY(x,z)+0.02,z,c.yaw+R(-0.3,0.3));if(!c.flip){c.g.position.y-=0.13;c.y=c.g.position.y;c.fixedY=true;for(const w of c.wheels||[])w.node.scale.set(0.95,0.84,0.84);}if(Math.random()<0.3)SMOKECARS.push([x,z]);}
     solidBox(x,z,c.halfW,c.len/2,c.yaw,c.y-0.2,c.y+1.5);n++;}}
+const SMOKECARS=[];
 // cadáveres de atrezo repartidos por las calles (caen con física, luego se quedan quietos; se pueden registrar)
 function placeCorpses(){let n=0;for(let tries=0;tries<300&&n<32;tries++){const bk=pick(BLOCKS);if(bk.outer)continue;const e=RI(0,7);const A=bk.cp[e],B=bk.cp[(e+1)%8];const t=Math.random();const c=centroid(bk.bp);
     let x=A[0]+(B[0]-A[0])*t,z=A[1]+(B[1]-A[1])*t;const dx=x-c[0],dz=z-c[1],l=Math.hypot(dx,dz);const off=R(-2.5,3.5);x+=dx/l*off;z+=dz/l*off;

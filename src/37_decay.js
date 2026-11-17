@@ -59,6 +59,7 @@ const smokeMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,unifo
       vec3 c=mix(vec3(0.05,0.05,0.055),vec3(0.28,0.27,0.26),uDay)*(0.75+m*0.4);float f=clamp(vD/uFar,0.0,1.0);c=mix(c,uFog,f*0.85);gl_FragColor=vec4(c,a*(1.0-f*0.5));}`});
 function setupSmoke(){const src=FACADES.filter(f=>!f.outer&&f.L>8);for(let k=0;k<6&&src.length;k++){const f=src.splice(RI(0,src.length-1),1)[0];const t=R(2,f.L-2);const ux=(f.b[0]-f.a[0])/f.L,uz=(f.b[1]-f.a[1])/f.L;
     SMOKES.push({x:f.a[0]+ux*t-f.nx*4,z:f.a[1]+uz*t-f.nz*4,y:f.yb+f.gf+f.fh*f.F+0.5,p:[]});}
+  if(typeof SMOKECARS!=='undefined')for(const [x,z] of SMOKECARS.slice(0,3))SMOKES.push({x,z,y:surfY(x,z)+1.0,p:[]});// coches aún humeando
   const g=new THREE.InstancedBufferGeometry();const pl=new THREE.PlaneGeometry(1,1);g.index=pl.index;g.attributes.position=pl.attributes.position;g.attributes.uv=pl.attributes.uv;
   const n=SMOKES.length*SMOKE_N;g.instanceCount=n;g.setAttribute('aP',new THREE.InstancedBufferAttribute(new Float32Array(n*4),4));g.setAttribute('aR',new THREE.InstancedBufferAttribute(new Float32Array(n),1));
   smokeMesh=new THREE.Mesh(g,smokeMat);smokeMesh.frustumCulled=false;smokeMesh.renderOrder=2;scene.add(smokeMesh);
