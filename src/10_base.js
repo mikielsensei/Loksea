@@ -21,6 +21,8 @@ function addPolyV(pts,y0,y1){let area=0;for(let i=0;i<pts.length;i++){const a=pt
   return insertVol({k:1,P,E,x0,x1,z0,z1,y0,y1});}
 // rectángulo orientado (pared, mueble) como prisma
 function addOBB(cx,cz,hw,hd,yaw,y0,y1){const c=Math.cos(yaw),s=Math.sin(yaw);const pts=[[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([a,b])=>[cx+a*c+b*s,cz-a*s+b*c]);return addPolyV(pts,y0,y1);}
+function removeVol(v){const k0=VOL.indexOf(v);if(k0>=0)VOL.splice(k0,1);const i0=Math.floor((v.x0-2.5)/VCG),i1=Math.floor((v.x1+2.5)/VCG),j0=Math.floor((v.z0-2.5)/VCG),j1=Math.floor((v.z1+2.5)/VCG);
+  for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const a=VG.get(vk(i,j));if(!a)continue;const k=a.indexOf(v);if(k>=0)a.splice(k,1);}}
 const volsAt=(x,z)=>VG.get(vk(Math.floor(x/VCG),Math.floor(z/VCG)))||VEMPTY;
 function pushVol(v,p,r){if(v.k===0){const cx=clamp(p.x,v.x0,v.x1),cz=clamp(p.z,v.z0,v.z1);const dx=p.x-cx,dz=p.z-cz,d2=dx*dx+dz*dz;if(d2>=r*r)return false;
     if(d2>1e-9){const d=Math.sqrt(d2);p.x=cx+dx/d*r;p.z=cz+dz/d*r;}else{const l=p.x-v.x0,rr=v.x1-p.x,t=p.z-v.z0,bt=v.z1-p.z,m=Math.min(l,rr,t,bt);if(m===l)p.x=v.x0-r;else if(m===rr)p.x=v.x1+r;else if(m===t)p.z=v.z0-r;else p.z=v.z1+r;}return true;}

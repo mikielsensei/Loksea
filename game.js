@@ -227,6 +227,8 @@ function addPolyV(pts,y0,y1){let area=0;for(let i=0;i<pts.length;i++){const a=pt
   return insertVol({k:1,P,E,x0,x1,z0,z1,y0,y1});}
 // rectángulo orientado (pared, mueble) como prisma
 function addOBB(cx,cz,hw,hd,yaw,y0,y1){const c=Math.cos(yaw),s=Math.sin(yaw);const pts=[[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([a,b])=>[cx+a*c+b*s,cz-a*s+b*c]);return addPolyV(pts,y0,y1);}
+function removeVol(v){const k0=VOL.indexOf(v);if(k0>=0)VOL.splice(k0,1);const i0=Math.floor((v.x0-2.5)/VCG),i1=Math.floor((v.x1+2.5)/VCG),j0=Math.floor((v.z0-2.5)/VCG),j1=Math.floor((v.z1+2.5)/VCG);
+  for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const a=VG.get(vk(i,j));if(!a)continue;const k=a.indexOf(v);if(k>=0)a.splice(k,1);}}
 const volsAt=(x,z)=>VG.get(vk(Math.floor(x/VCG),Math.floor(z/VCG)))||VEMPTY;
 function pushVol(v,p,r){if(v.k===0){const cx=clamp(p.x,v.x0,v.x1),cz=clamp(p.z,v.z0,v.z1);const dx=p.x-cx,dz=p.z-cz,d2=dx*dx+dz*dz;if(d2>=r*r)return false;
     if(d2>1e-9){const d=Math.sqrt(d2);p.x=cx+dx/d*r;p.z=cz+dz/d*r;}else{const l=p.x-v.x0,rr=v.x1-p.x,t=p.z-v.z0,bt=v.z1-p.z,m=Math.min(l,rr,t,bt);if(m===l)p.x=v.x0-r;else if(m===rr)p.x=v.x1+r;else if(m===t)p.z=v.z0-r;else p.z=v.z1+r;}return true;}
@@ -814,7 +816,7 @@ function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const
   if(Math.random()<0.28&&bicingCount<6){plan.push({k:'bicing',at:a+L*R(0.05,0.15),len:16});bicingCount++;}
   plan.sort((x,y)=>x.at-y.at);let cur=a;
   for(const it of plan){fillCars(s,cur,it.at-1,dm,yawAlong,B.dir);cur=it.at+it.len+1;
-    if(it.k==='cont'){const z0=it.at;CONTSET.forEach((ty,k)=>{const q=SP(s,z0+1+k*2.05+1,dm);const y=H(q[0],q[1]);addInst('cont_'+ty,q[0],y,q[1],facing);solidBox(q[0],q[1],0.95,0.82,facing,y,y+1.8);});
+    if(it.k==='cont'){const z0=it.at;CONTSET.forEach((ty,k)=>{const q=SP(s,z0+1+k*2.05+1,dm);const y=H(q[0],q[1]);const ref=addInst('cont_'+ty,q[0],y,q[1],facing);const v=solidBox(q[0],q[1],0.95,0.82,facing,y,y+1.8);INST[ref[0]].lists.get(ref[1])[ref[2]].vol=v;});
       const q=SP(s,z0+it.len/2,p0+0.05),q2=SP(s,z0+it.len/2,p1-0.05);paintRect(q[0],q[1],ua[0],ua[1],it.len,0.14,PAINTY);paintRect(q2[0],q2[1],ua[0],ua[1],it.len,0.14,PAINTY);
       for(const e of [z0,z0+it.len]){const qq=SP(s,e,dm);paintRect(qq[0],qq[1],ua[1],ua[0],p1-p0,0.14,PAINTY);}
       {const qc=SP(s,z0+it.len/2,dm);lootSpot(qc[0],qc[1],H(qc[0],qc[1]),'bin','los contenedores');}
@@ -3022,6 +3024,7 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
   car.pitchV+=((clamp(car.lonS*0.0035,-0.035,0.035)-car.pitch)*42-car.pitchV*12.5)*dt;car.pitch+=car.pitchV*dt;car.pitch=clamp(car.pitch,-0.05,0.05);
   car.yaw+=car.yr*dt;const s=Math.sin(car.yaw),c=Math.cos(car.yaw);const vx=s*car.speed+c*car.vLat,vz=c*car.speed-s*car.vLat;const nx=car.x+vx*dt,nz=car.z+vz*dt;let blocked=false;
   for(const off of [-1.5,0,1.5]){const pt={x:nx+s*off,z:nz+c*off};if(collide(pt,car.halfW+0.05,car.y+0.4,car.y+1.3)){blocked=true;break;}}
+  if(blocked&&Math.abs(vs)>1.5&&dynCarBlock(car,nx,nz))blocked=false;// era un contenedor o algo suelto: sale despedido
   for(const o of cars){if(o===car)continue;const dn=Math.hypot(o.x-nx,o.z-nz);if(dn<3.4&&dn<Math.hypot(o.x-car.x,o.z-car.z)){blocked=true;o.speed+=vs*0.35;o.vLat+=car.vLat*0.3;}}
   if(blocked){const hit=Math.hypot(vs,car.vLat);if(hit>7&&player){sfx('crash',clamp(hit/20,0.3,1));damagePlayer(hit*0.8,'accidente');toast('¡Choque!');}car.speed=-vs*0.25;car.vLat*=-0.2;car.yr*=0.3;car.rollV+=clamp(car.vLat*0.04,-0.15,0.15);car.pitchV-=clamp(vs*0.012,-0.25,0.25);}else{car.x=nx;car.z=nz;}
   if(!car.fixedY)car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
@@ -3128,7 +3131,8 @@ function updateWeapons(dt){const vrOn=inVR&&!!gripBySide.right;
       if(P.weapon==='pistola'&&G.mag>=0){vrGun.userData.magwell.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.09){leftHold={n:ejectMag(false),armed:false};haptic(srcL,0.6,40);}}
       if(!leftHold&&P.weapon==='pistola'){vrGun.userData.slideRear.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.09){vrGun.worldToLocal(_v4.copy(handP));slideGrab={z0:_v4.z,off:0,done:false};}}
       if(!leftHold&&!slideGrab&&showBelt){for(let i=0;i<2;i++){beltMags[i].getWorldPosition(_v4);if(BELT[i]!==null&&handP.distanceTo(_v4)<0.16){leftHold={n:BELT[i],armed:true};BELT[i]=null;sfx('click');haptic(srcL,0.5,30);break;}}}
-      if(!leftHold&&!slideGrab){for(const d of dropped){if(d.rounds===undefined)continue;if(d.o.position.distanceTo(handP)<0.18){leftHold={n:d.rounds,armed:true};d.t=0;sfx('click');break;}}}}
+      if(!leftHold&&!slideGrab){for(const d of dropped){if(d.rounds===undefined)continue;if(d.o.position.distanceTo(handP)<0.18){leftHold={n:d.rounds,armed:true};d.t=0;sfx('click');break;}}}
+      if(!leftHold&&!slideGrab&&!handObj.left){lhr.wristObj.getWorldPosition(_v4);const b=dynGrab(_v4);if(b){handObj.left=b;haptic(srcL,0.5,30);}}}
     if(leftHold&&P.weapon==='pistola'&&G.mag<0){vrGun.userData.magwell.getWorldPosition(_v4);const dm=handP.distanceTo(_v4);if(dm>0.14)leftHold.armed=true;if(leftHold.armed&&dm<0.06){insertMag(leftHold.n);leftHold=null;haptic(srcL,0.8,40);}}
     if(slideGrab&&IN.lgHeld){vrGun.worldToLocal(_v4.copy(handP));slideGrab.off=clamp(_v4.z-slideGrab.z0,0,0.045);if(slideGrab.off>0.032&&!slideGrab.done){slideGrab.done=true;rack();}}
     if(!IN.lgHeld){if(leftHold){const m=makeMag();m.userData.bullet.visible=m.userData.tip.visible=leftHold.n>0;leftMag.getWorldQuaternion(m.quaternion);
@@ -3136,6 +3140,12 @@ function updateWeapons(dt){const vrOn=inVR&&!!gripBySide.right;
     // velocidad de la mano izquierda para lanzar el cargador
     lhr.prevP=lhr.prevP||handP.clone();lhr.vel=(lhr.vel||new V3()).subVectors(handP,lhr.prevP).divideScalar(Math.max(dt,0.008));lhr.prevP.copy(handP);}
   else if(leftHold&&!IN.lgHeld){addItem('balas',leftHold.n,'gift');leftHold=null;}}
+const handObj={left:null,right:null},_hpv={left:new V3(),right:new V3()},_hpp={left:new V3(),right:new V3()};
+// objetos cogidos con la mano: siguen a la muñeca y al soltar el grip salen con la velocidad de la mano
+function updateHandObjs(dt){for(const side of ['left','right']){const hr=hands[side];if(!hr||!hr.handRoot.parent||!inVR)continue;hr.wristObj.getWorldPosition(_v4);_hpv[side].subVectors(_v4,_hpp[side]).divideScalar(Math.max(dt,0.008));_hpp[side].copy(_v4);
+    const held=side==='left'?IN.lgHeld:IN.rgHeld;const down=side==="left"?false:IN.use;
+    if(side==='right'&&!handObj.right&&down&&P.weapon==='manos'&&!P.inCar){const b=dynGrab(_v4);if(b){handObj.right=b;haptic(srcR,0.5,30);}}
+    const b=handObj[side];if(!b)continue;if(!held||P.inCar){dynThrow(b,_hpv[side]);handObj[side]=null;continue;}hr.wristObj.getWorldQuaternion(_q);dynHold(b,_v4,_q,dt);}}
 function updateHands(){for(const side of ['left','right']){const hr=hands[side];if(!hr||!hr.handRoot.parent)continue;const gp=side==='left'?padL:padR;
     const bv=i=>gp&&gp.buttons[i]?gp.buttons[i].value:0,tch=i=>!!(gp&&gp.buttons[i]&&(gp.buttons[i].touched||gp.buttons[i].pressed));const c=hr.curl;const thumb=(tch(3)||tch(4)||tch(5))?0.85:0.3;
     if(side==='right'&&P.weapon!=='manos'&&!P.inCar){c.middle=c.ring=c.pinky=1;c.thumb=P.weapon==='pistola'?1.0:0.85;c.index=P.weapon==='pistola'?(tch(0)?0.62+bv(0)*0.3:0.42):0.95;}
@@ -3206,7 +3216,7 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   for(const c of cars)if(c!==P.inCar&&(Math.abs(c.speed)>0.05||Math.abs(c.vLat||0)>0.05||Math.abs(c.rollV||0)>0.01)){c.speed*=Math.pow(0.3,dt);c.vLat=(c.vLat||0)*Math.pow(0.2,dt);c.steer=0;moveCar(c,dt,false);}
   chunkT-=dt;if(chunkT<=0){chunkT=0.4;const VD=(S.view||3000)+40;for(const c of chunks.values()){const v=Math.hypot(c.cx-p.x,c.cz-p.z)<(c.inner?(inVR?60:75):Math.min(VD,inVR?2000:3000));for(const m of c.meshes)m.visible=v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
     for(const d of DOORS)d.g.visible=Math.abs(d.hx-p.x)<38&&Math.abs(d.hz-p.z)<38;for(const pn of PANES)pn.m.visible=Math.abs(pn.cx-p.x)<45&&Math.abs(pn.cz-p.z)<45;}
-  updateWeapons(dt);updateHands();placeHud();updateBody(dt);stepDropped(dt);
+  updateWeapons(dt);updateHands();updateHandObjs(dt);placeHud();updateBody(dt);stepDropped(dt);stepDyn(dt,rig.position);
   WTIME.value=clockT;if(S.gore)for(const h of H_){if(!h.active||!h.holder.visible)continue;if(h.woundI)updateWoundGravity(h);if(!h.bleeds||!h.bleeds.length)continue;for(const b of h.bleeds){if(clockT>b.until)continue;b.t-=dt;if(b.t<=0){b.t=R(0.12,0.35)*(1+(clockT-(b.until-8))*0.1);_v.copy(h.sim[b.i]).add(b.o);spray(_v,_v1.set(R(-0.1,0.1),-0.3,R(-0.1,0.1)),0.5);}}}
   for(let i=0;i<parts.length;i++){const q=parts[i];if(!q)continue;if(q.life<=0){blood.setMatrixAt(i,ZM);continue;}q.life-=dt;
     if(!q.ground){q.v.y-=9.81*dt;q.v.multiplyScalar(1-dt*0.6);q.p.addScaledVector(q.v,dt);const gy=surfY(q.p.x,q.p.z,q.p.y)+0.004;
@@ -3258,7 +3268,65 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}
+
+// =====================================================================
+// PESO Y GRAVEDAD de los objetos sueltos: los coches los arrollan y empujan (según su masa), al andar se patean los ligeros,
+// y con la mano libre (izquierda, o la derecha sin arma) se cogen del suelo y se lanzan. Los contenedores ruedan si los embiste un coche.
+// =====================================================================
+const DYNDEF={caja2:{m:2,r:0.3,h:0.45},cajaPlana:{m:1,r:0.42,h:0.06},bolsas:{m:4,r:0.35,h:0.45},maleta:{m:9,r:0.33,h:0.35},casco:{m:1.3,r:0.16,h:0.26},carenado:{m:0.6,r:0.25,h:0.12},
+  crate:{m:14,r:0.5,h:0.7},ropa:{m:0.8,r:0.3,h:0.06},rama:{m:3,r:0.5,h:0.2},pale:{m:20,r:0.6,h:0.15},papelera:{m:6,r:0.25,h:0.8,fixed:true},
+  cont_resta:{m:140,r:0.95,h:1.6,cont:true},cont_organica:{m:140,r:0.95,h:1.6,cont:true},cont_envasos:{m:110,r:0.95,h:1.6,cont:true},cont_paper:{m:110,r:0.95,h:1.6,cont:true},cont_vidre:{m:160,r:0.95,h:1.6,cont:true}};
+const DYN=[];let dynFrame=0;const DYN_MAX=70;
+const _dv1=new V3(),_dv2=new V3(),_dq1=new Q4(),_de=new THREE.Euler();
+// listas de instancias cerca de un punto (zona normal y zonas de interior)
+function dynLists(name,x,z){const I=INST[name];if(!I||!I.byKey)return[];const out=[];const k1=Math.floor((x-XMIN)/CHUNK)+'_'+Math.floor((z-ZMIN)/CHUNK);if(I.lists.has(k1))out.push([k1,I.lists.get(k1)]);
+  const ix=Math.floor((x-XMIN)/CHUNKI),iz=Math.floor((z-ZMIN)/CHUNKI);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const k=(ix+a)+'_'+(iz+b)+'_i';if(I.lists.has(k))out.push([k,I.lists.get(k)]);}return out;}
+function dynEach(x,z,rad,fn){for(const name in DYNDEF){const D=DYNDEF[name];if(D.fixed)continue;for(const [key,L] of dynLists(name,x,z))for(let i=0;i<L.length;i++){const t=L[i];if(t.dyn||t[4]<0.01)continue;const dx=t[0]-x,dz=t[2]-z;if(dx*dx+dz*dz<(rad+D.r)*(rad+D.r)&&fn(name,key,i,t,D)===true)return;}}}
+// pasa una instancia a cuerpo con física
+function dynActivate(name,key,i,vel){const I=INST[name],t=I.lists.get(key)[i],D=DYNDEF[name];t.dyn=1;hideInst([name,key,i]);
+  let mat=I.mat;if(t[10]!==undefined){mat=I.mat.clone();mat.color=new THREE.Color(t[10]);}
+  const o=new THREE.Mesh(I.geo,mat);o.position.set(t[0],t[1],t[2]);o.quaternion.setFromEuler(_de.set(t[9]||0,t[3],t[11]||0,'YXZ'));o.scale.set(t[4],t[5],t[6]);scene.add(o);
+  if(t.vol){removeVol(t.vol);t.vol=null;}
+  const b={o,v:(vel||new V3()).clone(),av:new V3(),m:D.m,r:D.r,h:D.h,cont:!!D.cont,rest:0,held:null,name};DYN.push(b);
+  if(DYN.length>DYN_MAX){const k=DYN.findIndex(d=>d.rest>3&&!d.held);if(k>=0){scene.remove(DYN[k].o);DYN.splice(k,1);}}return b;}
+function dynImpulse(b,vx,vy,vz){b.v.x+=vx;b.v.y+=vy;b.v.z+=vz;b.rest=0;const s=Math.hypot(vx,vz)*(b.cont?0.3:2.2)/Math.max(0.3,b.r);b.av.x+=R(-1,1)*s;b.av.y+=R(-1,1)*s*0.5;b.av.z+=R(-1,1)*s;}
+const _dpp=new V3(),_dpv=new V3();let _dpInit=false;
+function stepDyn(dt,p){dynFrame++;if(p){if(!_dpInit){_dpp.copy(p);_dpInit=true;}_dpv.subVectors(p,_dpp).divideScalar(Math.max(dt,1e-3));_dpv.y=0;if(_dpv.length()>12)_dpv.set(0,0,0);_dpp.copy(p);}
+  // coches en marcha: arrollan lo que pillan (impulso según masas)
+  for(const c of cars){const sp=Math.abs(c.speed||0);if(sp<1.2)continue;const s=Math.sin(c.yaw),co=Math.cos(c.yaw);const vx=s*c.speed+co*(c.vLat||0),vz=co*c.speed-s*(c.vLat||0);const Mc=c.kind==='moto'?180:1200;
+    const hit=(bx,bz,r)=>{const dx=bx-c.x,dz=bz-c.z;const lx=dx*co-dz*s,lz=dx*s+dz*co;return Math.abs(lx)<c.halfW+r&&Math.abs(lz)<c.len/2+r;};
+    dynEach(c.x,c.z,c.len*0.6+2,(name,key,i,t,D)=>{if(!hit(t[0],t[2],D.cont?D.r*1.25+0.35+sp*0.04:D.r*0.8))return;const k=2*Mc/(Mc+D.m);const b=dynActivate(name,key,i);dynImpulse(b,vx*k*0.75,D.cont?0:Math.min(5,sp*0.35)+1,vz*k*0.75);c.speed*=1-Math.min(0.5,D.m/(Mc+D.m));if(D.m>20)sfx('crash',clamp(sp/15,0.2,0.8)*volAt(t[0],t[2],40));});
+    for(const b of DYN){if(b.held)continue;const q=b.o.position;if(Math.abs(q.x-c.x)>4||Math.abs(q.z-c.z)>4||!hit(q.x,q.z,b.r*0.8))continue;const rel=Math.hypot(vx-b.v.x,vz-b.v.z);if(rel<0.8)continue;const k=2*Mc/(Mc+b.m);
+      dynImpulse(b,(vx-b.v.x)*k*0.6,b.cont?0:Math.min(3,rel*0.25),(vz-b.v.z)*k*0.6);c.speed*=1-Math.min(0.4,b.m/(Mc+b.m));}}
+  // a pie: lo ligero se patea al pasar
+  if(dynFrame%2===0&&!P.inCar&&p){const pv=_dpv;const spd=Math.hypot(pv.x||0,pv.z||0);if(spd>0.6){dynEach(p.x,p.z,0.35,(name,key,i,t,D)=>{if(D.m>5)return;const b=dynActivate(name,key,i);dynImpulse(b,pv.x*1.3/Math.sqrt(D.m),0.8,pv.z*1.3/Math.sqrt(D.m));sfx('thud',0.25);return true;});
+    for(const b of DYN){if(b.held||b.m>5)continue;const q=b.o.position;const dx=q.x-p.x,dz=q.z-p.z;if(dx*dx+dz*dz<(0.35+b.r)**2&&b.rest>0.2)dynImpulse(b,pv.x*1.2/Math.sqrt(b.m),0.6,pv.z*1.2/Math.sqrt(b.m));}}}
+  // integración
+  for(let i=DYN.length-1;i>=0;i--){const b=DYN[i];const o=b.o;if(b.held){continue;}if(b.rest>1.5)continue;
+    b.v.y-=9.81*dt;const ox=o.position.x,oz=o.position.z;o.position.addScaledVector(b.v,dt);
+    // paredes y muebles: rebota y pierde energía
+    _cp.x=o.position.x;_cp.z=o.position.z;if(collide(_cp,b.r*0.7,o.position.y+0.05,o.position.y+Math.max(0.1,b.h))){const nx=_cp.x-o.position.x,nz=_cp.z-o.position.z,l=Math.hypot(nx,nz)||1;o.position.x=_cp.x;o.position.z=_cp.z;const vn=(b.v.x*nx+b.v.z*nz)/l;if(vn<0){b.v.x-=1.4*vn*nx/l;b.v.z-=1.4*vn*nz/l;}if(Math.abs(vn)>2&&b.m>5)sfx('thud',clamp(Math.abs(vn)/6,0.2,0.8)*volAt(ox,oz,20));}
+    const gy=surfY(o.position.x,o.position.z,o.position.y-0.2)+0.005;
+    if(o.position.y<=gy){o.position.y=gy;if(b.v.y<-1.2&&b.m>1.5)sfx('thud',clamp(-b.v.y/6,0.15,0.8)*volAt(o.position.x,o.position.z,18));b.v.y=b.v.y<-0.5?-b.v.y*(b.cont?0.1:0.28):0;
+      const fr=Math.pow(b.cont?0.35:0.05,dt);b.v.x*=fr;b.v.z*=fr;b.av.multiplyScalar(Math.pow(0.02,dt));
+      // asentarse: vuelve a apoyarse plano (se conserva el rumbo)
+      _de.setFromQuaternion(o.quaternion,'YXZ');const fx=Math.abs(_de.x)>0.8?Math.sign(_de.x)*Math.PI/2:0,fz=b.cont?0:(Math.abs(_de.z)>0.8?Math.sign(_de.z)*Math.PI/2:0);_dq1.setFromEuler(_de.set(fx,_de.y,fz,'YXZ'));o.quaternion.slerp(_dq1,Math.min(1,dt*4));
+      if(Math.hypot(b.v.x,b.v.z)<0.06&&Math.abs(b.v.y)<0.05)b.rest+=dt;else b.rest=0;}
+    else b.rest=0;
+    if(b.av.lengthSq()>1e-4){_dq1.setFromEuler(_de.set(b.av.x*dt,b.av.y*dt,b.av.z*dt));o.quaternion.multiply(_dq1);}
+    if(b.rest>1.5&&b.cont){const s=o.scale;b.vol=addOBB(o.position.x,o.position.z,0.95*s.x,0.82*s.z,_de.setFromQuaternion(o.quaternion,'YXZ').y,o.position.y,o.position.y+1.6);}}}
+// el coche choca con algo: si es un contenedor u objeto suelto, se lo lleva por delante en vez de frenar en seco
+function dynCarBlock(car,nx,nz){const s=Math.sin(car.yaw),co=Math.cos(car.yaw);const sp=Math.abs(car.speed);const vx=s*car.speed,vz=co*car.speed;const Mc=car.kind==='moto'?180:1200;let any=false;
+  dynEach(nx,nz,car.len*0.6+2,(name,key,i,t,D)=>{const dx=t[0]-nx,dz=t[2]-nz;const lx=dx*co-dz*s,lz=dx*s+dz*co;if(Math.abs(lx)>car.halfW+D.r*1.3+0.2||Math.abs(lz)>car.len/2+D.r*1.3+0.6)return;
+    const k=2*Mc/(Mc+D.m);const b=dynActivate(name,key,i);dynImpulse(b,vx*k*0.7,D.cont?0.3:Math.min(5,sp*0.35)+1,vz*k*0.7);car.speed*=1-Math.min(0.5,D.m/(Mc+D.m));any=true;if(D.m>20)sfx('crash',clamp(sp/15,0.2,0.8)*volAt(t[0],t[2],40));});
+  return any;}
+// coger con la mano (VR): devuelve el cuerpo agarrado
+function dynGrab(handP){let best=null,bd=0.32;for(const b of DYN){if(b.held||b.m>16)continue;const d=b.o.position.distanceTo(handP)-b.r*0.5;if(d<bd){bd=d;best=b;}}
+  if(!best){let pick=null,pd=0.45;dynEach(handP.x,handP.z,0.4,(name,key,i,t,D)=>{if(D.m>16||D.cont)return;const d=Math.hypot(t[0]-handP.x,t[2]-handP.z,(t[1]+D.h*0.5)-handP.y);if(d<pd){pd=d;pick=[name,key,i];}});if(pick)best=dynActivate(...pick);}
+  if(best){best.held=true;best.rest=0;}return best;}
+function dynHold(b,handP,handQ,dt){const o=b.o;b.v.subVectors(handP,o.position).divideScalar(Math.max(dt,0.008));o.position.copy(handP);if(handQ)o.quaternion.slerp(handQ,Math.min(1,dt*12));}
+function dynThrow(b,vel){b.held=false;b.v.copy(vel).multiplyScalar(1/Math.max(1,Math.sqrt(b.m)*0.5));b.av.set(R(-6,6),R(-6,6),R(-6,6));b.rest=0;}

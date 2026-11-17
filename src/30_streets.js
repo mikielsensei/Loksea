@@ -155,7 +155,7 @@ function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const
   if(Math.random()<0.28&&bicingCount<6){plan.push({k:'bicing',at:a+L*R(0.05,0.15),len:16});bicingCount++;}
   plan.sort((x,y)=>x.at-y.at);let cur=a;
   for(const it of plan){fillCars(s,cur,it.at-1,dm,yawAlong,B.dir);cur=it.at+it.len+1;
-    if(it.k==='cont'){const z0=it.at;CONTSET.forEach((ty,k)=>{const q=SP(s,z0+1+k*2.05+1,dm);const y=H(q[0],q[1]);addInst('cont_'+ty,q[0],y,q[1],facing);solidBox(q[0],q[1],0.95,0.82,facing,y,y+1.8);});
+    if(it.k==='cont'){const z0=it.at;CONTSET.forEach((ty,k)=>{const q=SP(s,z0+1+k*2.05+1,dm);const y=H(q[0],q[1]);const ref=addInst('cont_'+ty,q[0],y,q[1],facing);const v=solidBox(q[0],q[1],0.95,0.82,facing,y,y+1.8);INST[ref[0]].lists.get(ref[1])[ref[2]].vol=v;});
       const q=SP(s,z0+it.len/2,p0+0.05),q2=SP(s,z0+it.len/2,p1-0.05);paintRect(q[0],q[1],ua[0],ua[1],it.len,0.14,PAINTY);paintRect(q2[0],q2[1],ua[0],ua[1],it.len,0.14,PAINTY);
       for(const e of [z0,z0+it.len]){const qq=SP(s,e,dm);paintRect(qq[0],qq[1],ua[1],ua[0],p1-p0,0.14,PAINTY);}
       {const qc=SP(s,z0+it.len/2,dm);lootSpot(qc[0],qc[1],H(qc[0],qc[1]),'bin','los contenedores');}

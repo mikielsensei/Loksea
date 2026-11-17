@@ -544,6 +544,7 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
   car.pitchV+=((clamp(car.lonS*0.0035,-0.035,0.035)-car.pitch)*42-car.pitchV*12.5)*dt;car.pitch+=car.pitchV*dt;car.pitch=clamp(car.pitch,-0.05,0.05);
   car.yaw+=car.yr*dt;const s=Math.sin(car.yaw),c=Math.cos(car.yaw);const vx=s*car.speed+c*car.vLat,vz=c*car.speed-s*car.vLat;const nx=car.x+vx*dt,nz=car.z+vz*dt;let blocked=false;
   for(const off of [-1.5,0,1.5]){const pt={x:nx+s*off,z:nz+c*off};if(collide(pt,car.halfW+0.05,car.y+0.4,car.y+1.3)){blocked=true;break;}}
+  if(blocked&&Math.abs(vs)>1.5&&dynCarBlock(car,nx,nz))blocked=false;// era un contenedor o algo suelto: sale despedido
   for(const o of cars){if(o===car)continue;const dn=Math.hypot(o.x-nx,o.z-nz);if(dn<3.4&&dn<Math.hypot(o.x-car.x,o.z-car.z)){blocked=true;o.speed+=vs*0.35;o.vLat+=car.vLat*0.3;}}
   if(blocked){const hit=Math.hypot(vs,car.vLat);if(hit>7&&player){sfx('crash',clamp(hit/20,0.3,1));damagePlayer(hit*0.8,'accidente');toast('¡Choque!');}car.speed=-vs*0.25;car.vLat*=-0.2;car.yr*=0.3;car.rollV+=clamp(car.vLat*0.04,-0.15,0.15);car.pitchV-=clamp(vs*0.012,-0.25,0.25);}else{car.x=nx;car.z=nz;}
   if(!car.fixedY)car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
@@ -650,7 +651,8 @@ function updateWeapons(dt){const vrOn=inVR&&!!gripBySide.right;
       if(P.weapon==='pistola'&&G.mag>=0){vrGun.userData.magwell.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.09){leftHold={n:ejectMag(false),armed:false};haptic(srcL,0.6,40);}}
       if(!leftHold&&P.weapon==='pistola'){vrGun.userData.slideRear.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.09){vrGun.worldToLocal(_v4.copy(handP));slideGrab={z0:_v4.z,off:0,done:false};}}
       if(!leftHold&&!slideGrab&&showBelt){for(let i=0;i<2;i++){beltMags[i].getWorldPosition(_v4);if(BELT[i]!==null&&handP.distanceTo(_v4)<0.16){leftHold={n:BELT[i],armed:true};BELT[i]=null;sfx('click');haptic(srcL,0.5,30);break;}}}
-      if(!leftHold&&!slideGrab){for(const d of dropped){if(d.rounds===undefined)continue;if(d.o.position.distanceTo(handP)<0.18){leftHold={n:d.rounds,armed:true};d.t=0;sfx('click');break;}}}}
+      if(!leftHold&&!slideGrab){for(const d of dropped){if(d.rounds===undefined)continue;if(d.o.position.distanceTo(handP)<0.18){leftHold={n:d.rounds,armed:true};d.t=0;sfx('click');break;}}}
+      if(!leftHold&&!slideGrab&&!handObj.left){lhr.wristObj.getWorldPosition(_v4);const b=dynGrab(_v4);if(b){handObj.left=b;haptic(srcL,0.5,30);}}}
     if(leftHold&&P.weapon==='pistola'&&G.mag<0){vrGun.userData.magwell.getWorldPosition(_v4);const dm=handP.distanceTo(_v4);if(dm>0.14)leftHold.armed=true;if(leftHold.armed&&dm<0.06){insertMag(leftHold.n);leftHold=null;haptic(srcL,0.8,40);}}
     if(slideGrab&&IN.lgHeld){vrGun.worldToLocal(_v4.copy(handP));slideGrab.off=clamp(_v4.z-slideGrab.z0,0,0.045);if(slideGrab.off>0.032&&!slideGrab.done){slideGrab.done=true;rack();}}
     if(!IN.lgHeld){if(leftHold){const m=makeMag();m.userData.bullet.visible=m.userData.tip.visible=leftHold.n>0;leftMag.getWorldQuaternion(m.quaternion);
@@ -658,6 +660,12 @@ function updateWeapons(dt){const vrOn=inVR&&!!gripBySide.right;
     // velocidad de la mano izquierda para lanzar el cargador
     lhr.prevP=lhr.prevP||handP.clone();lhr.vel=(lhr.vel||new V3()).subVectors(handP,lhr.prevP).divideScalar(Math.max(dt,0.008));lhr.prevP.copy(handP);}
   else if(leftHold&&!IN.lgHeld){addItem('balas',leftHold.n,'gift');leftHold=null;}}
+const handObj={left:null,right:null},_hpv={left:new V3(),right:new V3()},_hpp={left:new V3(),right:new V3()};
+// objetos cogidos con la mano: siguen a la muñeca y al soltar el grip salen con la velocidad de la mano
+function updateHandObjs(dt){for(const side of ['left','right']){const hr=hands[side];if(!hr||!hr.handRoot.parent||!inVR)continue;hr.wristObj.getWorldPosition(_v4);_hpv[side].subVectors(_v4,_hpp[side]).divideScalar(Math.max(dt,0.008));_hpp[side].copy(_v4);
+    const held=side==='left'?IN.lgHeld:IN.rgHeld;const down=side==="left"?false:IN.use;
+    if(side==='right'&&!handObj.right&&down&&P.weapon==='manos'&&!P.inCar){const b=dynGrab(_v4);if(b){handObj.right=b;haptic(srcR,0.5,30);}}
+    const b=handObj[side];if(!b)continue;if(!held||P.inCar){dynThrow(b,_hpv[side]);handObj[side]=null;continue;}hr.wristObj.getWorldQuaternion(_q);dynHold(b,_v4,_q,dt);}}
 function updateHands(){for(const side of ['left','right']){const hr=hands[side];if(!hr||!hr.handRoot.parent)continue;const gp=side==='left'?padL:padR;
     const bv=i=>gp&&gp.buttons[i]?gp.buttons[i].value:0,tch=i=>!!(gp&&gp.buttons[i]&&(gp.buttons[i].touched||gp.buttons[i].pressed));const c=hr.curl;const thumb=(tch(3)||tch(4)||tch(5))?0.85:0.3;
     if(side==='right'&&P.weapon!=='manos'&&!P.inCar){c.middle=c.ring=c.pinky=1;c.thumb=P.weapon==='pistola'?1.0:0.85;c.index=P.weapon==='pistola'?(tch(0)?0.62+bv(0)*0.3:0.42):0.95;}
@@ -728,7 +736,7 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   for(const c of cars)if(c!==P.inCar&&(Math.abs(c.speed)>0.05||Math.abs(c.vLat||0)>0.05||Math.abs(c.rollV||0)>0.01)){c.speed*=Math.pow(0.3,dt);c.vLat=(c.vLat||0)*Math.pow(0.2,dt);c.steer=0;moveCar(c,dt,false);}
   chunkT-=dt;if(chunkT<=0){chunkT=0.4;const VD=(S.view||3000)+40;for(const c of chunks.values()){const v=Math.hypot(c.cx-p.x,c.cz-p.z)<(c.inner?(inVR?60:75):Math.min(VD,inVR?2000:3000));for(const m of c.meshes)m.visible=v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
     for(const d of DOORS)d.g.visible=Math.abs(d.hx-p.x)<38&&Math.abs(d.hz-p.z)<38;for(const pn of PANES)pn.m.visible=Math.abs(pn.cx-p.x)<45&&Math.abs(pn.cz-p.z)<45;}
-  updateWeapons(dt);updateHands();placeHud();updateBody(dt);stepDropped(dt);
+  updateWeapons(dt);updateHands();updateHandObjs(dt);placeHud();updateBody(dt);stepDropped(dt);stepDyn(dt,rig.position);
   WTIME.value=clockT;if(S.gore)for(const h of H_){if(!h.active||!h.holder.visible)continue;if(h.woundI)updateWoundGravity(h);if(!h.bleeds||!h.bleeds.length)continue;for(const b of h.bleeds){if(clockT>b.until)continue;b.t-=dt;if(b.t<=0){b.t=R(0.12,0.35)*(1+(clockT-(b.until-8))*0.1);_v.copy(h.sim[b.i]).add(b.o);spray(_v,_v1.set(R(-0.1,0.1),-0.3,R(-0.1,0.1)),0.5);}}}
   for(let i=0;i<parts.length;i++){const q=parts[i];if(!q)continue;if(q.life<=0){blood.setMatrixAt(i,ZM);continue;}q.life-=dt;
     if(!q.ground){q.v.y-=9.81*dt;q.v.multiplyScalar(1-dt*0.6);q.p.addScaledVector(q.v,dt);const gy=surfY(q.p.x,q.p.z,q.p.y)+0.004;
@@ -780,7 +788,7 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}

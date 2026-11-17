@@ -74,4 +74,4 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 10. Daño melee con cortes/mutilación, interiores de bares, balcones variados, NPC con rutinas.
 
 - Pistola: revisar en VR que la empuñadura encaje con las manos nuevas (no comprobado en render plano).
-- Peso y gravedad para TODO (mobiliario y objetos con física) pensando en coger y lanzar cosas del suelo.
+- (v9.3 `61_dyn.js`) Peso y gravedad: cajas, bolsas, maletas, cascos, carenados, palés, ramas y contenedores pasan a cuerpos con física al arrollarlos (impulso por masas), los ligeros se patean al andar, y en VR se cogen con la mano izquierda (o la derecha si vas sin arma) y se lanzan con la velocidad de la mano. Falta: que las balas los empujen, y coger con la mano real (no la muñeca).
