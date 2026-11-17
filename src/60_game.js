@@ -743,7 +743,7 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   const dark=P.sleeping?0.92:(!P.alive?0.75:blackT>0?0.95:0);fxSphere.material.color.setHex(dark>0?0x000000:0x990000);
   fxSphere.material.opacity=Math.max(dark,hurtFx+(P.hp<25?0.12+Math.sin(clockT*4)*0.05:0)+(P.sick>50?0.05:0));fxSphere.visible=fxSphere.material.opacity>0.01;
   fxDiv.style.background=dark>0?'#000':'#900';fxDiv.style.opacity=inVR?0:fxSphere.material.opacity;
-  if(!P.alive){P.deadT+=dt;if(P.deadT>6){resetPlayer();toast('Vuelves a empezar junto al Mercat del Raval.',4);}}
+  if(!P.alive){P.deadT+=dt;if(P.deadT>6){resetPlayer();toast('Vuelves a empezar junto al Mercat del Ninot.',4);}}
   if(toastT>0){toastT-=dt;if(toastT<=0){toastDiv.style.display='none';toastPlane.visible=false;}}
   if(panel&&inVR){camera.getWorldPosition(_v);pnlMesh.lookAt(_v);}
   promptT-=dt;if(promptT<=0){promptT=0.2;const it=P.alive?findInteract():null;prompt=it?it.text:'';}

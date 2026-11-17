@@ -158,7 +158,7 @@ defInst('busPlate',(()=>{const a=new THREE.PlaneGeometry(0.42,0.84);a.translate(
     p.push(...head(sg*0.24,2.75,0.02),[bx(0.2,0.05,0.06,sg*0.12,3.05,0),PO],[bx(0.2,0.05,0.06,sg*0.12,2.45,0),PO],...ped(-sg*0.17,2.0,0,-sg*Math.PI/2),[bx(0.1,0.05,0.06,-sg*0.06,2.0,0),PO]);
     defInst(sg>0?'semaforBR':'semaforBL',mkG(p),paintMat,1,1,false);}}
 // placa de dirección de calle (en el poste del semáforo): banda azul con el nombre y flecha con la numeración
-const VSTR_N=['C. Casanova','C. Muntaner','C. Aribau','C. Enric Granados','C. Balmes','Rbla. Catalunya'],HSTR_N=['C. Provença','C. Mallorca','C. València','C. Aragó','C. Consell de Cent'];
+const VSTR_N=['C. Villarroel','C. Casanova','C. Muntaner','C. Aribau','C. Enric Granados','C. Balmes','Rbla. Catalunya'],HSTR_N=['C. Provença','C. Mallorca','C. València','C. Aragó','C. Consell de Cent'];
 const texStPlate=cTex(1024,512,(g)=>{const W=256,Hh=64;let k=0;for(const s of [...VSTR_N,...HSTR_N])for(const dir of [1,-1]){const x=(k%4)*W,y=Math.floor(k/4)*Hh;k++;
   g.fillStyle='#f4f4f2';g.fillRect(x+2,y+2,W-4,Hh-4);g.fillStyle='#1b3d7a';g.fillRect(x+2,y+2,W-4,Hh*0.5);g.fillStyle='#fff';g.textAlign='center';g.textBaseline='middle';
   let fs=22;g.font=`bold ${fs}px Arial,sans-serif`;while(g.measureText(s).width>W-20&&fs>11){fs--;g.font=`bold ${fs}px Arial,sans-serif`;}g.fillText(s,x+W/2,y+Hh*0.27);

@@ -10,12 +10,12 @@ defInst('mesa',mkG([[bx(1.8,0.05,0.8,0,0.75,0),0x8a6a42],[bx(0.05,0.75,0.05,-0.8
 defInst('olla',mkG([[cy(0.25,0.22,0.3,0,0.15,0,12),0x444444],[cy(0.3,0.3,0.03,0,0.0,0,12),0x222222]]),metalMat,1,1,true);
 defInst('canasta',mkG([[cy(0.06,0.06,3.0,0,1.5,0,8),0x555555],[bx(1.2,0.9,0.05,0,3.2,0.2),0xf0f0f0],[tor(0.23,0.015,0,2.95,0.5,0,12),0xd85a20]]),metalMat,1,1,true);
 // --- plan: qué manzanas tienen base y en qué lado está la entrada ---
-const BASEPLAN=[{name:'Mercat del Ninot',type:'good',bi:0,bj:1,side:0,kind:'mercat'},{name:"Escola de l'Eixample",type:'good',bi:3,bj:3,side:2,kind:'escola'}];
+const BASEPLAN=[{name:'Mercat del Ninot',type:'good',bi:0,bj:0,side:2,kind:'mercat'},{name:"Escola de l'Eixample",type:'good',bi:4,bj:3,side:2,kind:'escola'}];
 function planSupers(){const brands=SUPERS.slice();const spots=[];
   for(let i=0;i<NXS-1;i++)for(let j=0;j<NZS-1;j++)for(let k=0;k<4;k++)spots.push([i,j,k]);
   for(let n=spots.length-1;n>0;n--){const m=(Math.random()*(n+1))|0;[spots[n],spots[m]]=[spots[m],spots[n]];}
   // Mercadona de los bandidos: en Aragó (lado sur de la manzana 1,2)
-  SUPERPLAN.set('1,2,2',{brand:SUPERS[0],state:'broken',bandit:true,lotIdx:1,w:16});brands.shift();
+  SUPERPLAN.set('2,2,2',{brand:SUPERS[0],state:'broken',bandit:true,lotIdx:1,w:16});brands.shift();
   let used=0;for(const [i,j,k] of spots){if(used>=brands.length)break;if(BASEPLAN.some(b=>b.bi===i&&b.bj===j))continue;const key=i+','+j+','+k;if(SUPERPLAN.has(key))continue;
     const b=brands[used++];SUPERPLAN.set(key,{brand:b,state:pick(['broken','broken','glass','boarded','half']),lotIdx:0,w:R(12,17)});}}
 // patio de manzana con muros y ventanas

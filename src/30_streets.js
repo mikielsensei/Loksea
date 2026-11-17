@@ -2,7 +2,7 @@
 // EIXAMPLE: CALLES REALES, ACERAS DE PANOT, BORDILLOS DE GRANITO, PINTURA VIAL Y MOBILIARIO
 // =====================================================================
 // Calles verticales (a lo largo de z, de Llobregat a Besòs) y horizontales (paralelas al mar)
-const VSTR=[{n:'C. de Casanova',w:20,dir:-1},{n:'C. de Muntaner',w:20,dir:1,bus:1},{n:"C. d'Aribau",w:20,dir:-1},{n:"C. d'Enric Granados",w:20,type:'ped'},{n:'C. de Balmes',w:20,dir:1,bus:1},{n:'Rambla de Catalunya',w:30,type:'rambla'}];
+const VSTR=[{n:'C. de Villarroel',w:20,dir:1},{n:'C. de Casanova',w:20,dir:-1},{n:'C. de Muntaner',w:20,dir:1,bus:1},{n:"C. d'Aribau",w:20,dir:-1},{n:"C. d'Enric Granados",w:20,type:'ped'},{n:'C. de Balmes',w:20,dir:1,bus:1},{n:'Rambla de Catalunya',w:30,type:'rambla'}];
 const HSTR=[{n:'C. de Provença',w:20,dir:1},{n:'C. de Mallorca',w:20,dir:-1,bus:1},{n:'C. de València',w:20,dir:1},{n:"C. d'Aragó",w:30,dir:-1,type:'wide',bus:1},{n:'C. del Consell de Cent',w:20,type:'superilla'}];
 for(const s of VSTR){s.ax='v';s.sw=s.type==='rambla'?4.5:s.type==='ped'||s.type==='superilla'?0:5;}
 for(const s of HSTR){s.ax='h';s.sw=s.type==='ped'||s.type==='superilla'?0:5;}

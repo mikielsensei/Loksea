@@ -53,3 +53,22 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 8. Rutinas de NPC más claras.
 9. Supermercados reales en su sitio (ahora los grandes súper siguen en `SUPERPLAN` aleatorio); interiores de bar; balcones; armas en su sitio.
 10. Ampliar el mapa a más barrios (la cuadrícula real ya está calculada en `w/osm/grid.json`).
+
+## Hecho en v8.3-v8.4 (17-nov, Opus)
+- Noche: niebla negra (`cHazeN`), estrellas con halo de colores y tamaños variados (`starMat`), luna con halo, humo de algunas casas (`setupSmoke`/`stepSmoke` en `37_decay.js`).
+- Coche: cristal sucio/rayado con arcos de limpiaparabrisas (`dirtyGlass`), escobillas y retrovisores.
+- ARREGLADO: "puerta invisible" del Ninot = las cajas de colisión de las parcelas (`box()` en `buildSideLot`) estaban giradas 90°. Ahora usan `atan2(nx,nz)`.
+- Nueva columna de manzanas: C. de Villarroel (`NXS=7`, `SX0=-3.5*BP`). Los POIS siguen con i relativo a Casanova (`x=SX0+(i+1)*BP`) y se añadieron 36 comercios reales entre Villarroel y Casanova.
+- El Mercat del Ninot pasa a su manzana real (Villarroel-Casanova / Provença-Mallorca, fachada a Mallorca): `BASEPLAN` bi:0,bj:0,side:2.
+
+## EN CURSO (seguir aquí)
+1. `src/38_ninot.js` (por escribir): mercado real. Edificio exento en la mitad Mallorca de la manzana (74 m x 48 m), 7 naves (central 20 m, alero 11,5 / cumbrera 16,5; 3 laterales de 9 m cada lado, más bajas), naves con cumbrera perpendicular a Mallorca. Fachadas de la nave central (Mallorca y pasaje interior) de ladrillo visto con un enorme vitral en arco (ancho 14, arranque 7,5); laterales con lamas metálicas perforadas blancas (Mateo 2015) y persianas de paradas exteriores abajo. Dos patios a los lados accesibles desde los xamfrans; pasaje interior detrás. Dentro: estructura metálica verde, paradas en dos ejes ortogonales (islas de 7x8 m con 4 paradas, pasillo central de 5 m, vestíbulo de 9 m en Mallorca con el campamento), todo sucio y abandonado. Nombres reales de paradas/bares dentro: Barra Perelló 1898, La Bikineria, Tierra, Cuina El Ninot (excluidos de POIS). En `buildBlock`: saltar lado 2 y esquinas S-E/S-W de esa manzana y recortar lados 1 y 3 en zcut=z1-56. `buildBases`: para kind 'mercat' usar el edificio nuevo, gate en la acera de Mallorca.
+2. Atlas de rótulos LLENO (signN=256): ampliar a 8x48 o 16x32 (SG_ROWS) y revisar memoria.
+3. Coches: balanceo exagerado (se levantan al mínimo giro) → reducir roll/pitch y que dependa de la velocidad, más peso (GTA IV). Peso y gravedad en todo (zombis, mobiliario) pensando en coger y lanzar objetos.
+4. Armas largas de NPC/zombis "dos rectángulos": modelar fusil/escopeta decentes. Pistola coherente con las manos nuevas.
+5. Texturas fotográficas en mangas y ropa del avatar del jugador.
+6. Gasolinera Moeve (antes Cepsa) y Carrefour Express en Casanova-Aragó (lado Villarroel, ahora jugable: POI i≈-0.05, j≈3.15).
+7. Rótulos/escaparates realistas: banderolas (cruz verde farmacia, T estanco), letras 3D, marcos por tipo.
+8. Furgonetas (Berlingo/Kangoo/Citan), coches quemados, motos caídas con restos.
+9. Semáforos en posiciones reales (OSM highway=traffic_signals) y modelo mejor; flechas de carril reales (turn:lanes en ways.json).
+10. Daño melee con cortes/mutilación, interiores de bares, balcones variados, NPC con rutinas.

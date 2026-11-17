@@ -2,8 +2,8 @@
 // MUNDO: Eixample de Barcelona. x = paralelo al mar (este +), z = hacia el mar (+). Sube suave hacia la montaña.
 // =====================================================================
 const BP=133.3;// distancia entre ejes de calles de Cerdà (manzana de 113,3 m + calle de 20 m)
-const NXS=6,NZS=5;// calles jugables
-const SX0=-2.5*BP,SZ0=-2*BP;// eje de la primera calle
+const NXS=7,NZS=5;// calles jugables
+const SX0=-3.5*BP,SZ0=-2*BP;// eje de la primera calle
 const XMIN=SX0-40,XMAX=SX0+(NXS-1)*BP+40,ZMIN=SZ0-40,ZMAX=SZ0+(NZS-1)*BP+40;
 const H=(x,z)=>-z*0.012;
 // =====================================================================

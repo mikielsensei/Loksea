@@ -16,7 +16,7 @@ function textSign(key,text,bg,fg,o={}){return signCell(key,(g,w,h)=>{g.fillStyle
   for(let i=0;i<40;i++){g.fillStyle=`rgba(40,30,20,${R(0.03,0.12)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(4,30),0,7);g.fill();}});}
 // ---------- comercios reales (OpenStreetMap): cada local toma el comercio que hay de verdad en ese punto de la calle ----------
 let POIG=null;const POIUSED=new Set();
-function poiGrid(){POIG=new Map();POIS.forEach((p,k)=>{const x=SX0+p[0]*BP,z=SZ0+p[1]*BP;p.x=x;p.z=z;p.k=k;const key=Math.floor(x/20)+','+Math.floor(z/20);let L=POIG.get(key);if(!L)POIG.set(key,L=[]);L.push(p);});}
+function poiGrid(){POIG=new Map();POIS.forEach((p,k)=>{const x=SX0+(p[0]+1)*BP,z=SZ0+p[1]*BP;p.x=x;p.z=z;p.k=k;const key=Math.floor(x/20)+','+Math.floor(z/20);let L=POIG.get(key);if(!L)POIG.set(key,L=[]);L.push(p);});}
 function realShop(u,cx,cz,ux,uz,nx,nz,w){if(!POIG)poiGrid();let best=null,bd=1e9;const gx=Math.floor(cx/20),gz=Math.floor(cz/20);
   for(let i=gx-1;i<=gx+1;i++)for(let j=gz-1;j<=gz+1;j++){const L=POIG.get(i+','+j);if(!L)continue;for(const p of L){if(POIUSED.has(p.k))continue;const dx=p.x-cx,dz=p.z-cz;const along=dx*ux+dz*uz,inw=-(dx*nx+dz*nz);
       if(Math.abs(along)>w/2+4||inw<-9||inw>24)continue;const d=Math.abs(along)*1.5+Math.abs(inw-3)*0.5;if(d<bd){bd=d;best=p;}}}
