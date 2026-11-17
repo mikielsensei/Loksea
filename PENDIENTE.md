@@ -23,9 +23,19 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 - Comercios reales de OpenStreetMap (`src/33_pois.js`, ~850 puntos, convertidos con la cuadrícula real de cruces); `realShop` asigna a cada local el comercio más cercano y `poiSign` le hace el rótulo (marcas con sus colores, resto con 16 estilos). Atlas de rótulos 8x32 (256 celdas).
 - Mobiliario instanciado por zonas (no global): de 1,75 M a ~0,75 M triángulos.
 
+## Hecho en v7 (17-nov, Opus)
+- Coche de la comunidad (CC0, kaytomasu A02 City → `assets/models/car_panda.glb`) con desgaste (`wearMat`), interior que se monta al subir (`carInterior`), matrículas (`plateGeo`).
+- Volante corregido; manos pegadas al volante/palanca (`handsOnControls`); cambio en H (`shiftByHand`); B = modo disparo en el coche.
+- Atropellos: colisión cuerpo-coche (`carBodies` en `40_chars.js`). Heridas que sangran (`bleeds`), moratones con abolladura para el bate (`HITKIND='blunt'`).
+- Ajustes: giro suave/saltos, distancia de visión, bruma.
+- Ciudad abandonada (`37_decay.js`), coches siniestrados (`placeWrecks`), cadáveres (`placeCorpses`), motos.
+- Báculos (`semaforBR/BL`), placas de dirección (`stPlate`), mupis, interiores por tipo, fachadas gastadas (`weatherMat`), calles pacificadas con rampa y embornales.
+
 ## Pendiente (por orden)
 1. Probar en las Quest lo anterior (no verificado en el visor): manos contra paredes, agarre de puertas con grip, agacharse, HUD.
-2. Coche: probar en las gafas el volante y la física; afinar `grip` y el interior.
+2. Carriles y flechas reales desde OpenStreetMap (`turn:lanes`, `lanes`, `psv:lanes` ya están en `w/osm/ways.json`).
+2b. Manos con textura realista de piel (esperando fotos del usuario).
+2c. Cruce Casanova-Aragó idéntico (gasolinera Cepsa con Carrefour Express en la esquina, carril bici).
 3. Bicing montable (manillar con los dos grips).
 4. Señales del suelo de Barcelona (flechas macizas, pintura limpia): `arrowPaint`, `texPaint` en `30_streets.js`.
 5. Rótulos con más variedad y tipografías; placas de calle de mármol en la pared; escaparates y bares por dentro; mercado tipo Boqueria.
