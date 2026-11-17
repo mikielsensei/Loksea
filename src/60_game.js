@@ -617,6 +617,7 @@ function updateSky(){const h=hourF();const ang=(h-6)/24*Math.PI*2;const sy=Math.
 // =====================================================================
 // BUCLE PRINCIPAL
 // =====================================================================
+const SMALLI=new Set(['bolsas','caja2','cajaPlana','ropa','maleta','colchon','rama','paper','leafLitter','weed','maceta','laundry','ac','shards','casco','carenado','graffiti','moto','motoT','motoN','motoX','bicingBike','papelera','pilona','prodBox','prodCan','prodBottle','fruit','terrassa','tabure','embornal','plaque','plaqueSlab','buzzer','vado','banCreu','banEstanc','banBirra','cajero']);
 let started=false,inVR=false,clockT=0,last=performance.now()/1000,hudT=0,promptT=0,frameNo=0,chunkT=0;
 const frustum=new THREE.Frustum(),_pm=new M4(),_sph=new THREE.Sphere();
 function updateChars(dt,p){camera.updateMatrixWorld();_pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(_pm);
@@ -744,7 +745,8 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   for(const pl of pools){if(pl.s<pl.max){pl.s+=dt*0.08;pl.m.scale.setScalar(pl.s);}}
   updateChars(dt,p);sepBodies();managePop(p,false);
   for(const c of cars)if(c!==P.inCar&&(Math.abs(c.speed)>0.05||Math.abs(c.vLat||0)>0.05||Math.abs(c.rollV||0)>0.01)){c.speed*=Math.pow(0.3,dt);c.vLat=(c.vLat||0)*Math.pow(0.2,dt);c.steer=0;moveCar(c,dt,false);}
-  chunkT-=dt;if(chunkT<=0){chunkT=0.4;const VD=(S.view||3000)+40;for(const c of chunks.values()){const v=Math.hypot(c.cx-p.x,c.cz-p.z)<(c.inner?(inVR?60:75):Math.min(VD,inVR?2000:3000));for(const m of c.meshes)m.visible=v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
+  chunkT-=dt;if(chunkT<=0){chunkT=0.4;const ff=scene.fog?scene.fog.far:3000;const VD=Math.min((S.view||3000)+40,ff+140);const VS=Math.min(VD,ff*0.8+95);// lo pequeño (basura, macetas, motos...) se corta antes; lo que está tras la niebla no se dibuja
+    for(const c of chunks.values()){const dc=Math.hypot(c.cx-p.x,c.cz-p.z);const v=dc<(c.inner?(inVR?60:75):Math.min(VD,inVR?2000:3000));const vs=v&&dc<VS;for(const m of c.meshes)m.visible=(m.isInstancedMesh&&SMALLI.has(m.userData.name))?vs:v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
     for(const d of DOORS)d.g.visible=Math.abs(d.hx-p.x)<38&&Math.abs(d.hz-p.z)<38;for(const pn of PANES)pn.m.visible=Math.abs(pn.cx-p.x)<45&&Math.abs(pn.cz-p.z)<45;}
   updateWeapons(dt);updateHands();updateHandObjs(dt);placeHud();updateBody(dt);stepDropped(dt);stepDyn(dt,rig.position);
   WTIME.value=clockT;if(S.gore)for(const h of H_){if(!h.active||!h.holder.visible)continue;if(h.woundI)updateWoundGravity(h);if(!h.bleeds||!h.bleeds.length)continue;for(const b of h.bleeds){if(clockT>b.until)continue;b.t-=dt;if(b.t<=0){b.t=R(0.12,0.35)*(1+(clockT-(b.until-8))*0.1);_v.copy(h.sim[b.i]).add(b.o);spray(_v,_v1.set(R(-0.1,0.1),-0.3,R(-0.1,0.1)),0.5);}}}
