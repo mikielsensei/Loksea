@@ -139,9 +139,17 @@ defInst('busPlate',(()=>{const a=new THREE.PlaneGeometry(0.42,0.84);a.translate(
   // peatones (mira hacia el paso, de lado)
   [[2.12,0x6a1410],[1.84,0x0c5028]].forEach(([y,c])=>{p.push([bx(0.2,0.27,0.27,-0.16,y,0),YE],[bx(0.012,0.18,0.18,-0.262,y,0),c],[bx(0.02,0.215,0.215,-0.256,y,0),BK]);});p.push([bx(0.1,0.05,0.08,-0.06,1.98,0),PO]);
   defInst('semafor',mkG(p),paintMat,1,1,false);}
-// moto aparcada (scooter)
-{const p=[[tor(0.22,0.06,0,0.24,0.6,Math.PI/2,12),0x151515],[tor(0.22,0.06,0,0.24,-0.62,Math.PI/2,12),0x151515],[bx(0.34,0.3,0.9,0,0.45,-0.25),0xc8ccd0],[bx(0.36,0.18,0.62,0,0.72,-0.28),0x1a1a1a],
-  [bx(0.3,0.6,0.2,0,0.6,0.42,-0.3),0xc8ccd0],[bx(0.62,0.04,0.04,0,1.12,0.5),0x222222],[cy(0.025,0.025,0.6,0,0.82,0.55,6,-0.3),0x333333],[bx(0.16,0.1,0.05,0,0.95,0.6),0xeeeedd]];
+// moto aparcada: scooter tipo «SH» (lo que más hay en Barcelona); las piezas blancas toman el color de cada moto
+const MOTOCOL=[0xf2f2f0,0xf2f2f0,0x1a1a1c,0x1a1a1c,0x8e9296,0xb01818,0x22325a,0x6a6e72];
+{const W=0xffffff,BK=0x151515,CH=0x9a9ea2;const p=[];
+  for(const z of [-0.6,0.62]){p.push([tor(0.2,0.055,0,0.27,z,Math.PI/2,16),BK],[cy(0.13,0.13,0.07,0,0.27,z,12,0,Math.PI/2),CH]);}
+  p.push([ell(0.17,0.38,0.12,0,0.72,0.42,10),W],// escudo delantero
+    [bx(0.3,0.06,0.5,0,0.4,0.05),BK],[bx(0.32,0.04,0.48,0,0.43,0.05),0x2a2a2a],// plataforma
+    [ell(0.2,0.2,0.48,0,0.62,-0.38,10),W],[ell(0.16,0.07,0.36,0,0.86,-0.3,10),BK],// carenado trasero y asiento
+    [tube([0,0.6,0.5],[0,1.0,0.47],0.03,6),CH],[tube([-0.32,1.04,0.43],[0.32,1.04,0.43],0.014,6),BK],[ell(0.1,0.07,0.07,0,1.0,0.5,8),W],[bx(0.11,0.06,0.03,0,0.97,0.56),0xe8eef2],
+    [tube([0,0.27,0.62],[0,0.62,0.52],0.022,6),CH],[ell(0.09,0.03,0.2,0,0.5,0.62,8),W],// horquilla y guardabarros
+    [tube([0.12,1.04,0.43],[0.2,1.18,0.42],0.008,4),BK],[tube([-0.12,1.04,0.43],[-0.2,1.18,0.42],0.008,4),BK],[bx(0.07,0.04,0.02,0.21,1.19,0.42),BK],[bx(0.07,0.04,0.02,-0.21,1.19,0.42),BK],
+    [bx(0.14,0.05,0.03,0,0.72,-0.86),0xb01010],[cy(0.035,0.04,0.38,0.14,0.36,-0.45,8,Math.PI/2),0x3a3a3a],[tube([0.1,0.12,0.05],[0.16,0.02,-0.05],0.012,4),BK]);
   defInst('moto',mkG(p),paintMat,1,1,false);}
 // parquímetro (àrea verda)
 defInst('parquimetre',mkG([[bx(0.32,1.35,0.22,0,0.67,0),0x5d6266],[bx(0.33,0.12,0.23,0,1.2,0),0x2f9a48],[bx(0.2,0.14,0.02,0,1.0,0.12),0x111111]]),metalMat,1,1,false);

@@ -121,10 +121,12 @@ function buildFacade(lot,seg,units){const{a,b,nx,nz}=seg;const L=Math.hypot(b[0]
         if(Math.random()<0.06)addInst('laundry',x+nx*(bd-0.05),fy+2.0,z+nz*(bd-0.05),yaw);}
       if(Math.random()<0.07)addInst('ac',x+ux*(ww/2+0.5)+nx*0.02,fy+1.6,z+uz*(ww/2+0.5)+nz*0.02,yaw);}}
   // grafitis en la planta baja (en pared y persianas)
-  for(let t=1;t<L-1;t+=R(3,7)){if(Math.random()<0.35){const x=a[0]+ux*t+nx*0.02,z=a[1]+uz*t+nz*0.02;const s=R(1.2,2.4);addInst('graffiti',x,yb+R(0.9,1.8),z,yaw,s,s,1,(Math.random()*16)|0);}}
+  {const occ=units.map(u=>[u.u0-0.12,u.u1+0.12]).sort((p,q)=>p[0]-q[0]);let c0=0.35;const free=[];for(const [o0,o1] of occ){if(o0-c0>0)free.push([c0,o0]);c0=Math.max(c0,o1);}if(L-0.35-c0>0)free.push([c0,L-0.35]);
+    for(const [f0,f1] of free){const fw=f1-f0;if(fw<1.1||Math.random()>0.5)continue;const s=Math.min(R(1.0,2.2),fw-0.15);const t=f0+fw/2+R(-1,1)*(fw-s)/2;const x=a[0]+ux*t+nx*0.02,z=a[1]+uz*t+nz*0.02;addInst('graffiti',x,yb+R(0.5,0.9)+s*0.5,z,yaw,s,s,1,(Math.random()*16)|0);}}
   // planta baja: unidades
   for(const u of units)buildUnit(lot,seg,u,ux,uz,L);
-  lot.facades.push({a,b,nx,nz,L});}
+  lot.facades.push({a,b,nx,nz,L});FACADES.push({a,b,nx,nz,L,yb,gf,F:lot.F,fh:lot.fh,outer:lot.bk.outer});}
+const FACADES=[];
 // ---------- unidades de planta baja: portal, local (persiana / cristal / roto / tapiado), garaje ----------
 function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const yaw=Math.atan2(nx,nz);const mid=(u.u0+u.u1)/2;const cx=a[0]+ux*mid,cz=a[1]+uz*mid;const w=u.u1-u.u0;
   if(u.kind==='shop'&&u.shop&&!u.shop.brand)realShop(u,cx,cz,ux,uz,nx,nz,w);

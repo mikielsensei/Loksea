@@ -423,6 +423,16 @@ function makeCarProc(x,z,yaw,kind){const g=new THREE.Group();const body=new THRE
 function placeCars(){const spots=CARSPOTS.slice();for(let i=spots.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[spots[i],spots[j]]=[spots[j],spots[i]];}
   spots.sort((a,b)=>(b.crash?1:0)-(a.crash?1:0));let n=0;for(const s of spots){if(n>=70)break;if(cars.some(c=>Math.hypot(c.x-s.x,c.z-s.z)<5.2))continue;const c=makeCar(s.x,s.z,s.yaw,'proc');if(s.crash){c.crashed=true;c.fuel=0;}n++;}
   const b=BASES.find(x=>x.type==='good');if(b)makeCar(b.x+8,b.z-30,Math.PI/2,'proc').fuel=55;}
+// coches abandonados y siniestrados en mitad de la calzada (algunos volcados o quemados)
+function placeWrecks(){let n=0;for(let tries=0;tries<120&&n<26;tries++){const v=Math.random()<0.5;const L=v?VSTR:HSTR;const st=pick(L);if(st.type==='ped'||st.type==='superilla')continue;const k=RI(0,(v?NZS:NXS)-2);
+    const a0=(v?HSTR[k]:VSTR[k]).pos+14,a1=(v?HSTR[k+1]:VSTR[k+1]).pos-14;const along=R(a0,a1);const lat=R(-1,1)*(st.w/2-st.sw-1.6);const x=v?st.pos+lat:along,z=v?along:st.pos+lat;
+    if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<5))continue;const wreck=Math.random()<0.35?1:R(0.5,0.85);const c=makeCar(x,z,R(0,6.28),'proc',{wreck});if(!c)continue;
+    const r=Math.random();c.flip=r<0.1?Math.PI:r<0.22?Math.PI/2*(Math.random()<0.5?1:-1):0;if(c.flip){c.g.rotation.z=c.flip;c.g.position.y+=Math.abs(c.flip)>3?1.5:c.halfW;c.y=c.g.position.y;c.fixedY=true;}
+    solidBox(x,z,c.halfW,c.len/2,c.yaw,c.y-0.2,c.y+1.5);n++;}}
+// cadáveres de atrezo repartidos por las calles (caen con física, luego se quedan quietos; se pueden registrar)
+function placeCorpses(){let n=0;for(let tries=0;tries<200&&n<18;tries++){const bk=pick(BLOCKS);if(bk.outer)continue;const e=RI(0,7);const A=bk.cp[e],B=bk.cp[(e+1)%8];const t=Math.random();const c=centroid(bk.bp);
+    let x=A[0]+(B[0]-A[0])*t,z=A[1]+(B[1]-A[1])*t;const dx=x-c[0],dz=z-c[1],l=Math.hypot(dx,dz);const off=R(-2.5,3.5);x+=dx/l*off;z+=dz/l*off;
+    const h=spawnChar('wanderer',x,z,{armed:false});if(!h)continue;h.corpse=true;h.yaw=R(0,6.28);enterPhys(h);die(h,'x');for(let i=0;i<NP;i++){h.prev[i].x-=R(-1,1)*0.02;h.prev[i].z-=R(-1,1)*0.02;}n++;}}
 // volante: se agarra con el grip (una o dos manos) y se gira de verdad; si no, el joystick. La mano se queda pegada al aro mientras lo agarras
 const swGrab={left:null,right:null};const _swl=new V3();
 function steerByHands(car){if(!inVR||!car.swp)return null;let sum=0,n=0;car.swp.updateMatrixWorld(true);
@@ -477,7 +487,7 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
   for(const off of [-1.5,0,1.5]){const pt={x:nx+s*off,z:nz+c*off};if(collide(pt,car.halfW+0.05,car.y+0.4,car.y+1.3)){blocked=true;break;}}
   for(const o of cars){if(o===car)continue;const dn=Math.hypot(o.x-nx,o.z-nz);if(dn<3.4&&dn<Math.hypot(o.x-car.x,o.z-car.z)){blocked=true;o.speed+=vs*0.35;o.vLat+=car.vLat*0.3;}}
   if(blocked){const hit=Math.hypot(vs,car.vLat);if(hit>7&&player){sfx('crash',clamp(hit/20,0.3,1));damagePlayer(hit*0.8,'accidente');toast('¡Choque!');}car.speed=-vs*0.25;car.vLat*=-0.2;car.yr*=0.3;car.rollV+=car.vLat*0.3;car.pitchV-=vs*0.04;}else{car.x=nx;car.z=nz;}
-  car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
+  if(!car.fixedY)car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
   if(Math.abs(car.speed)>2.2)for(const h of H_){if(!h.active)continue;const hx=h.sim[PELVIS].x,hz=h.sim[PELVIS].z;const dx=hx-car.x,dz=hz-car.z;if(dx*dx+dz*dz>9)continue;
     const lx=dx*c-dz*s,lz=dx*s+dz*c;if(Math.abs(lx)<car.halfW+0.2&&Math.abs(lz)<car.len/2+0.1&&clockT-h.lastHitT>0.4){const sp=Math.abs(car.speed);
       _imp.set(s*car.speed,0,c*car.speed).multiplyScalar(1.15);_imp.y=1+sp*0.12;_e2.copy(h.sim[LKNEE]);hitChar(h,'body',sp*5,_imp,LKNEE,player?'player':'car',_e2,_v.set(s,0,c));applyImp(h,_imp.set(s*car.speed*0.9,1+sp*0.1,c*car.speed*0.9),RKNEE);applyImp(h,_imp.set(s*car.speed*0.25,sp*0.18,c*car.speed*0.25),CHEST);h.k=0;
@@ -671,7 +681,7 @@ const startEl=document.getElementById('start'),vrmsg=document.getElementById('vr
 let worldReady=false;
 function enableStart(){if(!modelsReady)return;bflat.disabled=false;bvr.disabled=!navigator.xr;}
 function begin(vr){initAudio();started=true;startEl.style.display='none';gameMin=S.startHour*60;
-  if(!worldReady){worldReady=true;setupBody();placeCars();populateNPCs();}
+  if(!worldReady){worldReady=true;setupBody();placeCars();placeWrecks();populateNPCs();placeCorpses();}
   resetPlayer();camera.getWorldPosition(camW);managePop(camW,true);
   if(!vr){hudC.style.display='block';document.getElementById('cross').style.display='block';if(isTouch){touchUI.style.display='block';document.querySelectorAll('.mn').forEach(b=>b.style.display='block');}}
   toast('Día 1. Eixample de Barcelona. Al lado tienes el Mercat del Ninot: una base de supervivientes. Habla con su líder.',7);}

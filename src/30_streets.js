@@ -135,10 +135,14 @@ function arrowPaint(cx,cz,ux,uz){const vx=-uz,vz=ux;paintRect(cx-ux*0.9,cz-uz*0.
 const CONTSET=['resta','resta','organica','envasos','paper','vidre'];
 let bicingCount=0;
 function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const dm=(p0+p1)/2;const yawAlong=s.ax==='v'?0:Math.PI/2;const facing=s.ax==='v'?(side<0?Math.PI/2:-Math.PI/2):(side<0?0:Math.PI);
-  let a=a0+16;const end=a1-16;
+  let a=a0+16;let end_=a1-16;
   // zona de carga y descarga junto al xamfrà (zigzag amarillo)
   {const q=SP(s,a0+11,dm);paintRect(q[0],q[1],ua[0],ua[1],6,0.12,PAINTY);for(let t=0;t<6;t+=1.2){const qq=SP(s,a0+8.6+t,dm);paintRect(qq[0],qq[1],ua[0],ua[1],1.2,0.1,PAINTY);}}
-  const plan=[];const L=end-a;
+  // aparcamiento de motos en la calzada (rayas blancas) junto al cruce del otro extremo, lleno de motos en batería
+  if(Math.random()<0.75){const e0=a1-22,e1=a1-15;for(let t=e0;t<=e1+0.01;t+=0.9){const q=SP(s,t,dm);paintRect(q[0],q[1],ua[1],ua[0],p1-p0-0.2,0.1,PAINTW);}
+    for(let t=e0+0.45;t<e1;t+=0.9){if(Math.random()<0.75){const q=SP(s,t,dm+R(-0.1,0.1));const fallen=Math.random()<0.08;const yb=H(q[0],q[1]);addInst('moto',q[0],yb+(fallen?0.22:0),q[1],facing+R(-0.15,0.15),1,1,1,0,0,fallen?1.45:0,pick(MOTOCOL));if(!fallen)solidBox(q[0],q[1],0.3,0.9,facing,yb,yb+1.1);}}end_=e0-1;}
+  const plan=[];
+  const L=end_-a;
   // contenedores en mitad del tramo (en la calzada, con caja amarilla)
   plan.push({k:'cont',at:a+L*R(0.25,0.6),len:CONTSET.length*2.05+1});
   if(Math.random()<0.28&&bicingCount<6){plan.push({k:'bicing',at:a+L*R(0.05,0.15),len:16});bicingCount++;}
@@ -151,9 +155,9 @@ function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const
       if(Math.random()<0.5){const qq=SP(s,z0+R(1,it.len-1),dm+R(-0.5,0.5)*side+side*1.6);addInst('bolsa',qq[0],H(qq[0],qq[1]),qq[1],R(0,6));}}
     else if(it.k==='bicing'){const z0=it.at;const q=SP(s,z0+1,dm);put('bicingTotem',q[0],q[1],facing+Math.PI,true,0.3,0.15,2.2,-CURB*0);
       for(let k=0;k<12;k++){const qq=SP(s,z0+2.6+k*1.05,dm-side*0.55);const y=H(qq[0],qq[1]);addInst('bicingDock',qq[0],y,qq[1],yawAlong+Math.PI/2);
-        if(Math.random()<0.65){const qb=SP(s,z0+2.6+k*1.05,dm+side*0.25);addInst('bicingBike',qb[0],y,qb[1],facing+Math.PI+R(-0.04,0.04));}solidBox(qq[0],qq[1],0.12,0.9,yawAlong,y,y+1.0);}
+        if(Math.random()<0.55){const qb=SP(s,z0+2.6+k*1.05,dm+side*0.25);if(Math.random()<0.1)addInst('bicingBike',qb[0],y+0.12,qb[1],facing+R(-0.6,0.6),1,1,1,0,0,1.45);else addInst('bicingBike',qb[0],y,qb[1],facing+R(-0.04,0.04));}solidBox(qq[0],qq[1],0.12,0.9,yawAlong,y,y+1.0);}
       const qa=SP(s,z0+it.len/2,p0+0.05),qb2=SP(s,z0+it.len/2,p1-0.05);paintRect(qa[0],qa[1],ua[0],ua[1],it.len,0.12,PAINTW);paintRect(qb2[0],qb2[1],ua[0],ua[1],it.len,0.12,PAINTW);}}
-  fillCars(s,cur,end,dm,yawAlong,B.dir);}
+  fillCars(s,cur,end_,dm,yawAlong,B.dir);}
 function fillCars(s,a,b,dm,yaw,dir){for(let t=a+3;t<b-3;t+=5.4){if(Math.random()<0.42){const q=SP(s,t,dm+R(-0.15,0.15));CARSPOTS.push({x:q[0],z:q[1],yaw:(dir>0?0:Math.PI)+(s.ax==='v'?0:Math.PI/2)+R(-0.05,0.05)});}}}
 
 // ---------- mobiliario de acera a lo largo de cada lado de manzana ----------
@@ -179,7 +183,7 @@ function sidewalkFurniture(bk){const sides=[[0,1,bk.str[0]],[2,3,bk.str[1]],[4,5
     if(s.bus&&((bk.i+bk.j)%2===0)){const t=L*0.45;const p=at(t,1.3);const y=put('marquesina',p[0],p[1],yawSt,false);addInst('marquesinaGlass',p[0],y,p[1],yawSt);solidBox(p[0]-nx*0.6,p[1]-nz*0.6,2.2,0.15,yawSt,y,y+2.6);
       const pp=at(t+4.2,0.35);addInst('busPole',pp[0],surfY(pp[0],pp[1]),pp[1],yawSt);addInst('busPlate',pp[0],surfY(pp[0],pp[1]),pp[1],yawSt);solidBox(pp[0],pp[1],0.06,0.06,0,y,y+3);}
     // motos aparcadas en la acera junto al xamfrà
-    if(Math.random()<0.55){const t0=R(3,5);for(let q=0;q<R(3,8);q++){const p=at(t0+q*0.95,sw*0.5);put('moto',p[0],p[1],Math.atan2(nx,nz)+R(-0.2,0.2),true,0.25,0.75,1.1);}}}
+    if(Math.random()<0.55){const t0=R(3,5);for(let q=0;q<R(3,8);q++){const p=at(t0+q*0.95,sw*0.5);{const y=surfY(p[0],p[1]);const yw=Math.atan2(nx,nz)+R(-0.2,0.2);addInst('moto',p[0],y,p[1],yw,1,1,1,0,0,0,pick(MOTOCOL));solidBox(p[0],p[1],0.3,0.9,yw,y,y+1.1);}}}}
   // xamfrans: pilonas en el bordillo, señales, semáforos, placas de calle
   for(let e=1;e<8;e+=2){const a=bk.cp[e],b=bk.cp[(e+1)%8];if(bk.D[e]<0.5)continue;const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;let nx=-uz,nz=ux;if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}
     for(let t=1;t<L-0.5;t+=1.6){const p=[a[0]+ux*t-nx*0.3,a[1]+uz*t-nz*0.3];put('pilona',p[0],p[1],0,true,0.09,0.09,0.85);}

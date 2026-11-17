@@ -435,9 +435,17 @@ defInst('busPlate',(()=>{const a=new THREE.PlaneGeometry(0.42,0.84);a.translate(
   // peatones (mira hacia el paso, de lado)
   [[2.12,0x6a1410],[1.84,0x0c5028]].forEach(([y,c])=>{p.push([bx(0.2,0.27,0.27,-0.16,y,0),YE],[bx(0.012,0.18,0.18,-0.262,y,0),c],[bx(0.02,0.215,0.215,-0.256,y,0),BK]);});p.push([bx(0.1,0.05,0.08,-0.06,1.98,0),PO]);
   defInst('semafor',mkG(p),paintMat,1,1,false);}
-// moto aparcada (scooter)
-{const p=[[tor(0.22,0.06,0,0.24,0.6,Math.PI/2,12),0x151515],[tor(0.22,0.06,0,0.24,-0.62,Math.PI/2,12),0x151515],[bx(0.34,0.3,0.9,0,0.45,-0.25),0xc8ccd0],[bx(0.36,0.18,0.62,0,0.72,-0.28),0x1a1a1a],
-  [bx(0.3,0.6,0.2,0,0.6,0.42,-0.3),0xc8ccd0],[bx(0.62,0.04,0.04,0,1.12,0.5),0x222222],[cy(0.025,0.025,0.6,0,0.82,0.55,6,-0.3),0x333333],[bx(0.16,0.1,0.05,0,0.95,0.6),0xeeeedd]];
+// moto aparcada: scooter tipo «SH» (lo que más hay en Barcelona); las piezas blancas toman el color de cada moto
+const MOTOCOL=[0xf2f2f0,0xf2f2f0,0x1a1a1c,0x1a1a1c,0x8e9296,0xb01818,0x22325a,0x6a6e72];
+{const W=0xffffff,BK=0x151515,CH=0x9a9ea2;const p=[];
+  for(const z of [-0.6,0.62]){p.push([tor(0.2,0.055,0,0.27,z,Math.PI/2,16),BK],[cy(0.13,0.13,0.07,0,0.27,z,12,0,Math.PI/2),CH]);}
+  p.push([ell(0.17,0.38,0.12,0,0.72,0.42,10),W],// escudo delantero
+    [bx(0.3,0.06,0.5,0,0.4,0.05),BK],[bx(0.32,0.04,0.48,0,0.43,0.05),0x2a2a2a],// plataforma
+    [ell(0.2,0.2,0.48,0,0.62,-0.38,10),W],[ell(0.16,0.07,0.36,0,0.86,-0.3,10),BK],// carenado trasero y asiento
+    [tube([0,0.6,0.5],[0,1.0,0.47],0.03,6),CH],[tube([-0.32,1.04,0.43],[0.32,1.04,0.43],0.014,6),BK],[ell(0.1,0.07,0.07,0,1.0,0.5,8),W],[bx(0.11,0.06,0.03,0,0.97,0.56),0xe8eef2],
+    [tube([0,0.27,0.62],[0,0.62,0.52],0.022,6),CH],[ell(0.09,0.03,0.2,0,0.5,0.62,8),W],// horquilla y guardabarros
+    [tube([0.12,1.04,0.43],[0.2,1.18,0.42],0.008,4),BK],[tube([-0.12,1.04,0.43],[-0.2,1.18,0.42],0.008,4),BK],[bx(0.07,0.04,0.02,0.21,1.19,0.42),BK],[bx(0.07,0.04,0.02,-0.21,1.19,0.42),BK],
+    [bx(0.14,0.05,0.03,0,0.72,-0.86),0xb01010],[cy(0.035,0.04,0.38,0.14,0.36,-0.45,8,Math.PI/2),0x3a3a3a],[tube([0.1,0.12,0.05],[0.16,0.02,-0.05],0.012,4),BK]);
   defInst('moto',mkG(p),paintMat,1,1,false);}
 // parquímetro (àrea verda)
 defInst('parquimetre',mkG([[bx(0.32,1.35,0.22,0,0.67,0),0x5d6266],[bx(0.33,0.12,0.23,0,1.2,0),0x2f9a48],[bx(0.2,0.14,0.02,0,1.0,0.12),0x111111]]),metalMat,1,1,false);
@@ -664,10 +672,14 @@ function arrowPaint(cx,cz,ux,uz){const vx=-uz,vz=ux;paintRect(cx-ux*0.9,cz-uz*0.
 const CONTSET=['resta','resta','organica','envasos','paper','vidre'];
 let bicingCount=0;
 function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const dm=(p0+p1)/2;const yawAlong=s.ax==='v'?0:Math.PI/2;const facing=s.ax==='v'?(side<0?Math.PI/2:-Math.PI/2):(side<0?0:Math.PI);
-  let a=a0+16;const end=a1-16;
+  let a=a0+16;let end_=a1-16;
   // zona de carga y descarga junto al xamfrà (zigzag amarillo)
   {const q=SP(s,a0+11,dm);paintRect(q[0],q[1],ua[0],ua[1],6,0.12,PAINTY);for(let t=0;t<6;t+=1.2){const qq=SP(s,a0+8.6+t,dm);paintRect(qq[0],qq[1],ua[0],ua[1],1.2,0.1,PAINTY);}}
-  const plan=[];const L=end-a;
+  // aparcamiento de motos en la calzada (rayas blancas) junto al cruce del otro extremo, lleno de motos en batería
+  if(Math.random()<0.75){const e0=a1-22,e1=a1-15;for(let t=e0;t<=e1+0.01;t+=0.9){const q=SP(s,t,dm);paintRect(q[0],q[1],ua[1],ua[0],p1-p0-0.2,0.1,PAINTW);}
+    for(let t=e0+0.45;t<e1;t+=0.9){if(Math.random()<0.75){const q=SP(s,t,dm+R(-0.1,0.1));const fallen=Math.random()<0.08;const yb=H(q[0],q[1]);addInst('moto',q[0],yb+(fallen?0.22:0),q[1],facing+R(-0.15,0.15),1,1,1,0,0,fallen?1.45:0,pick(MOTOCOL));if(!fallen)solidBox(q[0],q[1],0.3,0.9,facing,yb,yb+1.1);}}end_=e0-1;}
+  const plan=[];
+  const L=end_-a;
   // contenedores en mitad del tramo (en la calzada, con caja amarilla)
   plan.push({k:'cont',at:a+L*R(0.25,0.6),len:CONTSET.length*2.05+1});
   if(Math.random()<0.28&&bicingCount<6){plan.push({k:'bicing',at:a+L*R(0.05,0.15),len:16});bicingCount++;}
@@ -680,9 +692,9 @@ function parkingLane(s,B,a0,a1,p0,p1,side){const ua=s.ax==='v'?[0,1]:[1,0];const
       if(Math.random()<0.5){const qq=SP(s,z0+R(1,it.len-1),dm+R(-0.5,0.5)*side+side*1.6);addInst('bolsa',qq[0],H(qq[0],qq[1]),qq[1],R(0,6));}}
     else if(it.k==='bicing'){const z0=it.at;const q=SP(s,z0+1,dm);put('bicingTotem',q[0],q[1],facing+Math.PI,true,0.3,0.15,2.2,-CURB*0);
       for(let k=0;k<12;k++){const qq=SP(s,z0+2.6+k*1.05,dm-side*0.55);const y=H(qq[0],qq[1]);addInst('bicingDock',qq[0],y,qq[1],yawAlong+Math.PI/2);
-        if(Math.random()<0.65){const qb=SP(s,z0+2.6+k*1.05,dm+side*0.25);addInst('bicingBike',qb[0],y,qb[1],facing+Math.PI+R(-0.04,0.04));}solidBox(qq[0],qq[1],0.12,0.9,yawAlong,y,y+1.0);}
+        if(Math.random()<0.55){const qb=SP(s,z0+2.6+k*1.05,dm+side*0.25);if(Math.random()<0.1)addInst('bicingBike',qb[0],y+0.12,qb[1],facing+R(-0.6,0.6),1,1,1,0,0,1.45);else addInst('bicingBike',qb[0],y,qb[1],facing+R(-0.04,0.04));}solidBox(qq[0],qq[1],0.12,0.9,yawAlong,y,y+1.0);}
       const qa=SP(s,z0+it.len/2,p0+0.05),qb2=SP(s,z0+it.len/2,p1-0.05);paintRect(qa[0],qa[1],ua[0],ua[1],it.len,0.12,PAINTW);paintRect(qb2[0],qb2[1],ua[0],ua[1],it.len,0.12,PAINTW);}}
-  fillCars(s,cur,end,dm,yawAlong,B.dir);}
+  fillCars(s,cur,end_,dm,yawAlong,B.dir);}
 function fillCars(s,a,b,dm,yaw,dir){for(let t=a+3;t<b-3;t+=5.4){if(Math.random()<0.42){const q=SP(s,t,dm+R(-0.15,0.15));CARSPOTS.push({x:q[0],z:q[1],yaw:(dir>0?0:Math.PI)+(s.ax==='v'?0:Math.PI/2)+R(-0.05,0.05)});}}}
 
 // ---------- mobiliario de acera a lo largo de cada lado de manzana ----------
@@ -708,7 +720,7 @@ function sidewalkFurniture(bk){const sides=[[0,1,bk.str[0]],[2,3,bk.str[1]],[4,5
     if(s.bus&&((bk.i+bk.j)%2===0)){const t=L*0.45;const p=at(t,1.3);const y=put('marquesina',p[0],p[1],yawSt,false);addInst('marquesinaGlass',p[0],y,p[1],yawSt);solidBox(p[0]-nx*0.6,p[1]-nz*0.6,2.2,0.15,yawSt,y,y+2.6);
       const pp=at(t+4.2,0.35);addInst('busPole',pp[0],surfY(pp[0],pp[1]),pp[1],yawSt);addInst('busPlate',pp[0],surfY(pp[0],pp[1]),pp[1],yawSt);solidBox(pp[0],pp[1],0.06,0.06,0,y,y+3);}
     // motos aparcadas en la acera junto al xamfrà
-    if(Math.random()<0.55){const t0=R(3,5);for(let q=0;q<R(3,8);q++){const p=at(t0+q*0.95,sw*0.5);put('moto',p[0],p[1],Math.atan2(nx,nz)+R(-0.2,0.2),true,0.25,0.75,1.1);}}}
+    if(Math.random()<0.55){const t0=R(3,5);for(let q=0;q<R(3,8);q++){const p=at(t0+q*0.95,sw*0.5);{const y=surfY(p[0],p[1]);const yw=Math.atan2(nx,nz)+R(-0.2,0.2);addInst('moto',p[0],y,p[1],yw,1,1,1,0,0,0,pick(MOTOCOL));solidBox(p[0],p[1],0.3,0.9,yw,y,y+1.1);}}}}
   // xamfrans: pilonas en el bordillo, señales, semáforos, placas de calle
   for(let e=1;e<8;e+=2){const a=bk.cp[e],b=bk.cp[(e+1)%8];if(bk.D[e]<0.5)continue;const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;let nx=-uz,nz=ux;if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}
     for(let t=1;t<L-0.5;t+=1.6){const p=[a[0]+ux*t-nx*0.3,a[1]+uz*t-nz*0.3];put('pilona',p[0],p[1],0,true,0.09,0.09,0.85);}
@@ -967,10 +979,12 @@ function buildFacade(lot,seg,units){const{a,b,nx,nz}=seg;const L=Math.hypot(b[0]
         if(Math.random()<0.06)addInst('laundry',x+nx*(bd-0.05),fy+2.0,z+nz*(bd-0.05),yaw);}
       if(Math.random()<0.07)addInst('ac',x+ux*(ww/2+0.5)+nx*0.02,fy+1.6,z+uz*(ww/2+0.5)+nz*0.02,yaw);}}
   // grafitis en la planta baja (en pared y persianas)
-  for(let t=1;t<L-1;t+=R(3,7)){if(Math.random()<0.35){const x=a[0]+ux*t+nx*0.02,z=a[1]+uz*t+nz*0.02;const s=R(1.2,2.4);addInst('graffiti',x,yb+R(0.9,1.8),z,yaw,s,s,1,(Math.random()*16)|0);}}
+  {const occ=units.map(u=>[u.u0-0.12,u.u1+0.12]).sort((p,q)=>p[0]-q[0]);let c0=0.35;const free=[];for(const [o0,o1] of occ){if(o0-c0>0)free.push([c0,o0]);c0=Math.max(c0,o1);}if(L-0.35-c0>0)free.push([c0,L-0.35]);
+    for(const [f0,f1] of free){const fw=f1-f0;if(fw<1.1||Math.random()>0.5)continue;const s=Math.min(R(1.0,2.2),fw-0.15);const t=f0+fw/2+R(-1,1)*(fw-s)/2;const x=a[0]+ux*t+nx*0.02,z=a[1]+uz*t+nz*0.02;addInst('graffiti',x,yb+R(0.5,0.9)+s*0.5,z,yaw,s,s,1,(Math.random()*16)|0);}}
   // planta baja: unidades
   for(const u of units)buildUnit(lot,seg,u,ux,uz,L);
-  lot.facades.push({a,b,nx,nz,L});}
+  lot.facades.push({a,b,nx,nz,L});FACADES.push({a,b,nx,nz,L,yb,gf,F:lot.F,fh:lot.fh,outer:lot.bk.outer});}
+const FACADES=[];
 // ---------- unidades de planta baja: portal, local (persiana / cristal / roto / tapiado), garaje ----------
 function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const yaw=Math.atan2(nx,nz);const mid=(u.u0+u.u1)/2;const cx=a[0]+ux*mid,cz=a[1]+uz*mid;const w=u.u1-u.u0;
   if(u.kind==='shop'&&u.shop&&!u.shop.brand)realShop(u,cx,cz,ux,uz,nx,nz,w);
@@ -1180,6 +1194,49 @@ function furnishShop(u,P,yF,ceil,ux,uz,nx,nz,u0,u1,d,c){const t=u.shop.type;cons
   // un aseo al fondo en casi todos los locales
   if(d>8&&W>4&&t!=='super'){const p=P(u1-0.6,d-0.5);furn('furn',p[0],yF,p[1],0.42,0.42,0.6,yawF,'#f4f4f4');TOILETS.push({x:p[0],z:p[1],y:yF,kind:'baño'});}
   if(t==='super'){const p=P(u1-0.8,d-1.6);TOILETS.push({x:p[0],z:p[1],y:yF,kind:'baño'});}}
+
+// =====================================================================
+// LA CIUDAD ABANDONADA: hojas secas, basura, malas hierbas, hiedra en las fachadas y mobiliario volcado
+// =====================================================================
+// hojas de plátano secas (dibujadas con lóbulos, en ocres y marrones) con transparencia
+const texLeafLitter=cTex(512,512,(g,w,h)=>{g.clearRect(0,0,w,h);const cols=['#8a5a24','#a8742e','#6e4a22','#b58a3e','#5a3e1c','#9a6a2a','#7a6a3a'];
+  for(let i=0;i<70;i++){const x=R(30,w-30),y=R(30,h-30),s=R(10,24),a=R(0,6.28);g.save();g.translate(x,y);g.rotate(a);g.fillStyle=pick(cols);g.beginPath();
+    for(let k=0;k<=10;k++){const t=k/10*Math.PI*2;const r=s*(0.55+0.45*Math.abs(Math.sin(t*2.5)));g.lineTo(Math.cos(t)*r,Math.sin(t)*r*0.9);}g.closePath();g.fill();
+    g.strokeStyle='rgba(50,30,10,.6)';g.lineWidth=1.2;g.beginPath();g.moveTo(0,0);g.lineTo(s*0.9,0);g.moveTo(0,0);g.lineTo(-s*0.4,s*0.6);g.moveTo(0,0);g.lineTo(-s*0.4,-s*0.6);g.stroke();
+    g.strokeStyle='#4a3014';g.beginPath();g.moveTo(0,0);g.lineTo(-s*1.2,0);g.stroke();g.restore();}},{});
+texLeafLitter.wrapS=texLeafLitter.wrapT=THREE.ClampToEdgeWrapping;
+const leafLitterMat=new THREE.MeshLambertMaterial({map:texLeafLitter,alphaTest:0.5,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2});
+defInst('leafLitter',(()=>{const g=new THREE.PlaneGeometry(1.4,1.4);g.rotateX(-Math.PI/2);g.translate(0,0.008,0);return g;})(),leafLitterMat,1,1,false);
+// malas hierbas: matas de hierba en cruz
+const texWeed=cTex(256,256,(g,w,h)=>{g.clearRect(0,0,w,h);for(let i=0;i<90;i++){const x=R(30,w-30),l=R(60,220);g.strokeStyle=pick(['#4a6a24','#5f7f2c','#3a5a1c','#7a8a3a','#8a8a4a']);g.lineWidth=R(2,5);
+  g.beginPath();g.moveTo(x,h);g.quadraticCurveTo(x+R(-30,30),h-l*0.6,x+R(-50,50),h-l);g.stroke();}},{});
+texWeed.wrapS=texWeed.wrapT=THREE.ClampToEdgeWrapping;
+defInst('weed',(()=>{const a=new THREE.PlaneGeometry(0.7,0.5);a.translate(0,0.25,0);const b=a.clone();b.rotateY(Math.PI/2);return mergeGeometries([a,b]);})(),new THREE.MeshLambertMaterial({map:texWeed,alphaTest:0.45,side:THREE.DoubleSide}),1,1,false);
+// hiedra colgando de las fachadas
+const texIvy=cTex(256,512,(g,w,h)=>{g.clearRect(0,0,w,h);for(let i=0;i<9;i++){let x=R(20,w-20),y=0;g.strokeStyle='#3a2e1c';g.lineWidth=2;g.beginPath();g.moveTo(x,y);const pts=[];while(y<h*R(0.55,1)){x+=R(-14,14);y+=R(8,18);g.lineTo(x,y);pts.push([x,y]);}g.stroke();
+  for(const [px,py] of pts)for(let k=0;k<3;k++){g.fillStyle=pick(['#2e4a1c','#3e5e24','#4a6a2a','#253e16','#5a6a2a']);g.beginPath();const lx=px+R(-14,14),ly=py+R(-8,8),s=R(5,10);g.moveTo(lx,ly-s);g.lineTo(lx+s,ly);g.lineTo(lx,ly+s*0.8);g.lineTo(lx-s,ly);g.closePath();g.fill();}}},{});
+texIvy.wrapS=texIvy.wrapT=THREE.ClampToEdgeWrapping;
+defInst('ivy',(()=>{const g=new THREE.PlaneGeometry(1,1);g.translate(0,-0.5,0);return g;})(),new THREE.MeshLambertMaterial({map:texIvy,alphaTest:0.5,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),1,1,false);
+// papeles y plásticos
+defInst('paper',(()=>{const g=new THREE.PlaneGeometry(0.28,0.2);g.rotateX(-Math.PI/2);g.translate(0,0.01,0);return g;})(),new THREE.MeshLambertMaterial({color:0xffffff}),1,1,false);
+const LEAFCOL=[0xffffff,0xe8d8b8,0xd8c8a0,0xf0e0c0];
+function decayWorld(){
+  // hojas: alrededor de cada árbol y amontonadas junto al bordillo
+  for(const t of TREES){const n=RI(3,7);for(let k=0;k<n;k++){const a=R(0,6.28),r=R(0.5,4.5);const x=t.x+Math.cos(a)*r,z=t.z+Math.sin(a)*r;addInst('leafLitter',x,surfY(x,z),z,R(0,6.28),R(0.7,1.6),1,R(0.7,1.6),0,0,0,pick(LEAFCOL));}
+    if(Math.random()<0.6){const a=R(0,6.28);addInst('weed',t.x+Math.cos(a)*0.45,t.y,t.z+Math.sin(a)*0.45,R(0,6),R(0.6,1.3),R(0.6,1.4),R(0.6,1.3));}}
+  // fachadas: hierba en la base, hiedra en algunas, papeles y bolsas en la acera
+  for(const f of FACADES){if(f.outer)continue;const ux=(f.b[0]-f.a[0])/f.L,uz=(f.b[1]-f.a[1])/f.L;const yaw=Math.atan2(f.nx,f.nz);
+    for(let t=R(1,5);t<f.L-1;t+=R(3,9)){const x=f.a[0]+ux*t+f.nx*0.15,z=f.a[1]+uz*t+f.nz*0.15;if(Math.random()<0.5)addInst('weed',x,surfY(x,z),z,R(0,6),R(0.5,1.2),R(0.4,1.1),R(0.5,1.2));
+      if(Math.random()<0.3){const x2=f.a[0]+ux*t+f.nx*R(0.6,3),z2=f.a[1]+uz*t+f.nz*R(0.6,3);addInst('leafLitter',x2,surfY(x2,z2),z2,R(0,6),R(0.6,1.3),1,R(0.6,1.3),0,0,0,pick(LEAFCOL));}
+      if(Math.random()<0.25){const x3=f.a[0]+ux*(t+R(-1,1))+f.nx*R(0.4,4),z3=f.a[1]+uz*(t+R(-1,1))+f.nz*R(0.4,4);addInst('paper',x3,surfY(x3,z3),z3,R(0,6),R(0.7,1.4),1,R(0.7,1.4),0,0,0,pick([0xf2f0e8,0xe8e0d0,0xd8e8f0,0xc8d8c0]));}}
+    if(Math.random()<0.22&&f.L>6){const t=R(2,f.L-2),w=R(1.6,4),hh=R(3,Math.min(10,f.gf+f.fh*2));const top=Math.random()<0.5?f.yb+f.gf+f.fh*RI(0,2)+0.2:f.yb+hh;
+      const x=f.a[0]+ux*t+f.nx*0.04,z=f.a[1]+uz*t+f.nz*0.04;addInst('ivy',x,top,z,yaw,w,Math.min(hh,top-f.yb),1);}}
+  // mobiliario volcado o movido: papeleras tiradas, motos caídas
+  for(const name of ['papelera']){const I=INST[name];for(const L of I.lists.values())for(const t of L){if(Math.random()<0.18){t[9]=R(1.3,1.6);t[1]+=0.22;t[3]+=R(-1,1);}}}
+  for(const k of ['cont_resta','cont_organica','cont_envasos','cont_paper','cont_vidre']){const I=INST[k];if(!I)continue;for(const L of I.lists.values())for(const t of L){t[3]+=R(-0.25,0.25);t[0]+=R(-0.3,0.3);t[2]+=R(-0.3,0.3);}}
+  // hojas acumuladas en la calzada junto al bordillo
+  for(const bk of BLOCKS){if(bk.outer)continue;for(let e=0;e<8;e+=2){const a=bk.cp[e],b=bk.cp[(e+1)%8];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;const c=centroid(bk.bp);let nx=-uz,nz=ux;if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}
+    for(let t=R(1,4);t<L;t+=R(2,6)){const x=a[0]+ux*t+nx*R(0.3,1.1),z=a[1]+uz*t+nz*R(0.3,1.1);addInst('leafLitter',x,H(x,z),z,R(0,6),R(0.8,1.8),1,R(0.6,1.2),0,0,0,pick(LEAFCOL));}}}}
 
 // =====================================================================
 // PUERTAS REALES (bisagra o corredera) Y CRISTALES QUE SE ROMPEN
@@ -1708,7 +1765,7 @@ let worldBuilt=false;
 function buildWorld(){if(worldBuilt)return;worldBuilt=true;const t0=performance.now();
   planSupers();buildStreets();
   for(const bk of BLOCKS)buildBlock(bk);
-  finishSigns();buildBases();buildChunks();buildInst();drawMap();
+  finishSigns();buildBases();decayWorld();buildChunks();buildInst();drawMap();
   console.log('mundo',(performance.now()-t0)|0,'ms',BLOCKS.length,'manzanas',shopCount,'locales',LOOT.length,'botín',DOORS.length,'puertas');}
 
 const HFIT={kx:0.034,ky:-0.032,kz:0.02,fx:-0.15,fy:-1,fz:0.1,gr:-1.27,gy:-0.014,gz:0.026};
@@ -2408,6 +2465,16 @@ function makeCarProc(x,z,yaw,kind){const g=new THREE.Group();const body=new THRE
 function placeCars(){const spots=CARSPOTS.slice();for(let i=spots.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[spots[i],spots[j]]=[spots[j],spots[i]];}
   spots.sort((a,b)=>(b.crash?1:0)-(a.crash?1:0));let n=0;for(const s of spots){if(n>=70)break;if(cars.some(c=>Math.hypot(c.x-s.x,c.z-s.z)<5.2))continue;const c=makeCar(s.x,s.z,s.yaw,'proc');if(s.crash){c.crashed=true;c.fuel=0;}n++;}
   const b=BASES.find(x=>x.type==='good');if(b)makeCar(b.x+8,b.z-30,Math.PI/2,'proc').fuel=55;}
+// coches abandonados y siniestrados en mitad de la calzada (algunos volcados o quemados)
+function placeWrecks(){let n=0;for(let tries=0;tries<120&&n<26;tries++){const v=Math.random()<0.5;const L=v?VSTR:HSTR;const st=pick(L);if(st.type==='ped'||st.type==='superilla')continue;const k=RI(0,(v?NZS:NXS)-2);
+    const a0=(v?HSTR[k]:VSTR[k]).pos+14,a1=(v?HSTR[k+1]:VSTR[k+1]).pos-14;const along=R(a0,a1);const lat=R(-1,1)*(st.w/2-st.sw-1.6);const x=v?st.pos+lat:along,z=v?along:st.pos+lat;
+    if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<5))continue;const wreck=Math.random()<0.35?1:R(0.5,0.85);const c=makeCar(x,z,R(0,6.28),'proc',{wreck});if(!c)continue;
+    const r=Math.random();c.flip=r<0.1?Math.PI:r<0.22?Math.PI/2*(Math.random()<0.5?1:-1):0;if(c.flip){c.g.rotation.z=c.flip;c.g.position.y+=Math.abs(c.flip)>3?1.5:c.halfW;c.y=c.g.position.y;c.fixedY=true;}
+    solidBox(x,z,c.halfW,c.len/2,c.yaw,c.y-0.2,c.y+1.5);n++;}}
+// cadáveres de atrezo repartidos por las calles (caen con física, luego se quedan quietos; se pueden registrar)
+function placeCorpses(){let n=0;for(let tries=0;tries<200&&n<18;tries++){const bk=pick(BLOCKS);if(bk.outer)continue;const e=RI(0,7);const A=bk.cp[e],B=bk.cp[(e+1)%8];const t=Math.random();const c=centroid(bk.bp);
+    let x=A[0]+(B[0]-A[0])*t,z=A[1]+(B[1]-A[1])*t;const dx=x-c[0],dz=z-c[1],l=Math.hypot(dx,dz);const off=R(-2.5,3.5);x+=dx/l*off;z+=dz/l*off;
+    const h=spawnChar('wanderer',x,z,{armed:false});if(!h)continue;h.corpse=true;h.yaw=R(0,6.28);enterPhys(h);die(h,'x');for(let i=0;i<NP;i++){h.prev[i].x-=R(-1,1)*0.02;h.prev[i].z-=R(-1,1)*0.02;}n++;}}
 // volante: se agarra con el grip (una o dos manos) y se gira de verdad; si no, el joystick. La mano se queda pegada al aro mientras lo agarras
 const swGrab={left:null,right:null};const _swl=new V3();
 function steerByHands(car){if(!inVR||!car.swp)return null;let sum=0,n=0;car.swp.updateMatrixWorld(true);
@@ -2462,7 +2529,7 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
   for(const off of [-1.5,0,1.5]){const pt={x:nx+s*off,z:nz+c*off};if(collide(pt,car.halfW+0.05,car.y+0.4,car.y+1.3)){blocked=true;break;}}
   for(const o of cars){if(o===car)continue;const dn=Math.hypot(o.x-nx,o.z-nz);if(dn<3.4&&dn<Math.hypot(o.x-car.x,o.z-car.z)){blocked=true;o.speed+=vs*0.35;o.vLat+=car.vLat*0.3;}}
   if(blocked){const hit=Math.hypot(vs,car.vLat);if(hit>7&&player){sfx('crash',clamp(hit/20,0.3,1));damagePlayer(hit*0.8,'accidente');toast('¡Choque!');}car.speed=-vs*0.25;car.vLat*=-0.2;car.yr*=0.3;car.rollV+=car.vLat*0.3;car.pitchV-=vs*0.04;}else{car.x=nx;car.z=nz;}
-  car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
+  if(!car.fixedY)car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
   if(Math.abs(car.speed)>2.2)for(const h of H_){if(!h.active)continue;const hx=h.sim[PELVIS].x,hz=h.sim[PELVIS].z;const dx=hx-car.x,dz=hz-car.z;if(dx*dx+dz*dz>9)continue;
     const lx=dx*c-dz*s,lz=dx*s+dz*c;if(Math.abs(lx)<car.halfW+0.2&&Math.abs(lz)<car.len/2+0.1&&clockT-h.lastHitT>0.4){const sp=Math.abs(car.speed);
       _imp.set(s*car.speed,0,c*car.speed).multiplyScalar(1.15);_imp.y=1+sp*0.12;_e2.copy(h.sim[LKNEE]);hitChar(h,'body',sp*5,_imp,LKNEE,player?'player':'car',_e2,_v.set(s,0,c));applyImp(h,_imp.set(s*car.speed*0.9,1+sp*0.1,c*car.speed*0.9),RKNEE);applyImp(h,_imp.set(s*car.speed*0.25,sp*0.18,c*car.speed*0.25),CHEST);h.k=0;
@@ -2656,7 +2723,7 @@ const startEl=document.getElementById('start'),vrmsg=document.getElementById('vr
 let worldReady=false;
 function enableStart(){if(!modelsReady)return;bflat.disabled=false;bvr.disabled=!navigator.xr;}
 function begin(vr){initAudio();started=true;startEl.style.display='none';gameMin=S.startHour*60;
-  if(!worldReady){worldReady=true;setupBody();placeCars();populateNPCs();}
+  if(!worldReady){worldReady=true;setupBody();placeCars();placeWrecks();populateNPCs();placeCorpses();}
   resetPlayer();camera.getWorldPosition(camW);managePop(camW,true);
   if(!vr){hudC.style.display='block';document.getElementById('cross').style.display='block';if(isTouch){touchUI.style.display='block';document.querySelectorAll('.mn').forEach(b=>b.style.display='block');}}
   toast('Día 1. Eixample de Barcelona. Al lado tienes el Mercat del Ninot: una base de supervivientes. Habla con su líder.',7);}
