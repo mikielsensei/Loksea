@@ -16,6 +16,15 @@ defInst('prodCan',(()=>{const g=new THREE.CylinderGeometry(0.045,0.045,0.12,6);g
 defInst('prodBottle',(()=>{const g=new THREE.CylinderGeometry(0.04,0.045,0.3,5);g.translate(0,0.15,0);return g;})(),pbr(new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.15,metalness:0.1})));
 const texFruit=cTex(256,256,(g,w,h)=>{g.fillStyle='#6b4a2a';g.fillRect(0,0,w,h);const c=pick(['#c8261a','#e8a020','#8ac83a','#e8d020','#6a2a6a']);for(let i=0;i<70;i++){const x=R(10,w-10),y=R(10,h-10),r=R(12,20);const gr=g.createRadialGradient(x-r*0.3,y-r*0.3,2,x,y,r);gr.addColorStop(0,'#fff8');gr.addColorStop(0.25,c);gr.addColorStop(1,'#0006');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();}},{});
 defInst('fruit',(()=>{const g=new THREE.BoxGeometry(0.55,0.14,0.38);g.translate(0,0.07,0);return g;})(),new THREE.MeshLambertMaterial({map:texFruit}));
+// bar de barrio: taburetes, cafetera, tirador de cerveza, vitrina de tapas, tragaperras, tele, jamones y pizarra
+defInst('tabure',mkG([[cy(0.17,0.17,0.05,0,0.76,0,12),0x7a2a22],[cy(0.025,0.025,0.72,0,0.38,0,6),0xa8acb0],[cy(0.2,0.22,0.03,0,0.015,0,12),0x6a6e72],[(()=>{const g=new THREE.TorusGeometry(0.13,0.008,4,12);g.rotateX(Math.PI/2);g.translate(0,0.3,0);return g;})(),0xa8acb0]]),metalMat,1,1,false);
+defInst('cafetera',mkG([[bx(0.75,0.45,0.5,0,0.22,0),0x9a9ea2],[bx(0.77,0.06,0.52,0,0.47,0),0x2a2a2a],[bx(0.6,0.12,0.02,0,0.36,0.26),0x1a1a1a],...[-0.22,0,0.22].map(x=>[cy(0.03,0.04,0.08,x,0.2,0.22,8),0x2a2a2a]),[bx(0.75,0.02,0.3,0,0.06,0.25),0x6a6e72]]),metalMat,1,1,false);
+defInst('tirador',mkG([[cy(0.04,0.05,0.35,0,0.17,0,10),0xb8bcc0],[bx(0.2,0.04,0.06,0,0.35,0),0xb8bcc0],[cy(0.012,0.012,0.12,0,0.42,0.04,6),0x111111],[bx(0.08,0.1,0.01,0,0.46,0.045),0xc8102e],[bx(0.25,0.02,0.16,0,0.0,0.06),0x9aa0a4]]),metalMat,1,1,false);
+defInst('vitrina',mkG([[bx(1.4,0.06,0.42,0,0.03,0),0xb8bcc0],[bx(1.4,0.28,0.01,0,0.2,0.2),0xd8e8ee],[bx(1.4,0.01,0.4,0,0.34,0),0xd8e8ee],...[0,1,2,3].map(k=>[bx(0.28,0.03,0.22,-0.5+k*0.33,0.08,0),[0xc89a40,0x8a3a2a,0xd8c8a0,0x5a6a2a][k]])]),new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.85}),1,1,false);
+defInst('tragaperras',mkG([[bx(0.62,1.55,0.5,0,0.78,0),0x1a1a2a],[bx(0.5,0.4,0.02,0,1.2,0.26),0xe8c040],[bx(0.46,0.22,0.02,0,0.85,0.26),0x2a6aa8],[bx(0.56,0.06,0.12,0,0.62,0.3),0xb8bcc0],[bx(0.5,0.12,0.02,0,1.5,0.26),0xc8102e]]),new THREE.MeshLambertMaterial({vertexColors:true,emissive:0x080808}),1,1,false);
+defInst('tele',mkG([[bx(1.0,0.6,0.06,0,0,0),0x111111],[bx(0.94,0.54,0.01,0,0,0.035),0x1a2228],[bx(0.06,0.3,0.06,0,0.3,-0.04),0x333333]]),metalMat,1,1,false);
+defInst('pernil',mkG([[ell(0.09,0.28,0.12,0,-0.3,0,8),0x6a2a1a],[cy(0.025,0.03,0.16,0,-0.02,0,6),0xd8c8a8],[cy(0.004,0.004,0.12,0,0.1,0,4),0xd8d0c0]]),plasticMat,1,1,false);
+defInst('pizarra',mkG([[bx(0.6,0.85,0.03,0,0,0),0x1c241e],[bx(0.66,0.04,0.04,0,0.44,0),0x6a4a2a],[bx(0.66,0.04,0.04,0,-0.44,0),0x6a4a2a],...[0,1,2,3,4].map(k=>[bx(0.4-k*0.03,0.02,0.01,-0.05+k*0.01,0.28-k*0.12,0.02),0xd8d8d0])]),plasticMat,1,1,false);
 defInst('lightPanel',(()=>{const g=new THREE.PlaneGeometry(0.6,1.2);g.rotateX(Math.PI/2);return g;})(),new THREE.MeshBasicMaterial({color:0xe8eef0}));
 function lootSpot(x,z,y,sub,label,refs){LOOT.push({x,z,y,kind:'cont',sub,label,looted:false,refs:refs||[]});}
 // mueble: caja en un buffer con colisión
@@ -90,7 +99,13 @@ function furnishShop(u,P,yF,ceil,ux,uz,nx,nz,u0,u1,d,c){const t=u.shop.type;cons
     const sh=P(u0+0.3,1.6+len/2);furn('woodf',sh[0],yF+1.0,sh[1],0.28,0.04,len,yawF,'#5a3a22',false);const refs=[];
     for(let i=0;i<len/0.2;i++){const q=P(u0+0.3,1.7+i*0.2);if(Math.random()<0.75)refs.push(addInst('prodBottle',q[0],yF+1.04,q[1],0,1,1,1,0,0,0,pick([0x2a7a3a,0x6a3a1a,0xc8a040,0xd8e8f0])));}
     lootSpot(p[0],p[1],yF,'bar','barra del bar',refs);
-    for(let i=0;i<len/1.0;i++){const q=P(u0+2.0,2+i*1.0);furn('metal',q[0],yF,q[1],0.32,0.75,0.32,0,'#333333');}
+    for(let i=0;i<len/0.85;i++){const q=P(u0+2.0,2+i*0.85);if(Math.random()<0.18)addInst('tabure',q[0],yF+0.17,q[1],R(0,6),1,1,1,0,0,Math.PI/2*(Math.random()<0.5?1:-1));else addInst('tabure',q[0],yF,q[1],R(0,6));}
+    {const cz=P(u0+1.2,1.9);addInst('cafetera',cz[0],yF+1.1,cz[1],yawU+Math.PI);const tz=P(u0+1.25,1.6+len*0.45);addInst('tirador',tz[0],yF+1.1,tz[1],yawU+Math.PI);
+      if(len>3.2){const vz=P(u0+1.3,1.6+len*0.75);addInst('vitrina',vz[0],yF+1.1,vz[1],yawU);}
+      for(let k=0;k<2;k++){const hz=P(u0+0.8,2.2+k*0.5);if(t==='bar'||Math.random()<0.5)addInst('pernil',hz[0],Math.min(ceil-0.3,yF+2.6),hz[1],R(0,6));}
+      const gz=P(u1-0.45,1.4);if(t==='bar'&&Math.random()<0.7)addInst('tragaperras',gz[0],yF,gz[1],yawU+Math.PI);
+      const tv=P(u1-0.1,d-0.7);addInst('tele',tv[0],Math.min(ceil-0.5,yF+2.4),tv[1],yawU+Math.PI);
+      const pz=P(u0+0.08,1.6+len+0.5);addInst('pizarra',pz[0],yF+1.6,pz[1],yawU);}
     for(let ww=2.4;ww<d-1;ww+=2.4)for(let uu=u0+3.4;uu<u1-0.8;uu+=2.2){const q=P(uu,ww);if(Math.random()<0.3){addInst('terrassa',q[0],yF,q[1],R(0,6),1,1,1,0,0,Math.random()<0.4?R(1,1.4):0);}else addInst('terrassa',q[0],yF,q[1],R(0,6));}
     const k=P(u0+0.4,d-0.6);furn('metal',k[0],yF,k[1],0.6,0.9,1.6,yawF,'#c8ccd0');lootSpot(k[0],k[1],yF,'nevera','cámara del bar');}
   else if(t==='forn'||t==='carnisseria'){const p=P((u0+u1)/2,2.2);furn('woodf',p[0],yF,p[1],0.7,1.0,W-1.6,yawU,t==='forn'?'#c8b8a0':'#e8e8e8');
