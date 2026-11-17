@@ -57,7 +57,7 @@ function weatherMat(m,k=1){m.onBeforeCompile=sh=>{sh.uniforms.uWk={value:k};
       c*=1.0-uWk*(stain*0.32+blot*0.18+soot*0.22);
       c=mix(c,c*vec3(0.62,0.6,0.52),ground*0.55*uWk);
       // desconchones: aparece el ladrillo/mortero
-      float chip=smoothstep(0.78,0.8,zn(w*2.2+11.0))*uWk;c=mix(c,vec3(0.55,0.4,0.32),chip*0.6);
+      float chip=smoothstep(0.86,0.875,zn(w*3.5+11.0)*0.8+zn(w*14.0)*0.2)*step(0.95,uWk);c=mix(c,c*vec3(0.78,0.68,0.6),chip*0.55);
       diffuseColor.rgb=c;`);};m.customProgramCacheKey=()=>'weather'+k;return m;}
 for(const k of ['plaster_cream','plaster_grey','plaster_ochre','stone_blocks','stone_dark','brick','concrete_wall'])weatherMat(MATS[k],1);
 weatherMat(MATS.trim,0.8);

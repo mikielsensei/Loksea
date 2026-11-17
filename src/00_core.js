@@ -51,7 +51,9 @@ const SET_DEFS=[
   {k:'gore',l:'Sangre y heridas',o:[0,1,2],d:2,f:v=>['Sin sangre','Moderada','Total'][v]},
   {k:'turn',l:'Giro con el joystick',o:['snap','smooth'],d:'snap',f:v=>v==='snap'?'Por saltos (30°)':'Suave'},
   {k:'view',l:'Distancia de visión',o:[100,200,300,500,1000,0],d:300,f:v=>v?(v>=1000?v/1000+' km':v+' m'):'Infinita'},
-  {k:'haze',l:'Bruma apocalíptica',o:[0,1,2,3],d:2,f:v=>['No','Ligera','Media','Densa'][v]},
+  {k:'haze',l:'Bruma apocalíptica',o:[0,1,2,3,4],d:3,f:v=>['No','Ligera','Media','Densa','Muy densa'][v]},
+  {k:'filter',l:'Filtro de color',o:[0,1,2,3],d:1,f:v=>['Ninguno','Sepia (A ciegas)','Frío','Desaturado'][v]},
+  {k:'clouds',l:'Nubes',o:[0,1,2],d:2,f:v=>['Despejado','Nubes sueltas','Cielo cubierto'][v]},
   {k:'startHour',l:'Hora inicial',o:[6,8,12,18,22],d:8,f:v=>String(v).padStart(2,'0')+':00',start:true},
 ];
 const S={};for(const d of SET_DEFS)S[d.k]=d.d;
@@ -74,7 +76,18 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 renderer.setSize(innerWidth,innerHeight);
 renderer.xr.enabled=true;
 renderer.xr.setReferenceSpaceType('local-floor');
-renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.95;
+// tono y filtro de color en el propio sombreador (funciona en VR, sin posprocesado): la exposición lleva codificado el filtro (parte entera/10)
+THREE.ShaderChunk.tonemapping_pars_fragment=THREE.ShaderChunk.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',`
+vec3 RRTAndODTFitG( vec3 v ){vec3 a=v*(v+0.0245786)-0.000090537;vec3 b=v*(0.983729*v+0.4329510)+0.238081;return a/b;}
+vec3 CustomToneMapping( vec3 color ){float f=floor(toneMappingExposure/10.0);float e=toneMappingExposure-f*10.0;
+  const mat3 IM=mat3(vec3(0.59719,0.07600,0.02840),vec3(0.35458,0.90834,0.13383),vec3(0.04823,0.01566,0.83777));const mat3 OM=mat3(vec3(1.60475,-0.10208,-0.00327),vec3(-0.53108,1.10813,-0.07276),vec3(-0.07367,-0.00605,1.07602));
+  color*=e/0.6;color=IM*color;color=RRTAndODTFitG(color);color=OM*color;color=clamp(color,0.0,1.0);
+  float l=dot(color,vec3(0.299,0.587,0.114));
+  if(f>0.5&&f<1.5){vec3 sp=vec3(l*1.07+0.03,l*0.93+0.01,l*0.70);color=mix(color,sp,0.78);color=mix(vec3(0.5),color,1.08);}
+  else if(f>1.5&&f<2.5){color=mix(color,vec3(l)*vec3(0.85,0.95,1.08),0.55);}
+  else if(f>2.5){color=mix(color,vec3(l),0.7);color=(color-0.5)*1.18+0.5;}
+  return clamp(color,0.0,1.0);}`);
+renderer.toneMapping=THREE.CustomToneMapping;renderer.toneMappingExposure=0.95;
 document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0xa9bdd0,30,260);

@@ -136,7 +136,23 @@ function ejectCasing(gun){gun.userData.port.getWorldPosition(_v);const m=new THR
 // =====================================================================
 // MANOS (orientadas según el espacio de grip WebXR)
 // =====================================================================
+let HSIGN=1;
 const handMat=pbr(new THREE.MeshStandardMaterial({color:0xc58d6a,roughness:0.62,metalness:0}));
+// piel de las manos a partir de fotos reales (dorso con vello y venas, palma con líneas); proyectada en el espacio de la mano
+const skinMat=(()=>{const m=pbr(new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.55,metalness:0}));const tb=ltex('skin_back.jpg'),tp=ltex('skin_palm.jpg');
+  m.onBeforeCompile=sh=>{sh.uniforms.tB={value:tb};sh.uniforms.tP={value:tp};
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vHP;varying vec3 vHN;').replace('#include <begin_vertex>','#include <begin_vertex>\nvHP=position;vHN=normal;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vHP;varying vec3 vHN;uniform sampler2D tB;uniform sampler2D tP;')
+      .replace('#include <map_fragment>',`
+        vec3 n=normalize(vHN);vec3 w=abs(n);w=pow(w,vec3(3.0));w/=(w.x+w.y+w.z);float S=1.0/0.055;
+        vec3 cBx=texture2D(tB,vHP.zy*S).rgb,cBy=texture2D(tB,vHP.xz*S).rgb,cBz=texture2D(tB,vHP.xy*S).rgb;
+        vec3 cPy=texture2D(tP,vHP.xz*S*0.8).rgb;
+        vec3 back=cBx*w.x+cBy*w.y+cBz*w.z;vec3 palm=cBx*w.x+cPy*w.y+cBz*w.z;
+        float isPalm=smoothstep(0.15,-0.25,n.y*HSIGN);
+        diffuseColor.rgb*=mix(back,palm,isPalm);
+        // nudillos y uñas algo más rosados
+        diffuseColor.rgb*=vec3(1.0,0.97,0.96);`);
+    sh.fragmentShader='#define HSIGN '+HSIGN.toFixed(1)+'\n'+sh.fragmentShader;};m.customProgramCacheKey=()=>'skin'+HSIGN;return m;})();
 const FINGERS={thumb:['thumb-metacarpal','thumb-phalanx-proximal','thumb-phalanx-distal','thumb-tip'],
   index:['index-finger-metacarpal','index-finger-phalanx-proximal','index-finger-phalanx-intermediate','index-finger-phalanx-distal','index-finger-tip'],
   middle:['middle-finger-metacarpal','middle-finger-phalanx-proximal','middle-finger-phalanx-intermediate','middle-finger-phalanx-distal','middle-finger-tip'],
@@ -153,7 +169,7 @@ function buildProcHand(side){const sx=side==='right'?1:-1;const root=new THREE.G
     FINGERS.thumb.forEach((n,i)=>{const o=new THREE.Object3D();o.name=n;o.position.copy(pos[i]).sub(prev);parent.add(o);
       if(i<3){const nx=pos[i+1];const len=nx.distanceTo(pos[i]);const c=new THREE.Mesh(new THREE.CapsuleGeometry(0.01,len,3,6),handMat);c.position.copy(nx).sub(pos[i]).multiplyScalar(0.5);c.quaternion.setFromUnitVectors(UP,_v.copy(nx).sub(pos[i]).normalize());o.add(c);}prev=pos[i];parent=o;});}
   return root;}
-function prepHand(root,side){root.updateMatrixWorld(true);const J={};root.traverse(o=>{if(o.name)J[o.name]=o;if(o.isSkinnedMesh||o.isMesh){o.frustumCulled=false;if(o.isSkinnedMesh)o.material=handMat;}});
+function prepHand(root,side){root.updateMatrixWorld(true);const J={};root.traverse(o=>{if(o.name)J[o.name]=o;if(o.isSkinnedMesh||o.isMesh){o.frustumCulled=false;if(o.isSkinnedMesh)o.material=skinMat;}});
   if(!J['wrist']||!J['middle-finger-phalanx-proximal']||!J['thumb-phalanx-proximal'])return null;
   const inv=new M4().copy(root.matrixWorld).invert();const bind={};
   for(const n in J){if(n==='wrist'||Object.values(FINGERS).some(a=>a.includes(n))){const m=new M4().multiplyMatrices(inv,J[n].matrixWorld);const p=new V3(),q=new Q4(),s=new V3();m.decompose(p,q,s);bind[n]={p,q,s};}}

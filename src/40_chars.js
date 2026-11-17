@@ -46,7 +46,7 @@ function prepTpl(gltf,name){if(!gltf)return null;const root=gltf.scene;root.upda
     const rq=new Q4().setFromRotationMatrix(new M4().extractRotation(mi));const ls=new V3().setFromMatrixScale(mi).x;const fu=1/(height*ls);
     const mouth=bones.bip_MUpperLip&&bones.bip_MBottomLip?L('bip_MUpperLip').add(L('bip_MBottomLip')).multiplyScalar(0.5):L('Head');
     const hand=(a,b)=>{const w=bones[b].getWorldPosition(new V3()),e=bones[a].getWorldPosition(new V3());return w.add(w.clone().sub(e).normalize().multiplyScalar(0.045*height)).applyMatrix4(mi);};
-    T.face={eyeL:L('bip_LEye'),eyeR:L('bip_REye'),mouth,hl:hand('LeftForeArm','LeftHand'),hr:hand('RightForeArm','RightHand'),up:UP.clone().applyQuaternion(rq).normalize(),fwd:f.clone().normalize().applyQuaternion(rq).normalize(),side:Lv.clone().normalize().applyQuaternion(rq).normalize(),fu};}
+    T.face={rq,eyeL:L('bip_LEye'),eyeR:L('bip_REye'),mouth,hl:hand('LeftForeArm','LeftHand'),hr:hand('RightForeArm','RightHand'),up:UP.clone().applyQuaternion(rq).normalize(),fwd:f.clone().normalize().applyQuaternion(rq).normalize(),side:Lv.clone().normalize().applyQuaternion(rq).normalize(),fu};}
   if(bones.bip_MJaw){const jb=bones.bip_MJaw;const jq=jb.getWorldQuaternion(new Q4());const sideW=Lv.clone().normalize();const lip=(bones.bip_MBottomLip||jb).getWorldPosition(new V3()).sub(jb.getWorldPosition(new V3()));
     if(lip.lengthSq()<1e-6)lip.copy(f).normalize();const t=lip.clone().applyAxisAngle(sideW,0.3);T.jawAx=sideW.clone().applyQuaternion(jq.invert()).normalize();T.jawSign=t.y<lip.y?1:-1;T.jawRest=jb.quaternion.clone();}
   return T;}
@@ -91,7 +91,7 @@ const WOUND_GLSL=`
           float n=zn(zp*34.0+float(i)*7.3),n2=zn(zp*9.0+float(i)*3.1);
           float stain=smoothstep(W.w*(0.6+ag*0.6),W.w*(0.3+ag*0.4),dd+(n2-0.5)*W.w*1.1+(n-0.5)*W.w*0.35);
           float core=smoothstep(W.w*0.24,W.w*0.17,dd);
-          float dy=dot(dv,uUp);vec3 lt=dv-uUp*dy;float lat=length(lt+uSd*(n2-0.5)*W.w*0.6);float L=W.w*(3.0+n2*4.0)*ag;
+          vec3 gU=-normalize(uWD[i]);float dy=dot(dv,gU);vec3 lt=dv-gU*dy;float lat=length(lt+cross(gU,uFw)*(n2-0.5)*W.w*0.6);float L=W.w*(3.0+n2*4.0)*ag;
           float wd=W.w*0.32*clamp(1.0+dy/L,0.15,1.0);
           float drip=step(dy,0.0)*smoothstep(-L,-L*0.6,dy)*smoothstep(wd,wd*0.35,lat);
           float b=max(max(stain*0.92,drip*0.85),core);
@@ -102,13 +102,13 @@ function charMat(base,type,variant,tpl,h){const key=base.uuid+type+variant+(h?'_
   const F=tpl&&tpl.face;const zom=type==='zombie';
   if(F&&(zom||h)){const gore=S.gore;const isHead=/head/i.test(base.name)?1:0;m.onBeforeCompile=sh=>{
     Object.assign(sh.uniforms,{uFU:{value:F.fu},uSeed:{value:variant*3.7+1.3},uGore:{value:gore/2},uEL:{value:F.eyeL},uER:{value:F.eyeR},uMo:{value:F.mouth},uHL:{value:F.hl},uHR:{value:F.hr},uUp:{value:F.up},uFw:{value:F.fwd},uSd:{value:F.side},
-      uHead:{value:isHead},uMK:{value:[1,0.55,1,0.2][variant%4]},uHK:{value:[1,0.2,0.7,1][variant%4]},uW:{value:h?h.woundU:WOUND0},uWT:{value:h?h.woundT:WOUNDT0},uTime:WTIME});
-    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform vec4 uW[8];uniform float uFU;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w>=0.0)continue;float d=length((position-W.xyz)*uFU);transformed-=objectNormal*smoothstep(-W.w*1.2,0.0,d)*(-W.w)*0.5/uFU;}');
-    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uFU,uSeed,uGore,uHead,uMK,uHK;uniform vec3 uEL,uER,uMo,uHL,uHR,uUp,uFw,uSd;uniform vec4 uW[8];uniform float uWT[8];uniform float uTime;\n'+NOISE_GLSL)
+      uHead:{value:isHead},uMK:{value:[1,0.55,1,0.2][variant%4]},uHK:{value:[1,0.2,0.7,1][variant%4]},uW:{value:h?h.woundU:WOUND0},uWT:{value:h?h.woundT:WOUNDT0},uWD:{value:h?h.woundD:WOUNDD0},uTime:WTIME});
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform vec4 uW[8];uniform float uFU;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w==0.0)continue;float r=abs(W.w);float d=length((position-W.xyz)*uFU);transformed-=objectNormal*(W.w<0.0?smoothstep(r*1.2,0.0,d)*r*0.5:smoothstep(r*0.45,0.0,d)*r*0.35)/uFU;}');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uFU,uSeed,uGore,uHead,uMK,uHK;uniform vec3 uEL,uER,uMo,uHL,uHR,uUp,uFw,uSd;uniform vec4 uW[8];uniform float uWT[8];uniform vec3 uWD[8];uniform float uTime;\n'+NOISE_GLSL)
       .replace('#include <map_fragment>','#include <map_fragment>\n        vec3 c0=diffuseColor.rgb;vec3 zp=vZP*uFU*1.75+uSeed;float l=dot(c0,vec3(0.3,0.59,0.11));vec3 zc=c0;\n'+(zom?ZOMBIE_GLSL:'')+WOUND_GLSL+'\n        diffuseColor.rgb=zc;');};
-    m.customProgramCacheKey=()=>(zom?'zomb6_':'wnd6_')+gore;}
+    m.customProgramCacheKey=()=>(zom?'zomb7_':'wnd7_')+gore;}
   matCache.set(key,m);return m;}
-const WOUND0=Array.from({length:8},()=>new THREE.Vector4());const WOUNDT0=new Float32Array(8).fill(-99);const WTIME={value:0};
+const WOUND0=Array.from({length:8},()=>new THREE.Vector4());const WOUNDT0=new Float32Array(8).fill(-99);const WOUNDD0=Array.from({length:8},()=>new V3(0,-1,0));const WTIME={value:0};
 const ZOMBIE_GLSL=`
         float sk=smoothstep(0.015,0.09,c0.r-c0.g)*smoothstep(-0.01,0.05,c0.g-c0.b)*smoothstep(0.2,0.38,c0.r);sk=max(sk,uHead*0.55*smoothstep(0.12,0.3,l));
         vec3 cloth=mix(vec3(l),c0,0.5)*vec3(0.84,0.86,0.80);
@@ -157,7 +157,7 @@ function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=
   let h=H_.find(q=>!q.active&&q.tpl===tpl);if(!h){if(H_.length<MAXC)h=newRec(tpl);else{h=H_.find(q=>!q.active);if(!h)return null;}}
   const height=(female?R(1.58,1.72):R(1.68,1.86));const s=height/h.tpl.height;h.s=s;h.inner.scale.setScalar(s);h.inner.quaternion.copy(h.tpl.qFix);h.inner.position.set(0,-h.tpl.minY*s,0);
   const variant=o.variant!==undefined?o.variant:(Math.random()*4)|0;
-  if(!h.woundU){h.woundU=Array.from({length:8},()=>new THREE.Vector4());h.woundT=new Float32Array(8);}for(const w of h.woundU)w.set(0,0,0,0);h.woundT.fill(-99);h.woundI=0;h.bleeds=[];
+  if(!h.woundU){h.woundU=Array.from({length:8},()=>new THREE.Vector4());h.woundT=new Float32Array(8);h.woundD=Array.from({length:8},()=>new V3());h.woundB=[];}for(const w of h.woundU)w.set(0,0,0,0);h.woundT.fill(-99);h.woundI=0;h.bleeds=[];
   for(const m of h.meshes){m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,type,variant,h.tpl,h)):charMat(m.userData.base,type,variant,h.tpl,h);}
   {const jb=h.bones.bip_MJaw;if(jb&&h.tpl.jawAx){jb.quaternion.copy(h.tpl.jawRest);if(type==='zombie')jb.quaternion.multiply(_q.setFromAxisAngle(h.tpl.jawAx,h.tpl.jawSign*R(0.1,0.42)));}}
   const zt=type==='zombie';h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(s):v*s;}
@@ -309,6 +309,9 @@ function carBodies(h){const pv=h.sim[PELVIS];for(const c of cars){const dx0=pv.x
       if(dT<dS&&dT<dF){p.y+=dT;const ux=p.x-q.x,uz=p.z-q.z;q.x=p.x-(ux+(vx*FDT-ux)*0.12);q.z=p.z-(uz+(vz*FDT-uz)*0.12);if(q.y<p.y)q.y=p.y-0.001;}
       else if(dS<dF){const sg=Math.sign(lx)||1;p.x+=co*sg*dS;p.z-=s*sg*dS;q.x=p.x-vx*FDT;q.z=p.z-vz*FDT;}
       else{const sg=Math.sign(lz)||1;p.x+=s*sg*dF;p.z+=co*sg*dF;q.x=p.x-vx*FDT*1.05;q.z=p.z-vz*FDT*1.05;const sp=Math.abs(c.speed);if(sp>3&&ly>0.3)q.y=Math.min(q.y,p.y-sp*0.22*FDT*(ly>0.7?1:0.5));}h.sleep=0;}}}
+const _wq=new Q4(),_wv=new V3();
+function updateWoundGravity(h){if(!h.woundB||!h.tpl.face)return;const rq=h.tpl.face.rq;for(let k=0;k<8;k++){const n=h.woundB[k];if(!n||!h.woundU[k].w)continue;const b=h.bones[n];if(!b)continue;
+  b.getWorldQuaternion(_wq);_wv.set(0,-1,0).applyQuaternion(_wq.invert()).applyQuaternion(h.tpl.bq[n]).applyQuaternion(rq);h.woundD[k].copy(_wv);}}
 function physStep(h,dt){h.acc+=dt;let n=0,mv=0;while(h.acc>=FDT&&n<3){h.acc-=FDT;n++;mv=verlet(h);carBodies(h);}if(h.acc>FDT*3)h.acc=0;return mv;}
 function startGetUp(h){const s=h.sim;h.x=s[PELVIS].x;h.z=s[PELVIS].z;_cp.x=h.x;_cp.z=h.z;collide(_cp,0.3,h.y+0.3);h.x=_cp.x;h.z=_cp.z;
   _v.subVectors(s[HEAD],s[PELVIS]);if(Math.abs(_v.x)+Math.abs(_v.z)>0.2)h.yaw=Math.atan2(_v.x,_v.z);h.down=0;h.act='getup';h.getup=0;h.k=0.25;}
@@ -321,7 +324,7 @@ function addWound(h,part,pos,dir,size){if(!S.gore||!h.woundU)return;h.holder.upd
   _wr.set(_v.copy(pos).addScaledVector(dir,-0.7),dir);_wr.far=1.6;const hit=_wr.intersectObjects(h.meshes,false)[0];if(!hit||!hit.face)return;const m=hit.object,f=hit.face;
   m.getVertexPosition(f.a,_wa);m.getVertexPosition(f.b,_wb);m.getVertexPosition(f.c,_wc);m.worldToLocal(_wl.copy(hit.point));THREE.Triangle.getBarycoord(_wl,_wa,_wb,_wc,_wbc);
   const P=m.geometry.attributes.position;const x=P.getX(f.a)*_wbc.x+P.getX(f.b)*_wbc.y+P.getX(f.c)*_wbc.z,y=P.getY(f.a)*_wbc.x+P.getY(f.b)*_wbc.y+P.getY(f.c)*_wbc.z,z=P.getZ(f.a)*_wbc.x+P.getZ(f.b)*_wbc.y+P.getZ(f.c)*_wbc.z;
-  const k=h.woundI++%8;const blunt=HITKIND==='blunt';h.woundU[k].set(x,y,z,(blunt?-size*0.5:size*0.35)/(h.tpl.height*h.s));h.woundT[k]=clockT;
+  const k=h.woundI++%8;const blunt=HITKIND==='blunt';{let bi=CHEST,bd=1e9;for(let i=0;i<NP;i++){const d=h.sim[i].distanceToSquared(hit.point);if(d<bd){bd=d;bi=i;}}h.woundB[k]=BN[bi];}h.woundU[k].set(x,y,z,(blunt?-size*0.5:size*0.35)/(h.tpl.height*h.s));h.woundT[k]=clockT;
   if(!blunt){let bi=CHEST,bd=1e9;for(let i=0;i<NP;i++){const d=h.sim[i].distanceToSquared(hit.point);if(d<bd){bd=d;bi=i;}}(h.bleeds||(h.bleeds=[])).push({i:bi,o:hit.point.clone().sub(h.sim[bi]),until:clockT+R(5,9),t:0});if(h.bleeds.length>4)h.bleeds.shift();}}
 let HITKIND='';
 const pools=[];function bloodPool(x,z,y){if(S.gore<2||pools.length>40)return;y=surfY(x,z,y+0.3);let mx=0;for(let k=0;k<8;k++){const a=k*0.785;for(const r of [0.4,0.8,1.2]){if(Math.abs(surfY(x+Math.cos(a)*r,z+Math.sin(a)*r,y+0.3)-y)>0.04){mx=mx?Math.min(mx,r):r;break;}}}const m=new THREE.Mesh(woundGeo,poolMat);m.rotation.x=-Math.PI/2;m.rotation.z=R(0,6);m.position.set(x,y+0.015,z);m.scale.setScalar(0.2);scene.add(m);pools.push({m,s:0.2,max:mx?Math.max(0.3,mx*1.4):R(1.2,2),t:180});}

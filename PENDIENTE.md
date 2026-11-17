@@ -31,10 +31,19 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 - Ciudad abandonada (`37_decay.js`), coches siniestrados (`placeWrecks`), cadáveres (`placeCorpses`), motos.
 - Báculos (`semaforBR/BL`), placas de dirección (`stPlate`), mupis, interiores por tipo, fachadas gastadas (`weatherMat`), calles pacificadas con rampa y embornales.
 
+## Hecho en v8 (17-nov, Opus)
+- Manos con piel de las fotos del usuario (`assets/tex/skin_back.jpg`, `skin_palm.jpg`, `skinMat` triplanar).
+- Filtros de color en el tonemapping (`CustomToneMapping`, exposición codifica el filtro), nubes (`clouds`, cúpula con fbm), bruma hasta «muy densa».
+- Goteo de heridas según la gravedad (`updateWoundGravity`, `uWD`) y hundimiento en el impacto de bala.
+- Basura: cajas, bolsas, ropa, maletas, colchones, ramas, troncos caídos, contenedores quemados y volcados; 32 cadáveres.
+- Motos: 3 modelos (`moto`, `motoN`, `motoX`) desordenadas o tiradas; se levantan y las que arrancan se conducen (`makeMoto`, manillar con dos grips).
+- Volante moderno y bien colocado; interior con pantalla, rejillas y fuelle.
+
 ## Pendiente (por orden)
 1. Probar en las Quest lo anterior (no verificado en el visor): manos contra paredes, agarre de puertas con grip, agacharse, HUD.
 2. Carriles y flechas reales desde OpenStreetMap (`turn:lanes`, `lanes`, `psv:lanes` ya están en `w/osm/ways.json`).
-2b. Manos con textura realista de piel (esperando fotos del usuario).
+2b. Furgonetas tipo Berlingo/Kangoo y más modelos de coche.
+2d. Escaparates reales de cada local (Maps/Street View).
 2c. Cruce Casanova-Aragó idéntico (gasolinera Cepsa con Carrefour Express en la esquina, carril bici).
 3. Bicing montable (manillar con los dos grips).
 4. Señales del suelo de Barcelona (flechas macizas, pintura limpia): `arrowPaint`, `texPaint` en `30_streets.js`.

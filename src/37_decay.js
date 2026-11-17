@@ -37,6 +37,15 @@ function decayWorld(){
   // mobiliario volcado o movido: papeleras tiradas, motos caídas
   for(const name of ['papelera']){const I=INST[name];for(const L of I.lists.values())for(const t of L){if(Math.random()<0.18){t[9]=R(1.3,1.6);t[1]+=0.22;t[3]+=R(-1,1);}}}
   for(const k of ['cont_resta','cont_organica','cont_envasos','cont_paper','cont_vidre']){const I=INST[k];if(!I)continue;for(const L of I.lists.values())for(const t of L){t[3]+=R(-0.25,0.25);t[0]+=R(-0.3,0.3);t[2]+=R(-0.3,0.3);}}
+  // contenedores quemados o volcados, basura alrededor
+  for(const k of ['cont_resta','cont_organica','cont_envasos','cont_paper','cont_vidre']){const I=INST[k];if(!I)continue;for(const L of I.lists.values())for(const t of L){const r=Math.random();
+      if(r<0.12){addInst('contQuemado',t[0],t[1],t[2],t[3]);t[4]=t[5]=t[6]=0.0001;}else if(r<0.2){t[11]=(Math.random()<0.5?1:-1)*1.5;t[1]+=0.85;t[0]+=R(-0.4,0.4);}
+      if(Math.random()<0.6){for(let n=0;n<RI(1,3);n++){const a=R(0,6.28),d=R(0.9,2.2);const x=t[0]+Math.cos(a)*d,z=t[2]+Math.sin(a)*d;addInst(pick(['bolsas','caja2','cajaPlana','bolsas']),x,surfY(x,z),z,R(0,6.28),R(0.8,1.2),R(0.8,1.2),R(0.8,1.2));}}}}
+  // en aceras y calzadas: cajas, bolsas, ropa, maletas, colchones, ramas y algún árbol caído
+  for(const bk of BLOCKS){if(bk.outer)continue;for(let e=0;e<8;e+=2){const a=bk.cp[e],b=bk.cp[(e+1)%8];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<10)continue;const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;const c=centroid(bk.bp);let nx=-uz,nz=ux;if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}
+    for(let t=R(1,4);t<L-2;t+=R(1.8,5)){const d=R(-6,2.8);const x=a[0]+ux*t+nx*d,z=a[1]+uz*t+nz*d;const y=surfY(x,z);const r=Math.random();
+      const k=r<0.22?'caja2':r<0.36?'cajaPlana':r<0.52?'bolsas':r<0.7?'ropa':r<0.76?'maleta':r<0.8?'colchon':'rama';addInst(k,x,y+(k==='colchon'?0.0:0),z,R(0,6.28),R(0.8,1.25),1,R(0.8,1.25));}
+    if(Math.random()<0.18){const t=R(10,L-10);const x=a[0]+ux*t+nx*R(1,4),z=a[1]+uz*t+nz*R(1,4);addInst('tronco',x,H(x,z)+0.02,z,Math.atan2(-nz,nx)+R(-0.7,0.7));}}}
   // hojas acumuladas en la calzada junto al bordillo
   for(const bk of BLOCKS){if(bk.outer)continue;for(let e=0;e<8;e+=2){const a=bk.cp[e],b=bk.cp[(e+1)%8];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;const c=centroid(bk.bp);let nx=-uz,nz=ux;if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}
     for(let t=R(1,4);t<L;t+=R(2,6)){const x=a[0]+ux*t+nx*R(0.3,1.1),z=a[1]+uz*t+nz*R(0.3,1.1);addInst('leafLitter',x,H(x,z),z,R(0,6),R(0.8,1.8),1,R(0.6,1.2),0,0,0,pick(LEAFCOL));}}}}
