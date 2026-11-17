@@ -177,7 +177,7 @@ function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=
   let h=H_.find(q=>!q.active&&q.tpl===tpl);if(!h){if(H_.length<MAXC)h=newRec(tpl);else{h=H_.find(q=>!q.active);if(!h)return null;}}
   const height=(female?R(1.58,1.72):R(1.68,1.86));const s=height/h.tpl.height;h.s=s;h.inner.scale.setScalar(s);h.inner.quaternion.copy(h.tpl.qFix);h.inner.position.set(0,-h.tpl.minY*s,0);
   const variant=o.variant!==undefined?o.variant:(Math.random()*4)|0;
-  if(!h.woundU){h.woundU=Array.from({length:8},()=>new THREE.Vector4());h.woundT=new Float32Array(8);h.woundD=Array.from({length:8},()=>new V3());h.woundB=[];}for(const w of h.woundU)w.set(0,0,0,0);h.woundT.fill(-99);h.woundI=0;h.bleeds=[];
+  if(!h.woundU){h.woundU=Array.from({length:8},()=>new THREE.Vector4());h.woundT=new Float32Array(8);h.woundD=Array.from({length:8},()=>new V3());h.woundB=[];}for(const w of h.woundU)w.set(0,0,0,0);h.woundT.fill(-99);h.woundI=0;h.bleeds=[];if(h.severed){for(const k in h.bones)if(h.bones[k].scale.x<0.01)h.bones[k].scale.setScalar(1);h.severed=null;}
   for(const m of h.meshes){m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,type,variant,h.tpl,h)):charMat(m.userData.base,type,variant,h.tpl,h);}
   {const jb=h.bones.bip_MJaw;if(jb&&h.tpl.jawAx){jb.quaternion.copy(h.tpl.jawRest);if(type==='zombie')jb.quaternion.multiply(_q.setFromAxisAngle(h.tpl.jawAx,h.tpl.jawSign*R(0.1,0.42)));}}
   const zt=type==='zombie';h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(s):v*s;}
@@ -354,6 +354,20 @@ const pools=[];function bloodPool(x,z,y){if(S.gore<2||pools.length>40)return;y=s
 function anger(h){if(h.type==='zombie')return;if(h.base){if(!h.base.angry&&h.base.type==='good')toast(`¡Has atacado a ${h.base.name}! Ahora son hostiles.`);h.base.angry=true;}else h.angry=true;}
 const ARMPT=[0,0,0,0,0,0,0,1,1,1,1,0,0,0,0];
 // pierna rota: cae apoyando las manos, se levanta y cojea arrastrándola; con las dos rotas, se arrastra
+// cortes: con el machete, un golpe fuerte en brazo, pierna o cuello puede amputar (el hueso se encoge a nada, sale el miembro y sangra el muñón)
+const SEVER={lArm:[['LeftForeArm',LELB,LHAND],['LeftArm',LSH,LELB]],rArm:[['RightForeArm',RELB,RHAND],['RightArm',RSH,RELB]],lLeg:[['LeftLeg',LKNEE,LFOOT]],rLeg:[['RightLeg',RKNEE,RFOOT]],head:[['Head',HEAD,HEAD]]};
+const limbMat=new THREE.MeshStandardMaterial({color:0x8a7a68,roughness:0.8}),stumpMat=new THREE.MeshStandardMaterial({color:0x5a0a08,roughness:0.4});
+function trySever(h,part,pi,sp,dir){const opts=SEVER[part];if(!opts||!h.active)return;h.severed=h.severed||{};if(h.severed[part])return;
+  const need=part==='head'?9:part.endsWith('Leg')?8:5.5;if(sp<need||Math.random()>clamp((sp-need)/5+0.25,0,0.8))return;
+  const o=(pi===LSH||pi===RSH)&&opts[1]?opts[1]:opts[0];const b=h.bones[o[0]];if(!b)return;h.severed[part]=true;b.scale.setScalar(0.001);
+  const A=h.sim[o[1]],B=h.sim[o[2]];const len=part==='head'?0.24:Math.max(0.2,A.distanceTo(B)+0.08);
+  const g=new THREE.Group();const m=new THREE.Mesh(part==='head'?new THREE.SphereGeometry(0.1,10,8):new THREE.CylinderGeometry(0.045,0.035,len,8),limbMat);g.add(m);
+  const cap=new THREE.Mesh(new THREE.CircleGeometry(part==='head'?0.06:0.045,8),stumpMat);cap.rotation.x=-Math.PI/2;cap.position.y=part==='head'?-0.09:len/2+0.001;g.add(cap);
+  g.position.copy(part==='head'?A:_v.addVectors(A,B).multiplyScalar(0.5));if(part!=='head'){_v2.subVectors(B,A).normalize();g.quaternion.setFromUnitVectors(UP,_v2);}
+  dropObj(g,g.position.clone(),_v2.copy(dir).multiplyScalar(2.5).setY(2),true);for(let k=0;k<3;k++)spray(A,_v2.set(R(-1,1),1.5,R(-1,1)).normalize(),14);
+  (h.bleeds||(h.bleeds=[])).push({i:o[1],o:new V3(),until:clockT+R(9,14),t:0});
+  if(part==='head'){h.headHp=0;die(h,'player');return;}
+  if(part.endsWith('Leg')){h.limb[part]=0;if(!h.broken[part])breakLimb(h,part);}else{h.limb[part]=0;h.broken[part]=true;h.armed=false;}}
 function breakLimb(h,part){h.broken[part]=true;
   if(part==='lLeg'||part==='rLeg'){const other=part==='lLeg'?'rLeg':'lLeg';
     if(h.broken[other]){for(const i of LIMB_PTS[part])h.kp[i]=0.02;h.permPhys=true;h.crawler=true;h.down=1e9;h.act='crawl';return;}

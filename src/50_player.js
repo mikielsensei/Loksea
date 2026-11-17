@@ -106,6 +106,16 @@ function makeGun(){const g=new THREE.Group();
   const flash=new THREE.Mesh(new THREE.SphereGeometry(0.03,8,6),new THREE.MeshBasicMaterial({color:0xffd27a,transparent:true,opacity:0}));flash.position.set(0,0.082,-0.18);g.add(flash);
   const mk=(x,y,z)=>{const o=new THREE.Object3D();o.position.set(x,y,z);g.add(o);return o;};
   g.userData={slide,mag,flash,muzzle:mk(0,0.082,-0.16),magwell:mk(0,-0.084,0.032),slideRear:mk(0,0.085,0.055),port:mk(-0.014,0.093,-0.028)};return g;}
+function makeMachete(){const g=new THREE.Group();const steel=pbr(new THREE.MeshStandardMaterial({map:ltex('det_metal_diff.jpg'),roughnessMap:ltex('det_metal_rough.jpg',false),color:0xb8b4ac,metalness:0.85,roughness:0.45}));
+  const blade=shapeFrom([[0,-0.012],[0.05,-0.016],[0.3,-0.02],[0.44,-0.012],[0.48,0.004],[0.46,0.022],[0.3,0.03],[0.05,0.022],[0,0.02]]);const bg=new THREE.ExtrudeGeometry(blade,{depth:0.003,bevelEnabled:true,bevelThickness:0.0012,bevelSize:0.002,bevelSegments:1});
+  bg.translate(0,0,-0.0015);bg.rotateY(Math.PI/2);bg.rotateX(0);const bm=new THREE.Mesh(bg,steel);bm.rotation.y=0;bm.position.z=-0.06;bm.rotation.set(0,0,-Math.PI/2);g.add(bm);
+  // la hoja va hacia -z (como el bate): se gira para alinear
+  bm.rotation.set(0,Math.PI/2,0);bm.position.set(0,0,-0.07);
+  const rust=new THREE.Mesh(new THREE.BoxGeometry(0.0045,0.012,0.08),new THREE.MeshStandardMaterial({color:0x6a3a1e,roughness:0.9}));rust.position.set(0,0.012,-0.35);g.add(rust);
+  const grip=new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.017,0.14,10),polyMat);grip.rotation.x=Math.PI/2;grip.position.z=0.0;g.add(grip);
+  const guard=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.05,0.012),gunMetalMat);guard.position.set(0,0.004,-0.072);g.add(guard);
+  for(const z of [-0.04,0.04]){const r=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.036,6),gunMetalMat);r.rotation.z=Math.PI/2;r.position.set(0,0,z);g.add(r);}
+  const mk=z=>{const o=new THREE.Object3D();o.position.z=z;g.add(o);return o;};g.userData={tip:mk(-0.52),mid:mk(-0.3)};return g;}
 function makeBat(){const g=new THREE.Group();const pts=[];const prof=[[0,0.0],[0.026,0.0],[0.028,0.008],[0.016,0.02],[0.014,0.12],[0.015,0.25],[0.022,0.4],[0.031,0.55],[0.034,0.68],[0.033,0.8],[0.026,0.835],[0,0.84]];
   for(const [r,y] of prof)pts.push(new THREE.Vector2(r,y));const geo=new THREE.LatheGeometry(pts,16);geo.translate(0,-0.09,0);
   const bt=ltex('wood_door_diff.jpg').clone();bt.needsUpdate=true;bt.repeat.set(0.6,2.5);bt.wrapS=bt.wrapT=THREE.RepeatWrapping;const wm=pbr(new THREE.MeshStandardMaterial({map:bt,color:0xd8b888,roughness:0.5}));const m=new THREE.Mesh(geo,wm);m.rotation.x=-Math.PI/2;g.add(m);
@@ -113,9 +123,9 @@ function makeBat(){const g=new THREE.Group();const pts=[];const prof=[[0,0.0],[0
   for(let i=0;i<5;i++){const n=new THREE.Mesh(new THREE.CylinderGeometry(0.0022,0.0012,0.09,5),gunMetalMat);n.position.set(R(-0.012,0.012),R(-0.01,0.01),-0.55-i*0.05);n.rotation.set(R(-0.3,0.3),0,Math.PI/2+R(-0.5,0.5));g.add(n);}
   const mk=z=>{const o=new THREE.Object3D();o.position.z=z;g.add(o);return o;};g.userData={tip:mk(-0.73),mid:mk(-0.45)};return g;}
 // En el espacio del grip WebXR: −Z va hacia el pulgar (a lo largo de la empuñadura) y −Y hacia los nudillos
-const vrGun=makeGun(),vrBat=makeBat();const vrWeapon=new THREE.Group();vrWeapon.add(vrGun,vrBat);
+const vrGun=makeGun(),vrBat=makeBat(),vrMach=makeMachete();const vrWeapon=new THREE.Group();vrWeapon.add(vrGun,vrBat,vrMach);
 vrGun.rotation.x=HFIT.gr;vrGun.position.set(0,HFIT.gy,HFIT.gz);vrBat.position.set(0,0,0.03);
-const vmGun=makeGun(),vmBat=makeBat();const viewModel=new THREE.Group();viewModel.add(vmGun,vmBat);viewModel.position.set(0.22,-0.24,-0.42);vmBat.rotation.set(0.9,0.25,0);vmGun.scale.setScalar(1.6);camera.add(viewModel);
+const vmGun=makeGun(),vmBat=makeBat(),vmMach=makeMachete();const viewModel=new THREE.Group();viewModel.add(vmGun,vmBat,vmMach);vmMach.rotation.set(0.9,0.25,0);viewModel.position.set(0.22,-0.24,-0.42);vmBat.rotation.set(0.9,0.25,0);vmGun.scale.setScalar(1.6);camera.add(viewModel);
 const leftMag=makeMag();leftMag.visible=false;leftMag.rotation.x=-Math.PI/2;leftMag.position.set(0,0,-0.03);
 const beltPouch=new THREE.Group();const beltMags=[];for(let i=0;i<2;i++){const p=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.075,0.04),pbr(new THREE.MeshStandardMaterial({color:0x2a2a22,roughness:0.9})));p.position.set(0,0,i*0.06-0.03);beltPouch.add(p);
   const m=makeMag();m.position.set(0,0.075,i*0.06-0.03);m.scale.setScalar(0.95);beltPouch.add(m);beltMags.push(m);}
@@ -268,12 +278,12 @@ function reloadFlat(){if(G.mag>=12&&G.chamber)return;if(G.mag>0)addItem('balas',
   G.mag=n;if(!G.chamber&&G.mag>0){G.mag--;G.chamber=true;}G.locked=false;sfx('magin');setTimeout(()=>sfx('rack'),300);toast(`Recargas (${G.mag}+${G.chamber?1:0})`);}
 let swingT=0;
 function meleeFlat(){swingT=0.28;sfx('swish');camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);const r=rayChars(_o2,_d2,2.4);
-  if(r.h){const s=P.weapon==='bate'?7.5:3;const moodF=0.75+P.mood/400;_imp.copy(_d2).multiplyScalar(s*0.75).add(_v.set(0,0.6,0));
+  if(r.h){const s=P.weapon==='bate'?7.5:P.weapon==='machete'?8:3;const moodF=0.75+P.mood/400;_imp.copy(_d2).multiplyScalar(s*0.75).add(_v.set(0,0.6,0));
     const dmg=(r.part==='head'?s*6:r.part==='body'?s*3:s*4)*moodF*(P.weapon==='manos'?0.3:1);_e2.copy(_o2).addScaledVector(_d2,r.t);
-    HITKIND='blunt';hitChar(r.h,r.part,dmg,_imp,r.pi,'player',_e2,_d2);HITKIND='';sfx(r.part==='head'?'hithead':'hit');spray(_e2,_d2,8);}}
+    HITKIND=P.weapon==='machete'?'cut':'blunt';if(P.weapon==='machete')_imp.multiplyScalar(0.5);hitChar(r.h,r.part,dmg,_imp,r.pi,'player',_e2,_d2);if(P.weapon==='machete')trySever(r.h,r.part,r.pi,6.5,_d2);HITKIND='';sfx(r.part==='head'?'hithead':'hit');spray(_e2,_d2,8);}}
 const tipPrev=new V3(),tipNow=new V3(),midNow=new V3(),tipVel=new V3();let tipInit=false;
 function vrMelee(dt){if(!hands.right||!hands.right.handRoot.parent||P.weapon==='pistola')return;
-  if(P.weapon==='bate'){vrBat.userData.tip.getWorldPosition(tipNow);vrBat.userData.mid.getWorldPosition(midNow);}else{hands.right.wristObj.getWorldPosition(tipNow);midNow.copy(tipNow);}
+  if(P.weapon==='bate'||P.weapon==='machete'){const w=P.weapon==='bate'?vrBat:vrMach;w.userData.tip.getWorldPosition(tipNow);w.userData.mid.getWorldPosition(midNow);}else{hands.right.wristObj.getWorldPosition(tipNow);midNow.copy(tipNow);}
   if(!tipInit){tipPrev.copy(tipNow);tipInit=true;return;}tipVel.subVectors(tipNow,tipPrev).divideScalar(Math.max(dt,0.008));tipPrev.copy(tipNow);
   const sp=Math.min(14,tipVel.length());if(sp<2.2)return;
   // golpear cristales: se rompen con un buen golpe de bate (o de puño muy fuerte)
@@ -284,7 +294,7 @@ function vrMelee(dt){if(!hands.right||!hands.right.handRoot.parent||P.weapon==='
     for(const pnt of [tipNow,midNow]){const d2=pnt.distanceToSquared(_hc);if(d2<0.04&&d2<best){best=d2;hit=HEAD;part='head';hp=pnt;}
       for(const [a,b,r,pp] of HIT_SEGS){const [dd,t]=pointSegD2(pnt,pts[a],pts[b]);const rr=(r+0.07)*(r+0.07);if(dd<rr&&dd<best){best=dd;hit=t<0.5?a:b;part=pp;hp=pnt;}}}
     if(hit>=0){const moodF=0.75+P.mood/400;const hand=P.weapon==='manos';_imp.copy(tipVel).multiplyScalar(hand?0.45:0.55);if(_imp.length()>12)_imp.setLength(12);_imp.y+=0.6;
-      const dmg=(part==='head'?sp*6:part==='body'?sp*3:sp*4)*moodF*(hand?0.25:1);_d2.copy(tipVel).normalize();hitChar(h,part,dmg,_imp,hit,'player',hp,_d2);h.lastHitT=clockT;
+      const cut=P.weapon==='machete';if(cut)_imp.multiplyScalar(0.5);const dmg=(part==='head'?sp*6:part==='body'?sp*3:sp*4)*moodF*(hand?0.25:cut?1.15:1);_d2.copy(tipVel).normalize();HITKIND=cut?'cut':hand?'':'blunt';hitChar(h,part,dmg,_imp,hit,'player',hp,_d2);if(cut)trySever(h,part,hit,sp,_d2);HITKIND='';h.lastHitT=clockT;
       sfx(part==='head'?'hithead':'hit',clamp(sp/8,0.4,1));haptic(srcR,clamp(sp/8,0.4,1),60);spray(hp,_d2,hand?3:8);}}}
 function damagePlayer(n,from,bite){if(!P.alive)return;if(from==='zombi')n*=S.zStr;P.hp-=n;hurtFx=Math.min(0.6,hurtFx+0.25+n/60);sfx('hurt');
   if(P.sleeping){P.sleeping=false;toast('¡Te despiertan a mordiscos!');}haptic(srcL,0.8,80);haptic(srcR,0.8,80);

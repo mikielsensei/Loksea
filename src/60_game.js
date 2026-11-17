@@ -636,10 +636,10 @@ function updateChars(dt,p){camera.updateMatrixWorld();_pm.multiplyMatrices(camer
     if(h.type==='zombie'&&d<14&&h.speed>0.3){h.stepT-=dt*h.speed;if(h.stepT<=0){h.stepT=0.7;sfx('step',volAt(h.x,h.z,14));}}}
   blobs.instanceMatrix.needsUpdate=true;}
 function updateWeapons(dt){const vrOn=inVR&&!!gripBySide.right;
-  vrBat.visible=P.weapon==='bate';vrGun.visible=P.weapon==='pistola';vmBat.visible=P.weapon==='bate'&&!P.inCar&&!inVR;vmGun.visible=P.weapon==='pistola'&&!P.inCar&&!inVR;
+  vrBat.visible=P.weapon==='bate';vrMach.visible=P.weapon==='machete';vmMach.visible=P.weapon==='machete'&&!P.inCar&&!inVR;vrGun.visible=P.weapon==='pistola';vmBat.visible=P.weapon==='bate'&&!P.inCar&&!inVR;vmGun.visible=P.weapon==='pistola'&&!P.inCar&&!inVR;
   for(const gun of [vrGun,vmGun]){const u=gun.userData;u.slide.position.z=(G.locked?0.03:0)+G.kick+(gun===vrGun&&slideGrab?slideGrab.off:0);u.mag.visible=G.mag>=0;u.mag.userData.bullet.visible=u.mag.userData.tip.visible=G.mag>0;u.flash.material.opacity=Math.max(0,u.flash.material.opacity-dt*25);}
   G.kick=Math.max(0,G.kick-dt*0.4);
-  if(swingT>0){swingT-=dt;const k=1-swingT/0.28;vmBat.rotation.set(0.9-Math.sin(k*Math.PI)*1.6,0.25+Math.sin(k*Math.PI)*0.9,0);}else vmBat.rotation.set(0.9,0.25,0);
+  if(swingT>0){swingT-=dt;const k=1-swingT/0.28;for(const w of [vmBat,vmMach])w.rotation.set(0.9-Math.sin(k*Math.PI)*1.6,0.25+Math.sin(k*Math.PI)*0.9,0);}else for(const w of [vmBat,vmMach])w.rotation.set(0.9,0.25,0);
   if(inVR&&!P.inCar&&P.alive)vrMelee(dt);
   refillBelt();
   const lhr=hands.left;const showBelt=vrOn&&P.weapon==='pistola'&&!P.inCar;camera.getWorldPosition(_v);camera.getWorldDirection(_v1);_v1.y=0;_v1.normalize();const rx=-_v1.z,rz=_v1.x;
@@ -706,7 +706,7 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   if(IN.snap&&!P.sleeping){camera.getWorldPosition(_v);if(P.inCar)P.carYaw-=IN.snap*Math.PI/6;else P.yaw-=IN.snap*Math.PI/6;rig.rotation.y=P.inCar?P.inCar.yaw+Math.PI+P.carYaw:P.yaw;rig.updateMatrixWorld(true);camera.getWorldPosition(_v1);if(!P.inCar){rig.position.x+=_v.x-_v1.x;rig.position.z+=_v.z-_v1.z;}}
   if(P.alive&&!P.sleeping&&!panel){if(IN.use&&!(inVR&&(doorGrab.right||doorGrab.left||P.inCar)))doInteract();if(IN.weapon&&P.inCar&&inVR)exitCar();
     if(IN.light&&P.inCar){IN.light=false;P.carGun=!P.carGun;toast(P.carGun?'Modo disparo: el gatillo dispara':'Modo conducción: el gatillo acelera',1.5);}
-    if(IN.weapon&&!P.inCar){P.weapon=P.weapon==='manos'?'bate':P.weapon==='bate'?'pistola':'manos';toast({manos:'Manos libres',bate:'Bate',pistola:'Pistola'}[P.weapon],1.5);}
+    if(IN.weapon&&!P.inCar){P.weapon=P.weapon==='manos'?'bate':P.weapon==='bate'?'machete':P.weapon==='machete'?'pistola':'manos';toast({manos:'Manos libres',bate:'Bate',machete:'Machete',pistola:'Pistola'}[P.weapon],1.5);}
     if(IN.eject&&P.weapon==='pistola')ejectMag(true);if(IN.reload&&P.weapon==='pistola')reloadFlat();if(IN.light){P.light=!P.light;sfx('click');}if(IN.pee)doPee();
     if(IN.crouch){P.crouchToggle=!P.crouchToggle;toast(P.crouchToggle?'Te agachas':'Te levantas',1.2);}if(IN.hud){hudOn=!hudOn;sfx('click');}if(IN.recenter&&!P.inCar)recenter();
     if((!P.inCar||P.carGun)&&IN.attackP){if(P.weapon==='pistola'){if(inVR&&gripBySide.right){vrGun.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrGun.getWorldQuaternion(_q));fireGun(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireGun(_o2,_d2);}}else meleeFlat();}}
@@ -788,7 +788,7 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,trySever,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}

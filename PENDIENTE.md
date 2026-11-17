@@ -71,7 +71,7 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 7. Rótulos/escaparates realistas: banderolas (cruz verde farmacia, T estanco), letras 3D, marcos por tipo.
 8. (v8.9-v9.4) Motos rehechas y caídas con restos; furgonetas tipo Kangoo/Berlingo (deformando el mismo modelo, `makeVanTpl`, 28% de los coches). Falta: coches quemados con más detalle, furgonetas de reparto grandes.
 9. Semáforos en posiciones reales (OSM highway=traffic_signals) y modelo mejor; flechas de carril reales (turn:lanes en ways.json).
-10. Daño melee con cortes/mutilación, interiores de bares, balcones variados, NPC con rutinas.
+10. (v9.6-9.8) Machete con cortes y amputaciones (`trySever`), bares por dentro, balcones variados. Falta: NPC con rutinas; miembros amputados más realistas (ahora cilindros).
 
 - Pistola: revisar en VR que la empuñadura encaje con las manos nuevas (no comprobado en render plano).
 - (v9.3 `61_dyn.js`) Peso y gravedad: cajas, bolsas, maletas, cascos, carenados, palés, ramas y contenedores pasan a cuerpos con física al arrollarlos (impulso por masas), los ligeros se patean al andar, y en VR se cogen con la mano izquierda (o la derecha si vas sin arma) y se lanzan con la velocidad de la mano. Falta: que las balas los empujen, y coger con la mano real (no la muñeca).
