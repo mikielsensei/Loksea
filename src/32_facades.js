@@ -42,7 +42,7 @@ const texRail=cTex(1024,512,(g,W,Hh)=>{g.clearRect(0,0,W,Hh);const w=512,h=256;c
   for(let x=10;x<w;x+=42){g.fillStyle=st;g.beginPath();g.moveTo(x+10,30);g.lineTo(x+22,30);g.quadraticCurveTo(x+34,h*0.45,x+26,h*0.62);g.quadraticCurveTo(x+36,h*0.82,x+24,h-22);g.lineTo(x+8,h-22);g.quadraticCurveTo(x-4,h*0.82,x+6,h*0.62);g.quadraticCurveTo(x-2,h*0.45,x+10,30);g.fill();
     g.fillStyle='rgba(60,50,40,0.35)';g.fillRect(x+20,40,6,h-70);}
   g.fillStyle='rgba(40,32,24,0.25)';for(let i=0;i<60;i++)g.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*30,1+Math.random()*6);g.restore();},{});
-{const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff],[bx(1,0.06,0.9,0,-0.04,0.45),0xe2dccf],[bx(1,0.04,0.8,0,-0.09,0.4),0xd4cdbf]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
+{const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff],[bx(1,0.07,0.86,0,-0.05,0.43),0xddd6c8]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
   const f=new THREE.PlaneGeometry(1,1);f.translate(0,0.5,1);const l=new THREE.PlaneGeometry(1,1);l.rotateY(Math.PI/2);l.translate(-0.5,0.5,0.5);const r=l.clone();r.translate(1,0,0);
   const railM=atlasMat(texRail,null,2,2,{alphaTest:0.18,alphaToCoverage:true,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM,2,2);
   const fF=new THREE.PlaneGeometry(1,1);fF.translate(0,0.5,1);defInst('balcRailF',fF,railM,2,2);const sS=new THREE.PlaneGeometry(1,1);sS.rotateY(Math.PI/2);sS.translate(0,0.5,0.5);defInst('balcRailS',sS,railM,2,2);}

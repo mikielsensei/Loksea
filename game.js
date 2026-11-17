@@ -388,7 +388,7 @@ defInst('signPole',mkG([[cy(0.03,0.03,3.1,0,1.55,0,6),0x8d9194]]),metalMat,1,1,f
 defInst('fanalR',mkG([[cy(0.12,0.16,4.2,0,2.1,0,10),LAMPG],[sp(0.22,0,4.5,0,10),0xf0ead8],[cy(0.05,0.05,0.3,0,4.2,0),LAMPG],[sp(0.16,0.55,4.1,0,8),0xf0ead8],[sp(0.16,-0.55,4.1,0,8),0xf0ead8],[tube([0,3.9,0],[0.55,3.95,0],0.03),LAMPG],[tube([0,3.9,0],[-0.55,3.95,0],0.03),LAMPG]]),paintMat,1,1,false);
 // papelera de Barcelona: cubo gris abatible colgado de un poste con aro
 defInst('papelera',mkG([[cy(0.04,0.04,1.02,0,0.51,-0.02,10),0x6d7276],[sp(0.042,0,1.02,-0.02,8),0x6d7276],[tube([0,0.92,-0.02],[0,0.92,0.12],0.018),0x6d7276],
-  [lathe([[0.001,0.34],[0.15,0.35],[0.185,0.42],[0.215,0.96],[0.228,0.965],[0.228,0.99],[0.2,0.99],[0.195,0.5],[0.001,0.46]],18,0,0,0.33),0x868b8f],[tor(0.222,0.013,0,0.99,0.33,0,18).rotateX(0),0x55595c],
+  [lathe([[0.001,0.34],[0.15,0.35],[0.185,0.42],[0.215,0.96],[0.228,0.965],[0.228,0.99],[0.2,0.99],[0.195,0.5],[0.001,0.46]],12,0,0,0.33),0x868b8f],[tor(0.222,0.013,0,0.99,0.33,0,18).rotateX(0),0x55595c],
   [bx(0.2,0.13,0.012,0,0.72,0.545),0xe8e8e2]]),metalMat,1,1,false);
 // banco Barcelona: listones de madera sobre dos patas de fundición de aluminio
 {const WD=0xb07a48,AL=0x9da2a6;const w=[],m=[];
@@ -399,7 +399,7 @@ defInst('papelera',mkG([[cy(0.04,0.04,1.02,0,0.51,-0.02,10),0x6d7276],[sp(0.042,
       [tube([x,0.2,-0.2],[x,0.2,0.255],0.016,6),AL],[cy(0.04,0.045,0.02,x,0.01,-0.2,10),AL],[cy(0.04,0.045,0.02,x,0.01,0.3,10),AL],[sp(0.026,x,0.86,0.335,8),AL]);}
   defInst('banc',mkG(m),metalMat,1,1,false);defInst('bancWood',mkG(w),woodPropMat,1,1,false);INST.banc.parts=['bancWood'];}
 // pilona Barcelona (C-42P): fundición negra, cuello con anilla y cabeza redondeada
-defInst('pilona',mkG([[lathe([[0.074,0],[0.07,0.03],[0.058,0.06],[0.054,0.8],[0.047,0.815],[0.047,0.835],[0.06,0.85],[0.062,0.9],[0.055,0.945],[0.035,0.972],[0.001,0.98]],9),0x1e2021]]),metalMat,1,1,false);
+defInst('pilona',mkG([[lathe([[0.074,0],[0.07,0.03],[0.058,0.06],[0.054,0.8],[0.047,0.815],[0.047,0.835],[0.06,0.85],[0.062,0.9],[0.055,0.945],[0.035,0.972],[0.001,0.98]],7),0x1e2021]]),metalMat,1,1,false);
 // alcorque Barcelona: marco cuadrado con reja circular de fundición (anillos y ranuras radiales)
 const texGrate=cTex(256,256,(g,w,h)=>{g.fillStyle='#3a332b';g.fillRect(0,0,w,h);const c=w/2;g.fillStyle='#24211e';g.beginPath();g.arc(c,c,118,0,7);g.fill();
   g.fillStyle='#2b2d2c';g.fillRect(0,0,w,h);g.globalCompositeOperation='destination-out';g.globalCompositeOperation='source-over';
@@ -424,17 +424,17 @@ const CONT=[['resta',0x5d6164],['organica',0x7c4a22],['envasos',0xf0c000],['pape
 // Bicing: anclaje y bicicleta roja con guardabarros trasero blanco
 defInst('bicingDock',mkG([[cy(0.065,0.075,0.74,0,0.37,0,14),0x73787c],[cy(0.08,0.08,0.13,0,0.8,0,14),0xd0202a],[sp(0.079,0,0.865,0,10),0xd0202a],[bx(0.05,0.1,0.1,0,0.72,0.07),0x1b1c1d],[bx(0.34,0.035,0.2,0,0.018,0),0x55595c]]),paintMat,1,1,false);
 {const W=0xf3f3f1,RD=0xd0202a,BK=0x141414,AL=0xa9adb0;const p=[];
-  for(const z of [-0.52,0.55]){p.push([tor(0.31,0.03,0,0.34,z,Math.PI/2,22),BK],[tor(0.276,0.011,0,0.34,z,Math.PI/2,22),AL],[cy(0.035,0.035,0.09,0,0.34,z,10,0,Math.PI/2),AL]);for(let k=0;k<6;k++)p.push([bx(0.005,0.54,0.008,0,0.34,z,k*Math.PI/6),AL]);}
+  for(const z of [-0.52,0.55]){p.push([tor(0.31,0.03,0,0.34,z,Math.PI/2,14),BK],[tor(0.276,0.011,0,0.34,z,Math.PI/2,14),AL],[cy(0.035,0.035,0.09,0,0.34,z,10,0,Math.PI/2),AL]);for(let k=0;k<4;k++)p.push([bx(0.005,0.54,0.008,0,0.34,z,k*Math.PI/4),AL]);}
   // cuadro de barra baja
-  p.push([tube([0,0.6,0.43],[0,1.02,0.33],0.03,10),RD],[tube([0,0.92,0.36],[0,0.5,0.16],0.042,10),RD],[tube([0,0.5,0.16],[0,0.36,-0.12],0.042,10),RD],[sp(0.043,0,0.5,0.16,8),RD],[tube([0,0.36,-0.12],[0,0.92,-0.3],0.03,10),RD],
+  p.push([tube([0,0.6,0.43],[0,1.02,0.33],0.03,6),RD],[tube([0,0.92,0.36],[0,0.5,0.16],0.042,6),RD],[tube([0,0.5,0.16],[0,0.36,-0.12],0.042,6),RD],[sp(0.043,0,0.5,0.16,6),RD],[tube([0,0.36,-0.12],[0,0.92,-0.3],0.03,6),RD],
     [cy(0.05,0.05,0.12,0,0.36,-0.12,10,0,Math.PI/2),AL],[tube([0,0.36,-0.12],[0.16,0.24,-0.06],0.012,6),BK],[tube([0,0.36,-0.12],[-0.16,0.48,-0.18],0.012,6),BK],[bx(0.08,0.02,0.05,0.2,0.24,-0.06),BK],[bx(0.08,0.02,0.05,-0.2,0.48,-0.18),BK]);
   for(const x of [-0.055,0.055])p.push([tube([x,0.36,-0.12],[x,0.34,-0.52],0.016,6),RD],[tube([x,0.74,-0.25],[x,0.34,-0.52],0.014,6),RD],[tube([x,0.6,0.43],[x,0.34,0.55],0.017,6),BK],[bx(0.008,0.24,0.5,x*1.25,0.6,-0.52),W]);
   // guardabarros: trasero blanco y ancho, delantero rojo
   {const g=new THREE.TorusGeometry(0.352,0.022,5,14,Math.PI*0.95);g.rotateZ(0.1);g.rotateY(Math.PI/2);g.scale(3.2,1,1);g.translate(0,0.34,-0.52);p.push([g,W]);
    const g2=new THREE.TorusGeometry(0.35,0.02,5,10,Math.PI*0.6);g2.rotateZ(0.5);g2.rotateY(Math.PI/2);g2.scale(2.2,1,1);g2.translate(0,0.34,0.55);p.push([g2,RD]);}
   // sillín, tija, potencia, manillar con puños y cesta-anclaje delantero
-  p.push([tube([0,0.92,-0.3],[0,1.02,-0.33],0.016,8),AL],[ell(0.085,0.03,0.14,0,1.045,-0.35,10),BK],[tube([0,1.02,0.33],[0,1.1,0.27],0.02,8),AL],[tube([-0.3,1.11,0.25],[0.3,1.11,0.25],0.013,8),BK],
-    [tube([-0.31,1.11,0.25],[-0.2,1.11,0.25],0.02,8),BK],[tube([0.2,1.11,0.25],[0.31,1.11,0.25],0.02,8),BK],[tube([0,1.1,0.27],[0,1.11,0.25],0.02,6),AL],
+  p.push([tube([0,0.92,-0.3],[0,1.02,-0.33],0.016,6),AL],[ell(0.085,0.03,0.14,0,1.045,-0.35,6),BK],[tube([0,1.02,0.33],[0,1.1,0.27],0.02,6),AL],[tube([-0.3,1.11,0.25],[0.3,1.11,0.25],0.013,6),BK],
+    [tube([-0.31,1.11,0.25],[-0.2,1.11,0.25],0.02,6),BK],[tube([0.2,1.11,0.25],[0.31,1.11,0.25],0.02,6),BK],[tube([0,1.1,0.27],[0,1.11,0.25],0.02,6),AL],
     [bx(0.22,0.16,0.22,0,0.9,0.6),RD],[bx(0.24,0.02,0.3,0,0.99,0.62),BK],[bx(0.12,0.07,0.012,0,0.9,0.716),W],[tube([-0.13,0.99,0.48],[-0.13,1.08,0.48],0.008,5),BK],[tube([0.13,0.99,0.48],[0.13,1.08,0.48],0.008,5),BK],[tube([-0.13,1.08,0.48],[0.13,1.08,0.48],0.008,5),BK],
     [tube([-0.13,0.99,0.76],[-0.13,1.08,0.76],0.008,5),BK],[tube([0.13,0.99,0.76],[0.13,1.08,0.76],0.008,5),BK],[tube([-0.13,1.08,0.76],[0.13,1.08,0.76],0.008,5),BK],[tube([-0.13,1.08,0.48],[-0.13,1.08,0.76],0.008,5),BK],[tube([0.13,1.08,0.48],[0.13,1.08,0.76],0.008,5),BK]);
   defInst('bicingBike',mkG(p),paintMat,1,1,false);}
@@ -491,10 +491,10 @@ defInst('stPlate',(()=>{const a=new THREE.PlaneGeometry(0.62,0.155);a.translate(
 // moto aparcada: scooter tipo «SH» (lo que más hay en Barcelona); las piezas blancas toman el color de cada moto
 const MOTOCOL=[0xf2f2f0,0xf2f2f0,0x1a1a1c,0x1a1a1c,0x8e9296,0xb01818,0x22325a,0x6a6e72];
 // perfiles laterales extruidos con bisel (z hacia delante, y arriba): carrocería redondeada de verdad, no cajas
-function xS(pts,w,bev,x=0){const g=extrudeX(shapeFrom(pts),w,bev);g.translate(x,0,0);return g;}
-function wheelParts(p,z,r,tw,BK,RIM,disc){p.push([tor(r,tw,0,r+tw,z,Math.PI/2,20),BK],[cy(r-0.02,r-0.02,0.07,0,r+tw,z,16,0,Math.PI/2),RIM],[cy(0.05,0.05,0.16,0,r+tw,z,8,0,Math.PI/2),0x8a8e92]);
+function xS(pts,w,bev,x=0){const g=new THREE.ExtrudeGeometry(shapeFrom(pts),{depth:Math.max(0.002,w-2*bev),bevelEnabled:bev>0,bevelThickness:bev,bevelSize:bev,bevelSegments:1,curveSegments:3});g.rotateY(-Math.PI/2);g.translate((w-2*bev)/2+x,0,0);return g;}// ligero: en la calle hay cientos
+function wheelParts(p,z,r,tw,BK,RIM,disc){p.push([tor(r,tw,0,r+tw,z,Math.PI/2,12),BK],[cy(r-0.02,r-0.02,0.07,0,r+tw,z,10,0,Math.PI/2),RIM],[cy(0.05,0.05,0.16,0,r+tw,z,6,0,Math.PI/2),0x8a8e92]);
   for(let k=0;k<5;k++){const a=k/5*Math.PI*2;p.push([bx(0.035,r*0.9,0.075,0,r+tw+Math.cos(a)*r*0.45,z+Math.sin(a)*r*0.45,a),RIM]);}
-  if(disc)p.push([cy(0.11,0.11,0.006,0.075,r+tw,z,16,0,Math.PI/2),0xb8bcc0]);}
+  if(disc)p.push([cy(0.11,0.11,0.006,0.075,r+tw,z,8,0,Math.PI/2),0xb8bcc0]);}
 function scooterParts(top){const W=0xffffff,BK=0x161616,GR=0x2c2c2e,CH=0xa8acb0,RIM=0x3a3c3e;const p=[];
   wheelParts(p,0.68,0.235,0.072,BK,RIM,true);wheelParts(p,-0.66,0.235,0.072,BK,RIM,false);
   // escudo delantero y frontal
@@ -508,18 +508,18 @@ function scooterParts(top){const W=0xffffff,BK=0x161616,GR=0x2c2c2e,CH=0xa8acb0,
   // sillín biplaza
   p.push([xS([[0.06,0.77],[0.02,0.84,-0.08,0.87],[-0.34,0.885],[-0.42,0.9],[-0.66,0.915],[-0.8,0.9],[-0.84,0.86],[-0.78,0.83],[0.04,0.76]],0.3,0.035),0x2a2420]);
   // horquilla, guardabarros y amortiguador trasero
-  for(const sx of [-1,1])p.push([tube([sx*0.075,0.31,0.68],[sx*0.06,0.86,0.56],0.022,8),CH]);
+  for(const sx of [-1,1])p.push([tube([sx*0.075,0.31,0.68],[sx*0.06,0.86,0.56],0.022,6),CH]);
   p.push([xS([[0.48,0.47],[0.62,0.6,0.78,0.6],[0.92,0.5],[0.9,0.47],[0.77,0.565,0.62,0.565],[0.5,0.44]],0.15,0.012),W]);
-  p.push([tube([-0.12,0.32,-0.66],[-0.13,0.66,-0.48],0.028,8),0xb02020],[tube([-0.12,0.32,-0.66],[-0.12,0.42,-0.2],0.05,8),0x5a5c5e]);// muelle rojo y basculante/motor
+  p.push([tube([-0.12,0.32,-0.66],[-0.13,0.66,-0.48],0.028,6),0xb02020],[tube([-0.12,0.32,-0.66],[-0.12,0.42,-0.2],0.05,6),0x5a5c5e]);// muelle rojo y basculante/motor
   p.push([xS([[-0.18,0.24],[0.0,0.26],[0.04,0.42],[-0.3,0.45],[-0.62,0.4],[-0.66,0.28],[-0.5,0.2]],0.12,0.02,-0.1),0x4a4c4e]);// cárter del motor
-  p.push([cy(0.055,0.06,0.42,0.16,0.4,-0.62,10,Math.PI/2-0.12),0x3a3a3a],[cy(0.062,0.062,0.08,0.16,0.42,-0.82,10,Math.PI/2-0.12),CH]);// escape
+  p.push([cy(0.055,0.06,0.42,0.16,0.4,-0.62,7,Math.PI/2-0.12),0x3a3a3a],[cy(0.062,0.062,0.08,0.16,0.42,-0.82,7,Math.PI/2-0.12),CH]);// escape
   // cubremanillar con faro, manillar, puños, maneta y retrovisores
   p.push([xS([[0.42,1.0],[0.5,1.08],[0.64,1.1],[0.72,1.04],[0.7,0.98],[0.58,0.96],[0.44,0.96]],0.5,0.03),W]);
   p.push([xS([[0.66,1.0],[0.72,1.03],[0.735,1.0],[0.7,0.975]],0.24,0.01),0xe6edf2]);// faro
-  p.push([tube([-0.38,1.05,0.46],[0.38,1.05,0.46],0.017,8),BK]);for(const sx of [-1,1]){p.push([tube([sx*0.3,1.05,0.46],[sx*0.42,1.05,0.46],0.023,8),BK],[tube([sx*0.2,1.07,0.5],[sx*0.36,1.06,0.53],0.008,4),0x8a8e92]);
-    p.push([tube([sx*0.2,1.08,0.5],[sx*0.27,1.22,0.47],0.008,4),BK],[ell(0.075,0.05,0.02,sx*0.29,1.25,0.47,10),BK],[ell(0.065,0.042,0.004,sx*0.29,1.25,0.458,10),0xc8d0d6]);}
+  p.push([tube([-0.38,1.05,0.46],[0.38,1.05,0.46],0.017,6),BK]);for(const sx of [-1,1]){p.push([tube([sx*0.3,1.05,0.46],[sx*0.42,1.05,0.46],0.023,6),BK],[tube([sx*0.2,1.07,0.5],[sx*0.36,1.06,0.53],0.008,4),0x8a8e92]);
+    p.push([tube([sx*0.2,1.08,0.5],[sx*0.27,1.22,0.47],0.008,4),BK],[ell(0.075,0.05,0.02,sx*0.29,1.25,0.47,6),BK],[ell(0.065,0.042,0.004,sx*0.29,1.25,0.458,6),0xc8d0d6]);}
   // intermitentes, piloto, matrícula y caballete
-  for(const sx of [-1,1])p.push([ell(0.03,0.02,0.035,sx*0.2,1.0,0.64,6),0xe89a20],[ell(0.025,0.018,0.03,sx*0.12,0.76,-0.97,6),0xe89a20]);
+  for(const sx of [-1,1])p.push([bx(0.05,0.03,0.05,sx*0.2,1.0,0.64),0xe89a20],[bx(0.04,0.03,0.04,sx*0.12,0.76,-0.97),0xe89a20]);
   p.push([xS([[-0.92,0.74],[-0.99,0.77],[-1.0,0.72],[-0.93,0.7]],0.22,0.008),0xb81010],[bx(0.2,0.14,0.01,0,0.58,-0.97,0.25),0xf2f2ee],[bx(0.22,0.02,0.04,0,0.66,-0.95),BK]);
   p.push([tube([-0.1,0.3,-0.05],[-0.2,0.02,-0.14],0.012,4),BK]);
   if(top){p.push([xS([[-0.68,0.93],[-0.62,1.12,-0.72,1.24],[-1.0,1.25],[-1.08,1.12],[-1.04,0.93]],0.4,0.05),BK],[bx(0.25,0.03,0.012,0,1.08,-1.08),0xb81010],[bx(0.3,0.03,0.42,0,0.92,-0.86),GR]);}
@@ -560,7 +560,7 @@ defInst('carenado',mkG([[xS([[0,0],[0.25,0.02],[0.32,0.1],[0.1,0.14]],0.12,0.01)
 // basura de calle abandonada: cajas de cartón, bolsas, ropa, ramas, tronco caído, contenedor quemado y volcado, colchón, maleta
 {const C=0xa8845a,T=0xc8b58a;defInst('caja2',mkG([[bx(0.55,0.4,0.42,0,0.2,0),C],[bx(0.56,0.05,0.12,0,0.4,0),T],[bx(0.5,0.3,0.36,0.05,0.55,0.03,0,0.3,0.1),0x9a7a50]]),plasticMat,1,1,false);
  defInst('cajaPlana',mkG([[bx(0.9,0.04,0.65,0,0.02,0),C],[bx(0.6,0.04,0.5,0.1,0.06,0.05,0,0.4),0xb8946a]]),plasticMat,1,1,false);
- defInst('bolsas',mkG([[ell(0.28,0.24,0.26,0,0.22,0,8),0x161616],[ell(0.24,0.2,0.22,0.36,0.18,0.12,8),0x1d1d1f],[ell(0.2,0.18,0.2,-0.2,0.16,0.3,8),0x22303a],[ell(0.18,0.2,0.18,0.12,0.45,0.05,8),0x141414]]),plasticMat,1,1,false);
+ defInst('bolsas',mkG([[ell(0.28,0.24,0.26,0,0.22,0,6),0x161616],[ell(0.24,0.2,0.22,0.36,0.18,0.12,6),0x1d1d1f],[ell(0.2,0.18,0.2,-0.2,0.16,0.3,5),0x22303a],[ell(0.18,0.2,0.18,0.12,0.45,0.05,5),0x141414]]),plasticMat,1,1,false);
  defInst('ropa',mkG([[bx(0.55,0.02,0.7,0,0.012,0,0,0.3),0xffffff],[bx(0.25,0.02,0.45,0.35,0.02,0.1,0,-0.6),0xffffff],[bx(0.3,0.06,0.12,-0.35,0.03,-0.3,0,0.8),0x222222]]),photoMat('fabric',{roughness:0.95,ns:0.6}),1,1,false);
  defInst('maleta',mkG([[bx(0.45,0.65,0.24,0,0.12,0,Math.PI/2),0x2a3a5a],[bx(0.18,0.03,0.03,0,0.25,0.36),0x111111]]),plasticMat,1,1,false);
  defInst('colchon',mkG([[bx(1.4,0.18,1.95,0,0.09,0),0xd8d0c0],[bx(1.42,0.02,1.97,0,0.18,0),0xc0b8a8]]),photoMat('fabric',{roughness:0.95,ns:0.6}),1,1,false);
@@ -985,7 +985,7 @@ const texRail=cTex(1024,512,(g,W,Hh)=>{g.clearRect(0,0,W,Hh);const w=512,h=256;c
   for(let x=10;x<w;x+=42){g.fillStyle=st;g.beginPath();g.moveTo(x+10,30);g.lineTo(x+22,30);g.quadraticCurveTo(x+34,h*0.45,x+26,h*0.62);g.quadraticCurveTo(x+36,h*0.82,x+24,h-22);g.lineTo(x+8,h-22);g.quadraticCurveTo(x-4,h*0.82,x+6,h*0.62);g.quadraticCurveTo(x-2,h*0.45,x+10,30);g.fill();
     g.fillStyle='rgba(60,50,40,0.35)';g.fillRect(x+20,40,6,h-70);}
   g.fillStyle='rgba(40,32,24,0.25)';for(let i=0;i<60;i++)g.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*30,1+Math.random()*6);g.restore();},{});
-{const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff],[bx(1,0.06,0.9,0,-0.04,0.45),0xe2dccf],[bx(1,0.04,0.8,0,-0.09,0.4),0xd4cdbf]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
+{const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff],[bx(1,0.07,0.86,0,-0.05,0.43),0xddd6c8]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
   const f=new THREE.PlaneGeometry(1,1);f.translate(0,0.5,1);const l=new THREE.PlaneGeometry(1,1);l.rotateY(Math.PI/2);l.translate(-0.5,0.5,0.5);const r=l.clone();r.translate(1,0,0);
   const railM=atlasMat(texRail,null,2,2,{alphaTest:0.18,alphaToCoverage:true,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM,2,2);
   const fF=new THREE.PlaneGeometry(1,1);fF.translate(0,0.5,1);defInst('balcRailF',fF,railM,2,2);const sS=new THREE.PlaneGeometry(1,1);sS.rotateY(Math.PI/2);sS.translate(0,0.5,0.5);defInst('balcRailS',sS,railM,2,2);}
@@ -3180,15 +3180,16 @@ function updateSky(){const h=hourF();const ang=(h-6)/24*Math.PI*2;const sy=Math.
 let started=false,inVR=false,clockT=0,last=performance.now()/1000,hudT=0,promptT=0,frameNo=0,chunkT=0;
 const frustum=new THREE.Frustum(),_pm=new M4(),_sph=new THREE.Sphere();
 function updateChars(dt,p){camera.updateMatrixWorld();_pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(_pm);
+  const visFar=Math.min(140,(scene.fog?scene.fog.far:140)+4);// más allá de la niebla no se dibujan (en las Quest cada personaje cuenta)
   for(const h of H_){if(!h.active)continue;const kin=h.mode==='kin'&&!h.dead;const hx=kin?h.x:h.sim[PELVIS].x,hz=kin?h.z:h.sim[PELVIS].z;const d=Math.hypot(hx-p.x,hz-p.z);
     for(let i=0;i<NP;i++)if(h.kl[i]<1)h.kl[i]=Math.min(1,h.kl[i]+dt*1.8);
-    if(h.dead){h.deadT+=dt;if(h.sleep<1){const mv=physStep(h,dt);h.sleep=mv<0.003?h.sleep+dt:0;driveBones(h);}
+    if(h.dead){h.holder.visible=d<visFar;h.deadT+=dt;if(h.sleep<1){const mv=physStep(h,dt);h.sleep=mv<0.003?h.sleep+dt:0;driveBones(h);}
       if(h.reanimate&&h.deadT>12){h.reanimate=false;h.type='zombie';h.dead=false;h.headHp=80;h.bodyHp=140;h.base=null;h.role=null;h.armed=false;h.k=0;h.down=0.01;h.gp=Object.assign(h.gp,{lean:R(0.15,0.35),droop:R(0.2,0.5),arms:'forward',limp:R(-0.6,0.6),twitch:0.7,speedMul:R(0.8,1.1)});
         for(const m of h.meshes)m.material=charMat(m.userData.base,'zombie',0,1/h.tpl.height);if(d<40)toast(`${h.name} se levanta convertido en zombi…`);}
       else if(h.deadT>90&&d>25)despawn(h);
       _m.compose(_p.set(hx,surfY(hx,hz,h.sim[PELVIS].y)+0.02,hz),_q.identity(),_s.set(1.3,1,1.3));blobs.setMatrixAt(h.slot,_m);continue;}
     if(d>140&&h.mode==='kin'){h.holder.visible=false;if(h.prop)h.prop.visible=false;blobs.setMatrixAt(h.slot,ZM);if(h.target==='player'&&h.type==='zombie'&&frameNo%4===0)moveH(h,p.x-h.x,p.z-h.z,h.runner?3.7:1,dt*4);continue;}
-    h.holder.visible=true;if(h.prop)h.prop.visible=h.armed;if(h.atkAnim>0)h.atkAnim-=dt;
+    h.holder.visible=d<visFar;if(h.prop)h.prop.visible=h.armed&&d<visFar;if(h.atkAnim>0)h.atkAnim-=dt;
     if(h.type==='zombie')zombieAI(h,dt,p);else survivorAI(h,dt,p);
     _sph.center.set(h.x,h.y+1,h.z);_sph.radius=2.2;const vis=(frustum.intersectsSphere(_sph)&&d<(inVR?75:110))||h.mode==='phys';const lodN=d>60?4:d>30?2:1;h.holder.visible=vis||d<3;if(h.prop)h.prop.visible=h.armed&&h.holder.visible;
     h.lodAcc=(h.lodAcc||0)+dt;

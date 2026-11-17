@@ -620,15 +620,16 @@ function updateSky(){const h=hourF();const ang=(h-6)/24*Math.PI*2;const sy=Math.
 let started=false,inVR=false,clockT=0,last=performance.now()/1000,hudT=0,promptT=0,frameNo=0,chunkT=0;
 const frustum=new THREE.Frustum(),_pm=new M4(),_sph=new THREE.Sphere();
 function updateChars(dt,p){camera.updateMatrixWorld();_pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(_pm);
+  const visFar=Math.min(140,(scene.fog?scene.fog.far:140)+4);// más allá de la niebla no se dibujan (en las Quest cada personaje cuenta)
   for(const h of H_){if(!h.active)continue;const kin=h.mode==='kin'&&!h.dead;const hx=kin?h.x:h.sim[PELVIS].x,hz=kin?h.z:h.sim[PELVIS].z;const d=Math.hypot(hx-p.x,hz-p.z);
     for(let i=0;i<NP;i++)if(h.kl[i]<1)h.kl[i]=Math.min(1,h.kl[i]+dt*1.8);
-    if(h.dead){h.deadT+=dt;if(h.sleep<1){const mv=physStep(h,dt);h.sleep=mv<0.003?h.sleep+dt:0;driveBones(h);}
+    if(h.dead){h.holder.visible=d<visFar;h.deadT+=dt;if(h.sleep<1){const mv=physStep(h,dt);h.sleep=mv<0.003?h.sleep+dt:0;driveBones(h);}
       if(h.reanimate&&h.deadT>12){h.reanimate=false;h.type='zombie';h.dead=false;h.headHp=80;h.bodyHp=140;h.base=null;h.role=null;h.armed=false;h.k=0;h.down=0.01;h.gp=Object.assign(h.gp,{lean:R(0.15,0.35),droop:R(0.2,0.5),arms:'forward',limp:R(-0.6,0.6),twitch:0.7,speedMul:R(0.8,1.1)});
         for(const m of h.meshes)m.material=charMat(m.userData.base,'zombie',0,1/h.tpl.height);if(d<40)toast(`${h.name} se levanta convertido en zombi…`);}
       else if(h.deadT>90&&d>25)despawn(h);
       _m.compose(_p.set(hx,surfY(hx,hz,h.sim[PELVIS].y)+0.02,hz),_q.identity(),_s.set(1.3,1,1.3));blobs.setMatrixAt(h.slot,_m);continue;}
     if(d>140&&h.mode==='kin'){h.holder.visible=false;if(h.prop)h.prop.visible=false;blobs.setMatrixAt(h.slot,ZM);if(h.target==='player'&&h.type==='zombie'&&frameNo%4===0)moveH(h,p.x-h.x,p.z-h.z,h.runner?3.7:1,dt*4);continue;}
-    h.holder.visible=true;if(h.prop)h.prop.visible=h.armed;if(h.atkAnim>0)h.atkAnim-=dt;
+    h.holder.visible=d<visFar;if(h.prop)h.prop.visible=h.armed&&d<visFar;if(h.atkAnim>0)h.atkAnim-=dt;
     if(h.type==='zombie')zombieAI(h,dt,p);else survivorAI(h,dt,p);
     _sph.center.set(h.x,h.y+1,h.z);_sph.radius=2.2;const vis=(frustum.intersectsSphere(_sph)&&d<(inVR?75:110))||h.mode==='phys';const lodN=d>60?4:d>30?2:1;h.holder.visible=vis||d<3;if(h.prop)h.prop.visible=h.armed&&h.holder.visible;
     h.lodAcc=(h.lodAcc||0)+dt;
