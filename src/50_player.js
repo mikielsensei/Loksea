@@ -139,7 +139,7 @@ function ejectCasing(gun){gun.userData.port.getWorldPosition(_v);const m=new THR
 let HSIGN=1;
 const handMat=pbr(new THREE.MeshStandardMaterial({color:0xc58d6a,roughness:0.62,metalness:0}));
 // piel de las manos a partir de fotos reales (dorso con vello y venas, palma con líneas); proyectada en el espacio de la mano
-const skinMat=(()=>{const m=pbr(new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.55,metalness:0}));const tb=ltex('skin_back.jpg'),tp=ltex('skin_palm.jpg');
+const skinMat=(()=>{const m=new THREE.MeshStandardMaterial({color:0xd8c4b8,roughness:0.72,metalness:0});m.envMapIntensity=0.3;const tb=ltex('skin_back.jpg'),tp=ltex('skin_palm.jpg');
   m.onBeforeCompile=sh=>{sh.uniforms.tB={value:tb};sh.uniforms.tP={value:tp};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vHP;varying vec3 vHN;').replace('#include <begin_vertex>','#include <begin_vertex>\nvHP=position;vHN=normal;');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vHP;varying vec3 vHN;uniform sampler2D tB;uniform sampler2D tP;')

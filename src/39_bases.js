@@ -1,11 +1,15 @@
 // =====================================================================
 // BASES: Mercat del Ninot (aliados), escuela en el interior de manzana (aliados) y un Mercadona tomado por bandidos
 // =====================================================================
-defInst('tent',mkG([[(()=>{const g=new THREE.ConeGeometry(1.5,1.6,4);g.rotateY(Math.PI/4);g.translate(0,0.8,0);return g;})(),0xffffff]]),new THREE.MeshLambertMaterial({vertexColors:true}),1,1,true);
+defInst('tent',(()=>{const dome=new THREE.SphereGeometry(1,18,8,0,Math.PI*2,0,Math.PI/2);dome.scale(1.1,1.05,1.35);const ves=new THREE.SphereGeometry(1,10,6,-Math.PI/2,Math.PI,0,Math.PI/2);ves.scale(0.6,0.75,0.55);ves.translate(0,0,1.15);
+  const door=ell(0.42,0.5,0.06,0,0.42,1.66,10);const parts=[[dome,0xffffff],[ves,0xd8d8d8],[door,0x1a1a1a]];for(const a of [Math.PI/4,-Math.PI/4]){const t=new THREE.TorusGeometry(1.12,0.012,4,24,Math.PI);t.rotateY(a);t.scale(1,0.95,1.2);parts.push([t,0x222222]);}
+  for(const [x,z] of [[1.3,1.7],[-1.3,1.7],[1.3,-1.7],[-1.3,-1.7]])parts.push([tube([x*0.75,0.75,z*0.7],[x,0.0,z],0.004,3),0xbbbbbb]);return mkG(parts);})(),pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.65,metalness:0})),1,1,true);
 defInst('mattress',mkG([[bx(0.9,0.18,1.9,0,0.09,0),0xd8d0c0],[bx(0.6,0.12,0.4,0,0.22,-0.7),0xf0f0f0],[bx(0.85,0.05,1.2,0,0.2,0.3),0x5a6a8a]]),plasticMat,1,1,true);
-defInst('firebarrel',mkG([[cy(0.32,0.3,0.9,0,0.45,0,12),0x5a3a2a],[cy(0.26,0.26,0.05,0,0.88,0,12),0xff7a20]]),paintMat,1,1,true);
-defInst('crate',mkG([[bx(0.9,0.7,0.9,0,0.35,0),0x6b5434],[bx(0.92,0.06,0.92,0,0.68,0),0x5a4528]]),woodPropMat,1,1,true);
-defInst('latrina',mkG([[bx(1.2,2.3,1.2,0,1.15,0),0x5a6a4a],[bx(1.3,0.08,1.3,0,2.34,0),0x3a4a2a],[bx(0.7,1.9,0.03,0,0.95,0.61),0x4a5a3a]]),plasticMat,1,1,true);
+defInst('firebarrel',mkG([[cy(0.29,0.29,0.88,0,0.44,0,16),0x6a3a22],[cy(0.3,0.3,0.03,0,0.14,0,16),0x4a2a18],[cy(0.3,0.3,0.03,0,0.44,0,16),0x4a2a18],[cy(0.3,0.3,0.03,0,0.74,0,16),0x4a2a18],[cy(0.27,0.27,0.02,0,0.86,0,16),0xff8a2a],
+  ...[0,1,2,3,4,5].map(k=>[bx(0.06,0.04,0.12,Math.cos(k)*0.22,0.9,Math.sin(k)*0.22,0,k,0.3),0x2a1a10]),[ell(0.08,0.1,0.06,0.18,0.25,0.24,6),0x1a1008]]),metalMat,1,1,true);
+defInst('crate',mkG([...[0.08,0.3,0.52].flatMap(y=>[[bx(0.9,0.18,0.03,0,y+0.09,0.44),0x7b6440],[bx(0.9,0.18,0.03,0,y+0.09,-0.44),0x6e5838],[bx(0.03,0.18,0.86,0.44,y+0.09,0),0x735c3a],[bx(0.03,0.18,0.86,-0.44,y+0.09,0),0x7b6440]]),
+  ...[-0.42,0.42].flatMap(x=>[[bx(0.06,0.7,0.06,x,0.35,0.42),0x5a4528],[bx(0.06,0.7,0.06,x,0.35,-0.42),0x5a4528]]),[bx(0.86,0.02,0.86,0,0.03,0),0x5a4528],[bx(0.88,0.03,0.2,0,0.71,-0.2),0x6b5434],[bx(0.88,0.03,0.2,0,0.71,0.22),0x7b6440]]),woodPropMat,1,1,true);
+defInst('latrina',mkG([[bx(1.15,2.2,1.15,0,1.1,0),0x2a5a8a],[bx(1.25,0.1,1.25,0,2.25,0),0xd8d8d0],[bx(0.75,1.95,0.04,0,1.0,0.59),0x24507a],[bx(0.1,0.04,0.04,0.28,1.05,0.62),0x111111],[bx(0.2,0.08,0.02,0,1.75,0.615),0xd03020],[cy(0.05,0.05,0.35,0.4,2.4,-0.4,6),0x333333],[bx(0.6,0.03,0.04,0,2.05,0.6),0xd8d8d0]]),plasticMat,1,1,true);
 defInst('mesa',mkG([[bx(1.8,0.05,0.8,0,0.75,0),0x8a6a42],[bx(0.05,0.75,0.05,-0.85,0.37,-0.35),0x555555],[bx(0.05,0.75,0.05,0.85,0.37,-0.35),0x555555],[bx(0.05,0.75,0.05,-0.85,0.37,0.35),0x555555],[bx(0.05,0.75,0.05,0.85,0.37,0.35),0x555555]]),woodPropMat,1,1,true);
 defInst('olla',mkG([[cy(0.25,0.22,0.3,0,0.15,0,12),0x444444],[cy(0.3,0.3,0.03,0,0.0,0,12),0x222222]]),metalMat,1,1,true);
 defInst('canasta',mkG([[cy(0.06,0.06,3.0,0,1.5,0,8),0x555555],[bx(1.2,0.9,0.05,0,3.2,0.2),0xf0f0f0],[tor(0.23,0.015,0,2.95,0.5,0,12),0xd85a20]]),metalMat,1,1,true);
