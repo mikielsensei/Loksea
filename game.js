@@ -49,6 +49,9 @@ const SET_DEFS=[
   {k:'reanimate',l:'Los muertos se levantan',o:[0,1],d:1,f:yn},
   {k:'bandits',l:'Bandidos',o:[0,1],d:1,f:v=>v?'Agresivos':'Pacíficos'},
   {k:'gore',l:'Sangre y heridas',o:[0,1,2],d:2,f:v=>['Sin sangre','Moderada','Total'][v]},
+  {k:'turn',l:'Giro con el joystick',o:['snap','smooth'],d:'snap',f:v=>v==='snap'?'Por saltos (30°)':'Suave'},
+  {k:'view',l:'Distancia de visión',o:[100,200,300,500,1000,0],d:300,f:v=>v?(v>=1000?v/1000+' km':v+' m'):'Infinita'},
+  {k:'haze',l:'Bruma apocalíptica',o:[0,1,2,3],d:2,f:v=>['No','Ligera','Media','Densa'][v]},
   {k:'startHour',l:'Hora inicial',o:[6,8,12,18,22],d:8,f:v=>String(v).padStart(2,'0')+':00',start:true},
 ];
 const S={};for(const d of SET_DEFS)S[d.k]=d.d;
@@ -1334,7 +1337,7 @@ const EXTRA=['Spine','Spine1','Spine2','LeftShoulder','RightShoulder'];
 const BIPMAP={'Pelvis':'Hips','Spine':'Spine','Spine1':'Spine1','Spine2':'Spine2','Neck':'Neck','Head':'Head','L Clavicle':'LeftShoulder','L UpperArm':'LeftArm','L Forearm':'LeftForeArm','L Hand':'LeftHand','L Thigh':'LeftUpLeg','L Calf':'LeftLeg','L Foot':'LeftFoot',
   'R Clavicle':'RightShoulder','R UpperArm':'RightArm','R Forearm':'RightForeArm','R Hand':'RightHand','R Thigh':'RightUpLeg','R Calf':'RightLeg','R Foot':'RightFoot'};
 const cleanName=n=>{n=n.replace(/^mixamorig[:_]?/i,'');const m=/^Bip01[ _](.*)$/.exec(n);if(m){const k=m[1].replace(/_/g,' ');return BIPMAP[k]||('bip_'+k);}return n;};
-const TPL={};let CHAR_TPLS=[];let ferrariTpl=null;const HANDTPL={};
+const TPL={};let CHAR_TPLS=[];let ferrariTpl=null;const HANDTPL={};let CARTPL=null;
 const _fx=new V3(),_fy=new V3(),_fz=new V3(),_fm=new M4();
 function frameQ(up,side,out){_fy.copy(up).normalize();_fx.copy(side).addScaledVector(_fy,-side.dot(_fy));if(_fx.lengthSq()<1e-8)_fx.set(1,0,0);_fx.normalize();_fz.crossVectors(_fx,_fy);_fm.makeBasis(_fx,_fy,_fz);return out.setFromRotationMatrix(_fm);}
 function prepTpl(gltf,name){if(!gltf)return null;const root=gltf.scene;root.updateMatrixWorld(true);const bones={};
@@ -1372,6 +1375,11 @@ function prepTpl(gltf,name){if(!gltf)return null;const root=gltf.scene;root.upda
   if(bones.bip_MJaw){const jb=bones.bip_MJaw;const jq=jb.getWorldQuaternion(new Q4());const sideW=Lv.clone().normalize();const lip=(bones.bip_MBottomLip||jb).getWorldPosition(new V3()).sub(jb.getWorldPosition(new V3()));
     if(lip.lengthSq()<1e-6)lip.copy(f).normalize();const t=lip.clone().applyAxisAngle(sideW,0.3);T.jawAx=sideW.clone().applyQuaternion(jq.invert()).normalize();T.jawSign=t.y<lip.y?1:-1;T.jawRest=jb.quaternion.clone();}
   return T;}
+// coche de la comunidad (CC0, «Low Poly Car - Randomness A02 City» de kaytomasu): utilitario tipo Panda, el coche más típico de Barcelona
+function prepCarTpl(root,sc){root.scale.setScalar(sc);root.updateMatrixWorld(true);const wheels=[];const parts={};
+  root.traverse(o=>{if(o.isMesh){o.castShadow=false;parts[o.name]=o;if(o.material&&o.material.map)o.material.map.anisotropy=4;}});
+  for(const n of ['Front_Left_Wheel','Front_Right_Wheel','Rear_Left_Wheel','Rear_Right_Wheel']){const m=parts[n];if(!m)continue;const b=new THREE.Box3().setFromObject(m);const c=b.getCenter(new V3());wheels.push({name:n,c,r:(b.max.y-b.min.y)/2,front:n.startsWith('Front')});}
+  const box=new THREE.Box3().setFromObject(root);return{root,wheels,box,len:box.max.z-box.min.z,halfW:(parts.Car?new THREE.Box3().setFromObject(parts.Car):box).getSize(new V3()).x/2};}
 function prepFerrari(g){if(!g)return null;const root=g.scene;const wn=['wheel_fl','wheel_fr','wheel_rl','wheel_rr'];const w=wn.map(n=>root.getObjectByName(n));if(w.some(x=>!x))return null;
   root.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(root);const sz=box.getSize(new V3());
   const fr=w[0].getWorldPosition(new V3()).add(w[1].getWorldPosition(new V3())).multiplyScalar(0.5);const re=w[2].getWorldPosition(new V3()).add(w[3].getWorldPosition(new V3())).multiplyScalar(0.5);
@@ -1388,6 +1396,7 @@ async function loadModels(){setLoad('m','Descargando personajes…');
   setLoad('m',`✔ Personajes listos: ${TPL_M.length} hombres y ${TPL_F.length} mujeres`);
   setLoad('h','Descargando manos…');for(const side of ['left','right']){const g=await loadAny(HAND_BASE.map(b=>b+side+'.glb'));HANDTPL[side]=g?g.scene:null;}
   setupHands();setLoad('h',HANDTPL.left&&HANDTPL.right?'✔ Manos listas':'⚠ Manos sencillas');
+  {const g=await loadAny(['assets/models/car_panda.glb']);CARTPL=g?prepCarTpl(g.scene,1.14):null;}
   for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
   modelsReady=true;enableStart();}
 
@@ -1399,11 +1408,15 @@ float zn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);return mix(mix(mix
 const matCache=new Map();
 // Material por personaje: los zombis con piel cadavérica; todos con heridas pintadas sobre la propia piel (sin calcomanías flotando)
 const WOUND_GLSL=`
-        for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w<=0.0)continue;vec3 dv=(vZP-W.xyz)*uFU;float dd=length(dv);if(dd>W.w*7.0)continue;
+        for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w==0.0)continue;
+          if(W.w<0.0){float rb=-W.w;float db=length((vZP-W.xyz)*uFU);float nb=zn(zp*12.0+float(i));float br=smoothstep(rb*1.1,rb*0.3,db+(nb-0.5)*rb*0.6);
+            zc=mix(zc,zc*vec3(0.55,0.45,0.72)*vec3(0.85,0.7,1.0),br*0.75);zc=mix(zc,vec3(0.25,0.05,0.06)*(0.6+l),br*smoothstep(0.62,0.8,nb)*0.6);continue;}
+          float ag=clamp((uTime-uWT[i])/6.0,0.1,1.0);
+          vec3 dv=(vZP-W.xyz)*uFU;float dd=length(dv);if(dd>W.w*8.0)continue;
           float n=zn(zp*34.0+float(i)*7.3),n2=zn(zp*9.0+float(i)*3.1);
-          float stain=smoothstep(W.w*1.1,W.w*0.7,dd+(n2-0.5)*W.w*1.1+(n-0.5)*W.w*0.35);
+          float stain=smoothstep(W.w*(0.6+ag*0.6),W.w*(0.3+ag*0.4),dd+(n2-0.5)*W.w*1.1+(n-0.5)*W.w*0.35);
           float core=smoothstep(W.w*0.24,W.w*0.17,dd);
-          float dy=dot(dv,uUp);vec3 lt=dv-uUp*dy;float lat=length(lt+uSd*(n2-0.5)*W.w*0.6);float L=W.w*(3.0+n2*3.0);
+          float dy=dot(dv,uUp);vec3 lt=dv-uUp*dy;float lat=length(lt+uSd*(n2-0.5)*W.w*0.6);float L=W.w*(3.0+n2*4.0)*ag;
           float wd=W.w*0.32*clamp(1.0+dy/L,0.15,1.0);
           float drip=step(dy,0.0)*smoothstep(-L,-L*0.6,dy)*smoothstep(wd,wd*0.35,lat);
           float b=max(max(stain*0.92,drip*0.85),core);
@@ -1414,13 +1427,13 @@ function charMat(base,type,variant,tpl,h){const key=base.uuid+type+variant+(h?'_
   const F=tpl&&tpl.face;const zom=type==='zombie';
   if(F&&(zom||h)){const gore=S.gore;const isHead=/head/i.test(base.name)?1:0;m.onBeforeCompile=sh=>{
     Object.assign(sh.uniforms,{uFU:{value:F.fu},uSeed:{value:variant*3.7+1.3},uGore:{value:gore/2},uEL:{value:F.eyeL},uER:{value:F.eyeR},uMo:{value:F.mouth},uHL:{value:F.hl},uHR:{value:F.hr},uUp:{value:F.up},uFw:{value:F.fwd},uSd:{value:F.side},
-      uHead:{value:isHead},uMK:{value:[1,0.55,1,0.2][variant%4]},uHK:{value:[1,0.2,0.7,1][variant%4]},uW:{value:h?h.woundU:WOUND0}});
-    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;');
-    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uFU,uSeed,uGore,uHead,uMK,uHK;uniform vec3 uEL,uER,uMo,uHL,uHR,uUp,uFw,uSd;uniform vec4 uW[8];\n'+NOISE_GLSL)
+      uHead:{value:isHead},uMK:{value:[1,0.55,1,0.2][variant%4]},uHK:{value:[1,0.2,0.7,1][variant%4]},uW:{value:h?h.woundU:WOUND0},uWT:{value:h?h.woundT:WOUNDT0},uTime:WTIME});
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform vec4 uW[8];uniform float uFU;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w>=0.0)continue;float d=length((position-W.xyz)*uFU);transformed-=objectNormal*smoothstep(-W.w*1.2,0.0,d)*(-W.w)*0.5/uFU;}');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uFU,uSeed,uGore,uHead,uMK,uHK;uniform vec3 uEL,uER,uMo,uHL,uHR,uUp,uFw,uSd;uniform vec4 uW[8];uniform float uWT[8];uniform float uTime;\n'+NOISE_GLSL)
       .replace('#include <map_fragment>','#include <map_fragment>\n        vec3 c0=diffuseColor.rgb;vec3 zp=vZP*uFU*1.75+uSeed;float l=dot(c0,vec3(0.3,0.59,0.11));vec3 zc=c0;\n'+(zom?ZOMBIE_GLSL:'')+WOUND_GLSL+'\n        diffuseColor.rgb=zc;');};
-    m.customProgramCacheKey=()=>(zom?'zomb5_':'wnd5_')+gore;}
+    m.customProgramCacheKey=()=>(zom?'zomb6_':'wnd6_')+gore;}
   matCache.set(key,m);return m;}
-const WOUND0=Array.from({length:8},()=>new THREE.Vector4());
+const WOUND0=Array.from({length:8},()=>new THREE.Vector4());const WOUNDT0=new Float32Array(8).fill(-99);const WTIME={value:0};
 const ZOMBIE_GLSL=`
         float sk=smoothstep(0.015,0.09,c0.r-c0.g)*smoothstep(-0.01,0.05,c0.g-c0.b)*smoothstep(0.2,0.38,c0.r);sk=max(sk,uHead*0.55*smoothstep(0.12,0.3,l));
         vec3 cloth=mix(vec3(l),c0,0.5)*vec3(0.84,0.86,0.80);
@@ -1469,7 +1482,7 @@ function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=
   let h=H_.find(q=>!q.active&&q.tpl===tpl);if(!h){if(H_.length<MAXC)h=newRec(tpl);else{h=H_.find(q=>!q.active);if(!h)return null;}}
   const height=(female?R(1.58,1.72):R(1.68,1.86));const s=height/h.tpl.height;h.s=s;h.inner.scale.setScalar(s);h.inner.quaternion.copy(h.tpl.qFix);h.inner.position.set(0,-h.tpl.minY*s,0);
   const variant=o.variant!==undefined?o.variant:(Math.random()*4)|0;
-  if(!h.woundU)h.woundU=Array.from({length:8},()=>new THREE.Vector4());for(const w of h.woundU)w.set(0,0,0,0);h.woundI=0;
+  if(!h.woundU){h.woundU=Array.from({length:8},()=>new THREE.Vector4());h.woundT=new Float32Array(8);}for(const w of h.woundU)w.set(0,0,0,0);h.woundT.fill(-99);h.woundI=0;h.bleeds=[];
   for(const m of h.meshes){m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,type,variant,h.tpl,h)):charMat(m.userData.base,type,variant,h.tpl,h);}
   {const jb=h.bones.bip_MJaw;if(jb&&h.tpl.jawAx){jb.quaternion.copy(h.tpl.jawRest);if(type==='zombie')jb.quaternion.multiply(_q.setFromAxisAngle(h.tpl.jawAx,h.tpl.jawSign*R(0.1,0.42)));}}
   const zt=type==='zombie';h.pr={};for(const k in h.tpl.pr){const v=h.tpl.pr[k];h.pr[k]=v.isVector3?v.clone().multiplyScalar(s):v*s;}
@@ -1614,7 +1627,14 @@ function verlet(h){const p=h.sim,q=h.prev,t=h.tgt;const k=h.dead?0:h.k;if(h.dead
     if(a.y<=gy+0.005){b.x=a.x-(a.x-b.x)*0.5;b.z=a.z-(a.z-b.z)*0.5;if(b.y<a.y)b.y=a.y-(a.y-b.y)*0.15;}
     _cp.x=a.x;_cp.z=a.z;if(collide(_cp,PR[i],a.y)){b.x+=_cp.x-a.x;b.z+=_cp.z-a.z;a.x=_cp.x;a.z=_cp.z;}mv+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y)+Math.abs(a.z-b.z);}
   return mv;}
-function physStep(h,dt){h.acc+=dt;let n=0,mv=0;while(h.acc>=FDT&&n<3){h.acc-=FDT;n++;mv=verlet(h);}if(h.acc>FDT*3)h.acc=0;return mv;}
+function carBodies(h){const pv=h.sim[PELVIS];for(const c of cars){const dx0=pv.x-c.x,dz0=pv.z-c.z;if(dx0*dx0+dz0*dz0>16)continue;const s=Math.sin(c.yaw),co=Math.cos(c.yaw);const vx=s*c.speed+co*c.vLat,vz=co*c.speed-s*c.vLat;const hl=c.len/2,hw=c.halfW;
+    for(let i=0;i<NP;i++){const p=h.sim[i],q=h.prev[i];const dx=p.x-c.x,dz=p.z-c.z;const lx=dx*co-dz*s,lz=dx*s+dz*co,ly=p.y-c.y;const r=PR[i];
+      const top=lz>hl*0.36?0.95:lz<-hl*0.82?1.05:1.5;if(Math.abs(lx)>hw+r||Math.abs(lz)>hl+r||ly>top+r||ly<0.15)continue;
+      const dT=top+r-ly,dS=hw+r-Math.abs(lx),dF=hl+r-Math.abs(lz);
+      if(dT<dS&&dT<dF){p.y+=dT;const ux=p.x-q.x,uz=p.z-q.z;q.x=p.x-(ux+(vx*FDT-ux)*0.12);q.z=p.z-(uz+(vz*FDT-uz)*0.12);if(q.y<p.y)q.y=p.y-0.001;}
+      else if(dS<dF){const sg=Math.sign(lx)||1;p.x+=co*sg*dS;p.z-=s*sg*dS;q.x=p.x-vx*FDT;q.z=p.z-vz*FDT;}
+      else{const sg=Math.sign(lz)||1;p.x+=s*sg*dF;p.z+=co*sg*dF;q.x=p.x-vx*FDT*1.05;q.z=p.z-vz*FDT*1.05;const sp=Math.abs(c.speed);if(sp>3&&ly>0.3)q.y=Math.min(q.y,p.y-sp*0.22*FDT*(ly>0.7?1:0.5));}h.sleep=0;}}}
+function physStep(h,dt){h.acc+=dt;let n=0,mv=0;while(h.acc>=FDT&&n<3){h.acc-=FDT;n++;mv=verlet(h);carBodies(h);}if(h.acc>FDT*3)h.acc=0;return mv;}
 function startGetUp(h){const s=h.sim;h.x=s[PELVIS].x;h.z=s[PELVIS].z;_cp.x=h.x;_cp.z=h.z;collide(_cp,0.3,h.y+0.3);h.x=_cp.x;h.z=_cp.z;
   _v.subVectors(s[HEAD],s[PELVIS]);if(Math.abs(_v.x)+Math.abs(_v.z)>0.2)h.yaw=Math.atan2(_v.x,_v.z);h.down=0;h.act='getup';h.getup=0;h.k=0.25;}
 // ---------- heridas visibles (calcomanías de sangre pegadas al hueso) ----------
@@ -1626,7 +1646,9 @@ function addWound(h,part,pos,dir,size){if(!S.gore||!h.woundU)return;h.holder.upd
   _wr.set(_v.copy(pos).addScaledVector(dir,-0.7),dir);_wr.far=1.6;const hit=_wr.intersectObjects(h.meshes,false)[0];if(!hit||!hit.face)return;const m=hit.object,f=hit.face;
   m.getVertexPosition(f.a,_wa);m.getVertexPosition(f.b,_wb);m.getVertexPosition(f.c,_wc);m.worldToLocal(_wl.copy(hit.point));THREE.Triangle.getBarycoord(_wl,_wa,_wb,_wc,_wbc);
   const P=m.geometry.attributes.position;const x=P.getX(f.a)*_wbc.x+P.getX(f.b)*_wbc.y+P.getX(f.c)*_wbc.z,y=P.getY(f.a)*_wbc.x+P.getY(f.b)*_wbc.y+P.getY(f.c)*_wbc.z,z=P.getZ(f.a)*_wbc.x+P.getZ(f.b)*_wbc.y+P.getZ(f.c)*_wbc.z;
-  h.woundU[h.woundI++%8].set(x,y,z,size*0.35/(h.tpl.height*h.s));}
+  const k=h.woundI++%8;const blunt=HITKIND==='blunt';h.woundU[k].set(x,y,z,(blunt?-size*0.5:size*0.35)/(h.tpl.height*h.s));h.woundT[k]=clockT;
+  if(!blunt){let bi=CHEST,bd=1e9;for(let i=0;i<NP;i++){const d=h.sim[i].distanceToSquared(hit.point);if(d<bd){bd=d;bi=i;}}(h.bleeds||(h.bleeds=[])).push({i:bi,o:hit.point.clone().sub(h.sim[bi]),until:clockT+R(5,9),t:0});if(h.bleeds.length>4)h.bleeds.shift();}}
+let HITKIND='';
 const pools=[];function bloodPool(x,z,y){if(S.gore<2||pools.length>40)return;y=surfY(x,z,y+0.3);let mx=0;for(let k=0;k<8;k++){const a=k*0.785;for(const r of [0.4,0.8,1.2]){if(Math.abs(surfY(x+Math.cos(a)*r,z+Math.sin(a)*r,y+0.3)-y)>0.04){mx=mx?Math.min(mx,r):r;break;}}}const m=new THREE.Mesh(woundGeo,poolMat);m.rotation.x=-Math.PI/2;m.rotation.z=R(0,6);m.position.set(x,y+0.015,z);m.scale.setScalar(0.2);scene.add(m);pools.push({m,s:0.2,max:mx?Math.max(0.3,mx*1.4):R(1.2,2),t:180});}
 
 // ---------- daño por zonas y reacciones ----------
@@ -1940,7 +1962,7 @@ let swingT=0;
 function meleeFlat(){swingT=0.28;sfx('swish');camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);const r=rayChars(_o2,_d2,2.4);
   if(r.h){const s=P.weapon==='bate'?7.5:3;const moodF=0.75+P.mood/400;_imp.copy(_d2).multiplyScalar(s*0.75).add(_v.set(0,0.6,0));
     const dmg=(r.part==='head'?s*6:r.part==='body'?s*3:s*4)*moodF*(P.weapon==='manos'?0.3:1);_e2.copy(_o2).addScaledVector(_d2,r.t);
-    hitChar(r.h,r.part,dmg,_imp,r.pi,'player',_e2,_d2);sfx(r.part==='head'?'hithead':'hit');spray(_e2,_d2,8);}}
+    HITKIND='blunt';hitChar(r.h,r.part,dmg,_imp,r.pi,'player',_e2,_d2);HITKIND='';sfx(r.part==='head'?'hithead':'hit');spray(_e2,_d2,8);}}
 const tipPrev=new V3(),tipNow=new V3(),midNow=new V3(),tipVel=new V3();let tipInit=false;
 function vrMelee(dt){if(!hands.right||!hands.right.handRoot.parent||P.weapon==='pistola')return;
   if(P.weapon==='bate'){vrBat.userData.tip.getWorldPosition(tipNow);vrBat.userData.mid.getWorldPosition(midNow);}else{hands.right.wristObj.getWorldPosition(tipNow);midNow.copy(tipNow);}
@@ -2094,7 +2116,7 @@ let padL=null,padR=null,srcL=null,srcR=null;const prevB={},BS={};const IN={};
 function edge(name,now){const was=prevB[name];prevB[name]=now;return now&&!was;}
 function press(name,down,dt){const s=BS[name]||(BS[name]={d:false,t:0,f:false});let ev=null;if(down){if(!s.d){s.d=true;s.t=0;s.f=false;}else{s.t+=dt;if(!s.f&&s.t>0.5){s.f=true;ev='hold';}}}else if(s.d){s.d=false;if(!s.f)ev='tap';}return ev;}
 function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,attackP:false,use:false,weapon:false,eject:false,light:false,pee:false,inv:false,menu:false,map:false,status:false,crouch:false,reload:false,hud:false,recenter:false,
-    back:false,up:false,down:false,left:false,right:false,ok:false,gas:0,brake:0,steer:0,snap:0,lgDown:false,lgHeld:false});
+    back:false,up:false,down:false,left:false,right:false,ok:false,gas:0,brake:0,steer:0,snap:0,turn:0,lgDown:false,lgHeld:false});
   const pk=c=>pressed.has(c);
   if(keys.KeyW)IN.my+=1;if(keys.KeyS)IN.my-=1;if(keys.KeyA)IN.mx-=1;if(keys.KeyD)IN.mx+=1;IN.my+=tjy;IN.mx+=tjx;
   IN.sprint=!!keys.ShiftLeft||!!keys.ShiftRight||tRun;IN.attack=mouseDown||tAtk;IN.attackP=pk('Mouse0');IN.use=pk('KeyE');IN.weapon=pk('KeyQ');IN.light=pk('KeyF');IN.pee=pk('KeyP');
@@ -2113,7 +2135,7 @@ function readInput(dt){Object.assign(IN,{mx:0,my:0,sprint:false,attack:false,att
     else{if(a==='tap')IN.weapon=true;if(a==='hold')IN.eject=true;if(b==='tap')IN.light=true;if(b==='hold')IN.pee=true;if(x==='tap')IN.inv=true;if(x==='hold')IN.menu=true;if(y==='tap')IN.map=true;if(y==='hold')IN.status=true;}
     if(edge('rs',bt(padR,3)))IN.crouch=true;{const ls=press('LS',bt(padL,3),dt);if(ls==='tap')IN.hud=true;if(ls==='hold')IN.recenter=true;}
     IN.up=IN.up||edge('lsu',ly<-0.6);IN.down=IN.down||edge('lsd',ly>0.6);IN.left=IN.left||edge('lsl',lx<-0.6);IN.right=IN.right||edge('lsr',lx>0.6);
-    if(edge('snapR',rx>0.7))IN.snap=1;if(edge('snapL',rx<-0.7))IN.snap=-1;
+    if(S.turn==='smooth'){IN.turn=Math.abs(rx)>0.18?rx:0;}else{if(edge('snapR',rx>0.7))IN.snap=1;if(edge('snapL',rx<-0.7))IN.snap=-1;}
     IN.gas=Math.max(IN.gas,bv(padR,0));IN.brake=Math.max(IN.brake,bv(padL,0));IN.steer+=-dz(lx);if(panel){IN.mx=0;IN.my=0;IN.gas=0;IN.steer=0;}}
   IN.mx=clamp(IN.mx,-1,1);IN.my=clamp(IN.my,-1,1);IN.steer=clamp(IN.steer,-1,1);}
 function haptic(src,i=0.7,ms=50){try{const a=src&&src.gamepad&&src.gamepad.hapticActuators&&src.gamepad.hapticActuators[0];if(a&&a.pulse)a.pulse(i,ms);}catch(e){}}
@@ -2149,7 +2171,7 @@ function doInteract(){const it=findInteract();if(!it)return;
   else if(it.type==='corpse'){it.obj.searched=true;lootRoll('corpse');}
   else if(it.type==='trunk'){it.obj.searched=true;lootRoll('trunk');}
   else if(it.type==='talk')talkTo(it.obj);
-  else if(it.type==='car'){P.inCar=it.obj;P.carYaw=0;toast('Subes al coche');}
+  else if(it.type==='car'){if(it.obj.flip){toast('Está volcado');return;}P.inCar=it.obj;P.carYaw=0;P.carGun=false;carInterior(it.obj);toast(inVR?'Subes al coche · palanca con el grip derecho · B: modo disparo':'Subes al coche');}
   else if(it.type==='exit')exitCar();}
 function talkTo(h){const b=h.base,day=dayNum();
   if(!b){toast(`${h.name}: «${pick(['Cuidado, en el Castell de Montjuïc hay bandidos.','De noche no ven bien, pero oyen muy bien.','En las comisarías de los Mossos aún quedan balas.','Las farmacias tienen antibióticos, si llegas.','El Mercat del Raval es seguro. Pregunta por el líder.'])}»`,5);return;}
@@ -2316,7 +2338,7 @@ const CARGEO=(()=>{const NZ=48,z0=CARZ[0],z1=CARZ[CARZ.length-1];const lerpP=(ar
   const wheel=mkG([[tire,0x141414],[disc,0x2a2c2e],...rim,[hub,0xc8ccd0]]);
   return{body:geo,trim,sw,col,wheel,seats};})();
 const seatMat=photoMat('fabric',{color:0x6a6e76,roughness:0.95,ns:0.7});
-const trimMat=pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.6,metalness:0.2}));const carGlassMat=pbr(new THREE.MeshStandardMaterial({color:0x1a2228,roughness:0.05,metalness:0.7,transparent:true,opacity:0.42,side:THREE.DoubleSide,envMapIntensity:1.6}));
+const trimMat=pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.6,metalness:0.2}));const carGlassMat=pbr(new THREE.MeshStandardMaterial({color:0x1a2228,roughness:0.05,metalness:0.7,transparent:true,opacity:0.5,side:THREE.FrontSide,envMapIntensity:1.6,depthWrite:false}));
 const carBlackMat=pbr(new THREE.MeshStandardMaterial({color:0x0d0e10,roughness:0.35,metalness:0.3,side:THREE.DoubleSide}));
 // cuadro de instrumentos: velocímetro y cuentarrevoluciones
 const texGauges=cTex(512,192,(g,w,h)=>{g.fillStyle='#07080a';g.fillRect(0,0,w,h);for(const [cx,mx,lab] of [[128,220,'km/h'],[384,8,'x1000']]){g.strokeStyle='#3a3d42';g.lineWidth=6;g.beginPath();g.arc(cx,100,82,0,7);g.stroke();
@@ -2325,7 +2347,55 @@ const texGauges=cTex(512,192,(g,w,h)=>{g.fillStyle='#07080a';g.fillRect(0,0,w,h)
 const gaugeMat=new THREE.MeshBasicMaterial({map:texGauges});
 const wheelMat=pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.75,metalness:0.3}));const cars=[];
 const CARCOL=[0xe9e9e6,0xe9e9e6,0xa9adb1,0xa9adb1,0x5d6266,0x111214,0x111214,0x1c2b4a,0x8c1218,0x2d3f2f,0xcfc6b0];
-function makeCar(x,z,yaw,kind){const g=new THREE.Group();const body=new THREE.Group();body.position.y=0.5;g.add(body);const wheels=[];
+// carrocería: color de serie y años de abandono encima (polvo en las superficies de arriba, mugre, óxido abajo y en los bordes)
+function wearMat(base,col,seed,wreck){const m=base.clone();m.color.set(col);m.roughness=0.5;m.metalness=0.25;m.envMapIntensity=0.9;
+  m.onBeforeCompile=sh=>{sh.uniforms.uSeed={value:seed};sh.uniforms.uWr={value:wreck};
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vCP;varying vec3 vCN;').replace('#include <begin_vertex>','#include <begin_vertex>\nvCP=position;vCN=normal;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vCP;varying vec3 vCN;uniform float uSeed,uWr;\n'+NOISE_GLSL)
+      .replace('#include <map_fragment>',`#include <map_fragment>
+        vec3 p=vCP*3.0+uSeed;float n1=zn(p*1.3),n2=zn(p*4.0+7.0),n3=zn(p*11.0);float l=dot(diffuseColor.rgb,vec3(0.3,0.59,0.11));
+        float paint=step(0.5,l);// solo la chapa pintada (el texto blanco de la textura)
+        vec3 c=diffuseColor.rgb;
+        // mugre general y regueros
+        c*=mix(1.0,0.72,smoothstep(0.4,0.8,n1*0.7+n3*0.3));
+        // óxido: abajo, en pasos de rueda y manchas sueltas (mucho más en los siniestros)
+        float rr=smoothstep(0.62-uWr*0.35,0.78-uWr*0.3,n2*0.6+n3*0.4+(0.55-vCP.y)*0.35*paint);
+        c=mix(c,vec3(0.36,0.17,0.08)*(0.6+n3*0.6),rr*paint);
+        // polvo y hojas en las superficies horizontales
+        float up=smoothstep(0.55,0.9,vCN.y);c=mix(c,vec3(0.55,0.5,0.42),up*smoothstep(0.3,0.7,n1)*0.75);
+        // quemado
+        c=mix(c,vec3(0.05,0.045,0.04)*(0.6+n2),uWr>0.9?0.85:0.0);
+        diffuseColor.rgb=c;`);};m.customProgramCacheKey=()=>'carwear';return m;}
+// interior (salpicadero, relojes, asientos, consola, palanca) para el coche de la comunidad
+const CARINT=(()=>{const P=[],S=[];const B=(w,h,d,x,y,z,c,rx=0,ry=0,rz=0)=>P.push([bx(w,h,d,x,y,z,rx,ry,rz),c]);const SB=(w,h,d,x,y,z,rx=0)=>S.push([bx(w,h,d,x,y,z,rx),0x55585e]);
+  B(1.3,0.22,0.36,0,0.86,1.04,0x1c1d20,-0.25);B(1.28,0.06,0.28,0,0.98,0.93,0x26272a,-0.1);B(0.32,0.12,0.1,0.33,1.03,0.9,0x111214);B(0.22,0.15,0.03,0,0.97,0.9,0x101820,-0.4);
+  B(0.22,0.3,0.55,0,0.46,0.45,0x1e1f22);B(0.12,0.012,0.14,0,0.62,0.4,0x0c0c0d);
+  for(const sx of [0.32,-0.32]){SB(0.44,0.12,0.48,sx,0.48,0.12);SB(0.44,0.58,0.12,sx,0.8,-0.15,-0.18);SB(0.26,0.17,0.09,sx,1.15,-0.22,-0.18);}
+  SB(1.22,0.13,0.45,0,0.5,-0.72);SB(1.22,0.5,0.11,0,0.78,-0.96,-0.2);
+  // carrocería vista desde dentro: paneles de puerta, techo, pilares, piso y mampara trasera
+  for(const sx of [1,-1]){B(0.04,0.5,1.75,sx*0.71,0.68,0.1,0x2a2b2f);B(0.06,0.06,1.7,sx*0.69,0.94,0.1,0x3a3b40);
+    P.push([tube([sx*0.66,0.97,1.15],[sx*0.6,1.42,0.52],0.035,6),0x2c2d31],[tube([sx*0.66,0.95,-0.32],[sx*0.62,1.43,-0.3],0.05,6),0x2c2d31],[tube([sx*0.66,0.95,-1.0],[sx*0.58,1.42,-0.85],0.06,6),0x2c2d31]);}
+  B(1.28,0.02,1.55,0,1.44,-0.2,0x8a8780);B(1.3,0.03,2.3,0,0.3,0.05,0x141416);B(1.3,0.5,0.03,0,0.55,1.18,0x141416);B(1.2,0.3,0.03,0,1.1,-1.15,0x2a2b2f);
+  return{trim:mkG(P),seats:mkG(S)};})();
+const shiftKnobGeo=mkG([[cy(0.009,0.009,0.2,0,0.1,0,6),0x2a2a2a],[sp(0.032,0,0.21,0,10),0x111111]]);
+function makeCar(x,z,yaw,kind,o={}){const T=CARTPL;if(!T)return makeCarProc(x,z,yaw,kind);
+  const g=new THREE.Group();const body=new THREE.Group();body.position.y=0.5;g.add(body);const wheels=[];const wreck=o.wreck||0;
+  const inner=T.root.clone(true);inner.position.y=-0.5;body.add(inner);const taxi=!wreck&&Math.random()<0.12;const col=taxi?0x111214:wreck>0.9?0x222222:pick(CARCOL);
+  let bodyMesh=null,winMesh=[];inner.traverse(q=>{if(!q.isMesh)return;if(q.name==='Car'){q.material=wearMat(q.material,col,Math.random()*50,wreck);q.material.side=THREE.FrontSide;bodyMesh=q;}else if(/Window|Windshield/.test(q.name)){q.material=carGlassMat;winMesh.push(q);}else if(q.material.side!==THREE.FrontSide){q.material=q.material.clone();q.material.side=THREE.FrontSide;}});
+  if(taxi){const tp=new THREE.Mesh(mkG([[bx(0.02,0.36,1.5,0.8,0.62,0.0),0xf2c400],[bx(0.02,0.36,1.5,-0.8,0.62,0.0),0xf2c400],[bx(0.36,0.11,0.14,0,1.52,0.1),0xf2f2f0],[bx(0.07,0.05,0.04,0.55,1.04,1.0),0x22c040]]),trimMat);tp.position.y=-0.5;body.add(tp);}
+  if(wreck&&Math.random()<0.6)for(const w of winMesh)w.visible=false;// lunas reventadas
+  // ruedas: cada una en su pivote
+  for(const w of T.wheels){const src=inner.getObjectByName(w.name);if(!src)continue;const piv=new THREE.Group();piv.position.set(w.c.x,w.c.y,w.c.z);piv.rotation.order='YXZ';g.add(piv);piv.attach(src);
+    if(wreck&&Math.random()<0.4){piv.rotation.z=R(-0.3,0.3);piv.position.y-=0.08;}wheels.push({node:piv,front:w.front});}
+  const y=surfY(x,z);g.position.set(x,y,z);g.rotation.y=yaw;scene.add(g);
+  const car={g,body,bodyMesh,sw:null,swp:null,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:wreck?0:R(5,60),wheels,seat:new V3(0.32,0.3,0.12),eye:1.17,halfW:T.halfW,len:T.len,kind:'panda',searched:false,wreck,gear:0,shift:{gx:0,gz:0,held:null},wheelR:0.29};cars.push(car);return car;}
+// el interior y el volante solo se montan cuando te subes (ahorra triángulos en los coches aparcados)
+function carInterior(car){if(car.swp||!car.bodyMesh)return;const b=car.body;const tm=new THREE.Mesh(CARINT.trim,plasticMat),sm=new THREE.Mesh(CARINT.seats,seatMat);tm.position.y=sm.position.y=-0.5;b.add(tm,sm);
+  const gm=new THREE.Mesh(new THREE.PlaneGeometry(0.28,0.105),gaugeMat);gm.position.set(0.33,1.035-0.5,0.845);gm.rotation.set(0,Math.PI,0);b.add(gm);
+  const swp=new THREE.Group();swp.position.set(0.33,0.97-0.5,0.66);swp.rotation.x=-0.45;const swm=new THREE.Mesh(CARGEO.sw,trimMat);swp.add(swm);const colm=new THREE.Mesh(CARGEO.col,trimMat);colm.position.z=0.13;swp.add(colm);b.add(swp);car.sw=swm;car.swp=swp;
+  const kp=new THREE.Group();kp.position.set(0,0.62-0.5,0.4);const kn=new THREE.Mesh(shiftKnobGeo,trimMat);kp.add(kn);b.add(kp);car.knob=kp;
+}
+function makeCarProc(x,z,yaw,kind){const g=new THREE.Group();const body=new THREE.Group();body.position.y=0.5;g.add(body);const wheels=[];
   const taxi=Math.random()<0.15;const bodyM=pbr(new THREE.MeshStandardMaterial({color:taxi?0x0f1012:pick(CARCOL),metalness:0.45,roughness:0.32,envMapIntensity:1.3,side:THREE.DoubleSide}));
   const bm=new THREE.Mesh(CARGEO.body,[bodyM,carGlassMat,carBlackMat]);const tm=new THREE.Mesh(CARGEO.trim,plasticMat);const sm=new THREE.Mesh(CARGEO.seats,seatMat);bm.position.y=tm.position.y=sm.position.y=-0.5;body.add(bm,tm,sm);
   if(taxi){const tp=new THREE.Mesh(mkG([[bx(0.02,0.42,2.0,0.885,0.66,-0.4),0xf2c400],[bx(0.02,0.42,2.0,-0.885,0.66,-0.4),0xf2c400],[bx(0.42,0.12,0.16,0,1.52,-0.3),0xf2f2f0],[bx(0.08,0.06,0.05,0.62,1.0,0.75),0x22c040]]),trimMat);tp.position.y=-0.5;body.add(tp);}
@@ -2338,20 +2408,46 @@ function makeCar(x,z,yaw,kind){const g=new THREE.Group();const body=new THREE.Gr
 function placeCars(){const spots=CARSPOTS.slice();for(let i=spots.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[spots[i],spots[j]]=[spots[j],spots[i]];}
   spots.sort((a,b)=>(b.crash?1:0)-(a.crash?1:0));let n=0;for(const s of spots){if(n>=70)break;if(cars.some(c=>Math.hypot(c.x-s.x,c.z-s.z)<5.2))continue;const c=makeCar(s.x,s.z,s.yaw,'proc');if(s.crash){c.crashed=true;c.fuel=0;}n++;}
   const b=BASES.find(x=>x.type==='good');if(b)makeCar(b.x+8,b.z-30,Math.PI/2,'proc').fuel=55;}
-// volante: se agarra con el grip (una o dos manos) y se gira de verdad; si no, el joystick
+// volante: se agarra con el grip (una o dos manos) y se gira de verdad; si no, el joystick. La mano se queda pegada al aro mientras lo agarras
 const swGrab={left:null,right:null};const _swl=new V3();
-function steerByHands(car){if(!inVR)return null;let sum=0,n=0;car.swp.updateMatrixWorld(true);
-  for(const side of ['left','right']){const g=gripBySide[side];const held=side==='left'?IN.lgHeld:IN.rgHeld;if(!g||!held){swGrab[side]=null;continue;}
-    g.getWorldPosition(_swl);car.swp.worldToLocal(_swl);const r=Math.hypot(_swl.x,_swl.y);const ang=Math.atan2(_swl.y,_swl.x);
-    if(!swGrab[side]){if(Math.abs(r-0.185)<0.11&&Math.abs(_swl.z)<0.14){swGrab[side]={a:ang,w:car.wheelRot};haptic(side==='left'?srcL:srcR,0.4,30);}else continue;}
+function steerByHands(car){if(!inVR||!car.swp)return null;let sum=0,n=0;car.swp.updateMatrixWorld(true);
+  for(const side of ['left','right']){const g=gripBySide[side];const held=side==='left'?IN.lgHeld:IN.rgHeld;if(!g||!held||(side==='right'&&car.shift.held)){swGrab[side]=null;continue;}
+    g.updateMatrixWorld(true);g.getWorldPosition(_swl);car.swp.worldToLocal(_swl);const r=Math.hypot(_swl.x,_swl.y);const ang=Math.atan2(_swl.y,_swl.x);
+    if(!swGrab[side]){if(Math.abs(r-0.185)<0.12&&Math.abs(_swl.z)<0.15){swGrab[side]={a:ang,w:car.wheelRot,loc:ang-car.wheelRot};haptic(side==='left'?srcL:srcR,0.4,30);}else continue;}
     let d=ang-swGrab[side].a;d=Math.atan2(Math.sin(d),Math.cos(d));sum+=swGrab[side].w+d;swGrab[side].w+=d;swGrab[side].a=ang;n++;}
   return n?sum/n:null;}
-function driveCar(car,dt){let thr=IN.gas;const brk=IN.brake;if(car.fuel<=0){thr=0;if(Math.random()<0.004)toast('Sin gasolina');}
-  const v=car.speed;if(thr>0.05)car.speed+=thr*(v<0?14:clamp(7.5-v*0.15,2,7.5))*dt;if(brk>0.05){if(v>0.3)car.speed-=brk*16*dt;else car.speed-=brk*4.5*dt;}
-  car.speed-=car.speed*0.06*dt;if(thr<0.05&&brk<0.05)car.speed-=Math.sign(car.speed)*Math.min(Math.abs(car.speed),1.0*dt);car.speed=clamp(car.speed,-7,40);
-  const LOCK=2.4;const hw=steerByHands(car);if(hw!==null)car.wheelRot=clamp(hw,-LOCK,LOCK);else car.wheelRot+=(IN.steer*LOCK-car.wheelRot)*Math.min(1,dt*6);
-  car.steer=car.wheelRot/LOCK*0.58;moveCar(car,dt,true);car.fuel=Math.max(0,car.fuel-Math.abs(car.speed)*dt*0.012);
-  if(engine){engine.o.frequency.value=38+Math.abs(car.speed)*4.5;engine.g.gain.value=0.05+Math.min(0.06,thr*0.06);}
+// mano pegada al volante o a la palanca: se mueve el mando virtual hasta el punto agarrado
+function snapHandTo(side,world){const g=gripBySide[side];if(!g)return;rig.getWorldQuaternion(_q).invert();g.getWorldPosition(_v);_v1.subVectors(world,_v).applyQuaternion(_q);const e=g.matrix.elements;e[12]+=_v1.x;e[13]+=_v1.y;e[14]+=_v1.z;g.position.set(e[12],e[13],e[14]);g.updateMatrixWorld(true);}
+function handsOnControls(car){if(!car.swp)return;for(const side of ['left','right']){const G=swGrab[side];if(G){const a=car.wheelRot+G.loc;_v.set(Math.cos(a)*0.185,Math.sin(a)*0.185,0);car.swp.localToWorld(_v);snapHandTo(side,_v.clone());}}
+  if(car.shift.held&&car.knob){car.knob.updateMatrixWorld(true);_v.set(0,0.21,0);car.knob.children[0].localToWorld(_v);snapHandTo('right',_v.clone());}}
+// cambio manual en H con la palanca (grip derecho): 1 izquierda-arriba, 2 izquierda-abajo, 3 centro-arriba, 4 centro-abajo, 5 derecha-arriba, R derecha-abajo
+const GEARS=[{v:0,a:0},{v:13,a:6.2},{v:22,a:4.4},{v:32,a:3.2},{v:41,a:2.4},{v:50,a:1.8}];const GEARNAME=['N','1','2','3','4','5','R'];
+function shiftByHand(car){const S=car.shift;if(!inVR||!car.knob){return;}const g=gripBySide.right;if(!g)return;g.updateMatrixWorld(true);const hp=g.getWorldPosition(_v2);
+  car.knob.parent.updateMatrixWorld(true);_v3.copy(hp);car.knob.parent.worldToLocal(_v3);const bx0=car.knob.userData.base||(car.knob.userData.base=car.knob.position.clone());
+  if(!S.held){if(IN.rgHeld&&!swGrab.right&&Math.hypot(_v3.x-bx0.x-S.gx*0.06,_v3.y-(bx0.y+0.2),_v3.z-bx0.z+S.gz*0.07)<0.13&&!S.wasHeld){S.held=true;haptic(srcR,0.3,25);}S.wasHeld=IN.rgHeld;}
+  if(S.held&&!IN.rgHeld){S.held=false;S.wasHeld=false;}
+  if(S.held){// la mano a la izquierda del conductor es +x en el coche
+    const tx=clamp((_v3.x-bx0.x)/0.06,-1,1),tz=clamp(-(_v3.z-bx0.z)/0.07,-1,1);const cols=[1,0,-1];
+    if(Math.abs(S.gz)<0.25){S.gx+=(tx-S.gx)*0.5;S.gz+=(tz-S.gz)*0.5;const col=cols.reduce((a,c)=>Math.abs(c-S.gx)<Math.abs(a-S.gx)?c:a,0);if(Math.abs(S.gz)>0.15)S.gx=col;}
+    else{const col=cols.reduce((a,c)=>Math.abs(c-S.gx)<Math.abs(a-S.gx)?c:a,0);S.gx=col;S.gz+=(tz-S.gz)*0.5;}
+    S.gz=clamp(S.gz,-1,1);}
+  else if(Math.abs(S.gz)<0.8)S.gz*=0.8;
+  car.knob.position.set(bx0.x+S.gx*0.06,bx0.y,bx0.z-S.gz*0.07);car.knob.rotation.set(-S.gz*0.3,0,-S.gx*0.25);
+  let gear=0;if(Math.abs(S.gz)>0.75){const up=S.gz>0;gear=S.gx>0.5?(up?1:2):S.gx<-0.5?(up?5:6):(up?3:4);}
+  if(gear!==car.gear){if(gear&&car.gear===0){sfx('click');haptic(srcR,0.5,40);}if(gear)toast('Marcha '+GEARNAME[gear],0.8);car.gear=gear;}}
+function driveCar(car,dt){if(!car.swp)carInterior(car);let thr=IN.gas;const brk=IN.brake;if(car.fuel<=0||car.wreck){thr=0;if(Math.random()<0.004)toast(car.wreck?'Este coche está destrozado':'Sin gasolina');}
+  if(P.carGun){thr=0;}
+  shiftByHand(car);
+  // sin gafas: cambio automático
+  if(!inVR){if(thr>0.05)car.gear=car.speed<GEARS[1].v*0.85?1:car.speed<GEARS[2].v*0.85?2:car.speed<GEARS[3].v*0.85?3:car.speed<GEARS[4].v*0.85?4:5;if(brk>0.05&&car.speed<0.3)car.gear=6;}
+  const v=car.speed;const G=car.gear===6?{v:-7,a:3.5}:GEARS[car.gear]||GEARS[0];
+  if(thr>0.05&&car.gear){if(car.gear===6){if(v>-7)car.speed-=thr*3.5*dt;}else{const lug=clamp(v/(G.v*0.3),0.25,1);if(v<G.v)car.speed+=thr*G.a*lug*dt;}}
+  if(car.gear&&car.gear!==6&&v>G.v)car.speed-=(v-G.v)*0.8*dt;// freno motor por encima del régimen
+  if(brk>0.05){if(Math.abs(car.speed)>0.3)car.speed-=Math.sign(car.speed)*brk*16*dt;else if(!inVR&&car.gear===6)car.speed-=brk*3.5*dt;else car.speed=0;}
+  car.speed-=car.speed*0.06*dt;if(thr<0.05&&brk<0.05)car.speed-=Math.sign(car.speed)*Math.min(Math.abs(car.speed),0.8*dt);car.speed=clamp(car.speed,-7,50);
+  const LOCK=2.4;const hw=steerByHands(car);if(hw!==null)car.wheelRot=clamp(hw,-LOCK,LOCK);else car.wheelRot+=(-IN.steer*LOCK-car.wheelRot)*Math.min(1,dt*6);
+  car.steer=-car.wheelRot/LOCK*0.58;moveCar(car,dt,true);handsOnControls(car);car.fuel=Math.max(0,car.fuel-Math.abs(car.speed)*dt*0.012);
+  if(engine){const rpm=car.gear&&car.gear!==6?clamp(Math.abs(car.speed)/GEARS[car.gear].v,0.15,1.1):clamp(thr,0.12,1);engine.o.frequency.value=34+rpm*95;engine.g.gain.value=0.05+Math.min(0.06,thr*0.06);}
   if(nightF>0.3){const s=Math.sin(car.yaw),c=Math.cos(car.yaw);headlight.position.set(car.x+s*2.3,car.y+0.9,car.z+c*2.3);hlT.position.set(car.x+s*20,car.y,car.z+c*20);headlight.intensity=45;}else headlight.intensity=0;}
 // física: modelo de bicicleta con agarre limitado (si te pasas de velocidad en una curva cerrada, derrapa) y carrocería con balanceo y cabeceo sobre muelles
 function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.12/Math.max(Math.abs(car.speed),1);const yrT=clamp(car.speed*Math.tan(car.steer)/(WB*2),-yl,yl);
@@ -2369,10 +2465,10 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
   car.y+=(surfY(car.x,car.z)-car.y)*Math.min(1,dt*8);
   if(Math.abs(car.speed)>2.2)for(const h of H_){if(!h.active)continue;const hx=h.sim[PELVIS].x,hz=h.sim[PELVIS].z;const dx=hx-car.x,dz=hz-car.z;if(dx*dx+dz*dz>9)continue;
     const lx=dx*c-dz*s,lz=dx*s+dz*c;if(Math.abs(lx)<car.halfW+0.2&&Math.abs(lz)<car.len/2+0.1&&clockT-h.lastHitT>0.4){const sp=Math.abs(car.speed);
-      _imp.set(s*car.speed,0,c*car.speed).multiplyScalar(0.9);_imp.y=2+sp*0.25;_e2.copy(h.sim[CHEST]);hitChar(h,'body',sp*5,_imp,Math.random()<0.5?PELVIS:CHEST,player?'player':'car',_e2,_v.set(s,0,c));
+      _imp.set(s*car.speed,0,c*car.speed).multiplyScalar(1.15);_imp.y=1+sp*0.12;_e2.copy(h.sim[LKNEE]);hitChar(h,'body',sp*5,_imp,LKNEE,player?'player':'car',_e2,_v.set(s,0,c));applyImp(h,_imp.set(s*car.speed*0.9,1+sp*0.1,c*car.speed*0.9),RKNEE);applyImp(h,_imp.set(s*car.speed*0.25,sp*0.18,c*car.speed*0.25),CHEST);h.k=0;
       if(!h.dead){h.headHp-=sp*1.5;if(h.headHp<=0)die(h,player?'player':'car');}h.lastHitT=clockT;sfx('hit',volAt(hx,hz,50));spray(h.sim[CHEST],_v.set(s,0,c),10);car.speed*=0.9;}}
-  car.g.position.set(car.x,car.y,car.z);car.g.rotation.y=car.yaw;if(car.body){car.body.rotation.set(-car.pitch,0,car.roll);if(car.sw)car.sw.rotation.z=car.wheelRot;}
-  for(const w of car.wheels){w.node.rotation.x+=car.speed*dt/WR;if(w.front)w.node.rotation.y=car.steer;}}
+  car.g.position.set(car.x,car.y,car.z);car.g.rotation.y=car.yaw;if(car.body){car.body.rotation.set(-car.pitch,0,car.roll);if(car.sw)car.sw.rotation.z=car.wheelRot;}if(car.wreck)car.g.rotation.z=car.flip||0;
+  for(const w of car.wheels){w.node.rotation.x+=car.speed*dt/(car.wheelR||WR);if(w.front)w.node.rotation.y=car.steer;}}
 
 // =====================================================================
 // NECESIDADES
@@ -2391,11 +2487,13 @@ function updateNeeds(hrs){P.food=Math.max(0,P.food-4.2*S.hunger*hrs);P.water=Mat
 // CIELO
 // =====================================================================
 const cNight=new THREE.Color(0x070a14),cDay=new THREE.Color(0xa9bdd0),cDusk=new THREE.Color(0xd49a72),cFog=new THREE.Color(),_sunDir=new V3();
+const cHaze=new THREE.Color(0.66,0.6,0.5);
 function updateSky(){const h=hourF();const ang=(h-6)/24*Math.PI*2;const sy=Math.sin(ang),sx=Math.cos(ang);const day=THREE.MathUtils.smoothstep(sy,-0.1,0.2);nightF=1-day;
   _sunDir.set(sx*0.9,sy,0.35).normalize();su.sunPosition.value.copy(_sunDir);su.rayleigh.value=0.6+day*1.4;su.turbidity.value=4+(1-day)*5;
   sky.position.copy(camW);stars.position.copy(camW);starMat.opacity=clamp(nightF*1.3-0.3,0,1);
   sun.position.copy(rig.position).addScaledVector(_sunDir,150);sun.target.position.copy(rig.position);sun.intensity=day*2.3;sun.color.setRGB(1,0.8+0.2*day,0.62+0.38*day);
-  hemi.intensity=0.08+day*0.9;cFog.copy(cNight).lerp(cDay,day);cFog.lerp(cDusk,clamp(1-Math.abs(sy)/0.28,0,1)*0.5);scene.fog.color.copy(cFog);scene.fog.far=60+day*150;scene.fog.near=6+day*20;
+  hemi.intensity=0.08+day*0.9;cFog.copy(cNight).lerp(cDay,day);cFog.lerp(cDusk,clamp(1-Math.abs(sy)/0.28,0,1)*0.5);{const hz=S.haze||0;cFog.lerp(cHaze,[0,0.35,0.55,0.75][hz]*(0.4+day*0.6));scene.fog.color.copy(cFog);const vf=S.view||6000;const hf=[6000,700,320,160][hz];const far=Math.min(vf,hf*(0.45+day*0.55),vf);scene.fog.far=far;scene.fog.near=far*(hz?0.05:0.3);
+    const cf=(S.view||3000)+60;if(Math.abs(camera.far-cf)>1){camera.far=cf;camera.updateProjectionMatrix();}}
   renderer.toneMappingExposure=0.72+day*0.2;winMat.emissiveIntensity=nightF*1.0;if(SIGN_MAT)SIGN_MAT.emissiveIntensity=0.05+nightF*0.35;for(const m of PBR)m.envMapIntensity=0.1+0.9*day;
   flashlight.intensity=P.light&&!inVR?32:0;vrFlash.intensity=P.light&&inVR?32:0;windU.value=clockT;}
 
@@ -2489,12 +2587,14 @@ function handDoors(side,hp,down,held,dt){let g=doorGrab[side];const src=side==='
 function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(camW);const p=camW;
   if(panel)panelInput();else if(P.alive&&!P.sleeping){if(IN.inv)openPanel('inv');else if(IN.menu)openPanel('main');else if(IN.map)openPanel('map');else if(IN.status)openPanel('status');}
   if(!inVR&&!P.sleeping){const sens=0.0024;if(P.inCar)P.carYaw-=lookDX*sens;else P.yaw-=lookDX*sens;P.pitch=clamp(P.pitch-lookDY*sens,-1.35,1.35);}lookDX=lookDY=0;
+  if(IN.turn&&!P.sleeping&&!panel){const a=IN.turn*dt*2.3;camera.getWorldPosition(_v);if(P.inCar)P.carYaw-=a;else P.yaw-=a;rig.rotation.y=P.inCar?P.inCar.yaw+Math.PI+P.carYaw:P.yaw;rig.updateMatrixWorld(true);camera.getWorldPosition(_v1);if(!P.inCar){rig.position.x+=_v.x-_v1.x;rig.position.z+=_v.z-_v1.z;}}
   if(IN.snap&&!P.sleeping){camera.getWorldPosition(_v);if(P.inCar)P.carYaw-=IN.snap*Math.PI/6;else P.yaw-=IN.snap*Math.PI/6;rig.rotation.y=P.inCar?P.inCar.yaw+Math.PI+P.carYaw:P.yaw;rig.updateMatrixWorld(true);camera.getWorldPosition(_v1);if(!P.inCar){rig.position.x+=_v.x-_v1.x;rig.position.z+=_v.z-_v1.z;}}
   if(P.alive&&!P.sleeping&&!panel){if(IN.use&&!(inVR&&(doorGrab.right||doorGrab.left||P.inCar)))doInteract();if(IN.weapon&&P.inCar&&inVR)exitCar();
+    if(IN.light&&P.inCar){IN.light=false;P.carGun=!P.carGun;toast(P.carGun?'Modo disparo: el gatillo dispara':'Modo conducción: el gatillo acelera',1.5);}
     if(IN.weapon&&!P.inCar){P.weapon=P.weapon==='manos'?'bate':P.weapon==='bate'?'pistola':'manos';toast({manos:'Manos libres',bate:'Bate',pistola:'Pistola'}[P.weapon],1.5);}
     if(IN.eject&&P.weapon==='pistola')ejectMag(true);if(IN.reload&&P.weapon==='pistola')reloadFlat();if(IN.light){P.light=!P.light;sfx('click');}if(IN.pee)doPee();
     if(IN.crouch){P.crouchToggle=!P.crouchToggle;toast(P.crouchToggle?'Te agachas':'Te levantas',1.2);}if(IN.hud){hudOn=!hudOn;sfx('click');}if(IN.recenter&&!P.inCar)recenter();
-    if(!P.inCar&&IN.attackP){if(P.weapon==='pistola'){if(inVR&&gripBySide.right){vrGun.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrGun.getWorldQuaternion(_q));fireGun(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireGun(_o2,_d2);}}else meleeFlat();}}
+    if((!P.inCar||P.carGun)&&IN.attackP){if(P.weapon==='pistola'){if(inVR&&gripBySide.right){vrGun.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrGun.getWorldQuaternion(_q));fireGun(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireGun(_o2,_d2);}}else meleeFlat();}}
   P.crouchOff+=((inVR&&P.crouchToggle&&!P.inCar?0.75:0)-P.crouchOff)*Math.min(1,dt*7);if(P.crouchOff<0.004)P.crouchOff=0;P.crouch=P.crouchToggle||(inVR&&camera.position.y<1.12);
   if(P.alive&&!P.sleeping){if(P.inCar)driveCar(P.inCar,panel?0:dt);
     else if(!panel){camera.getWorldDirection(_d2);_d2.y=0;if(_d2.lengthSq()<1e-6)_d2.set(0,0,-1);_d2.normalize();const rx=-_d2.z,rz=_d2.x;let mx=IN.mx,my=IN.my;const ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;}
@@ -2519,9 +2619,10 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
   for(const pl of pools){if(pl.s<pl.max){pl.s+=dt*0.08;pl.m.scale.setScalar(pl.s);}}
   updateChars(dt,p);sepBodies();managePop(p,false);
   for(const c of cars)if(c!==P.inCar&&(Math.abs(c.speed)>0.05||Math.abs(c.vLat||0)>0.05||Math.abs(c.rollV||0)>0.01)){c.speed*=Math.pow(0.3,dt);c.vLat=(c.vLat||0)*Math.pow(0.2,dt);c.steer=0;moveCar(c,dt,false);}
-  chunkT-=dt;if(chunkT<=0){chunkT=0.4;for(const c of chunks.values()){const v=Math.hypot(c.cx-p.x,c.cz-p.z)<(c.inner?(inVR?60:75):(inVR?270:320));for(const m of c.meshes)m.visible=v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
+  chunkT-=dt;if(chunkT<=0){chunkT=0.4;const VD=(S.view||3000)+40;for(const c of chunks.values()){const v=Math.hypot(c.cx-p.x,c.cz-p.z)<(c.inner?(inVR?60:75):Math.min(VD,inVR?2000:3000));for(const m of c.meshes)m.visible=v;}for(const c of cars)c.g.visible=Math.hypot(c.x-p.x,c.z-p.z)<(inVR?90:130);
     for(const d of DOORS)d.g.visible=Math.abs(d.hx-p.x)<38&&Math.abs(d.hz-p.z)<38;for(const pn of PANES)pn.m.visible=Math.abs(pn.cx-p.x)<45&&Math.abs(pn.cz-p.z)<45;}
   updateWeapons(dt);updateHands();placeHud();updateBody(dt);stepDropped(dt);
+  WTIME.value=clockT;if(S.gore)for(const h of H_){if(!h.active||!h.bleeds||!h.bleeds.length||!h.holder.visible)continue;for(const b of h.bleeds){if(clockT>b.until)continue;b.t-=dt;if(b.t<=0){b.t=R(0.12,0.35)*(1+(clockT-(b.until-8))*0.1);_v.copy(h.sim[b.i]).add(b.o);spray(_v,_v1.set(R(-0.1,0.1),-0.3,R(-0.1,0.1)),0.5);}}}
   for(let i=0;i<parts.length;i++){const q=parts[i];if(!q)continue;if(q.life<=0){blood.setMatrixAt(i,ZM);continue;}q.life-=dt;
     if(!q.ground){q.v.y-=9.81*dt;q.v.multiplyScalar(1-dt*0.6);q.p.addScaledVector(q.v,dt);const gy=surfY(q.p.x,q.p.z,q.p.y)+0.004;
       if(q.p.y<gy){q.p.y=gy;q.ground=true;q.life=R(25,40);q.rot=R(0,6.28);q.r*=R(2.4,3.6);}
@@ -2571,7 +2672,7 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}

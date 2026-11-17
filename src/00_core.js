@@ -49,6 +49,9 @@ const SET_DEFS=[
   {k:'reanimate',l:'Los muertos se levantan',o:[0,1],d:1,f:yn},
   {k:'bandits',l:'Bandidos',o:[0,1],d:1,f:v=>v?'Agresivos':'Pacíficos'},
   {k:'gore',l:'Sangre y heridas',o:[0,1,2],d:2,f:v=>['Sin sangre','Moderada','Total'][v]},
+  {k:'turn',l:'Giro con el joystick',o:['snap','smooth'],d:'snap',f:v=>v==='snap'?'Por saltos (30°)':'Suave'},
+  {k:'view',l:'Distancia de visión',o:[100,200,300,500,1000,0],d:300,f:v=>v?(v>=1000?v/1000+' km':v+' m'):'Infinita'},
+  {k:'haze',l:'Bruma apocalíptica',o:[0,1,2,3],d:2,f:v=>['No','Ligera','Media','Densa'][v]},
   {k:'startHour',l:'Hora inicial',o:[6,8,12,18,22],d:8,f:v=>String(v).padStart(2,'0')+':00',start:true},
 ];
 const S={};for(const d of SET_DEFS)S[d.k]=d.d;
