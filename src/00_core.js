@@ -98,9 +98,19 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
 const sky=new Sky();sky.scale.setScalar(1200);scene.add(sky);const su=sky.material.uniforms;
 su.turbidity.value=5;su.rayleigh.value=1.5;su.mieCoefficient.value=0.004;su.mieDirectionalG.value=0.8;
-const starMat=new THREE.PointsMaterial({color:0xffffff,size:2,sizeAttenuation:false,transparent:true,opacity:0,fog:false,depthWrite:false});
-const stars=new THREE.Points(new THREE.BufferGeometry(),starMat);
-{const a=[];for(let i=0;i<1200;i++){_v.randomDirection();_v.y=Math.abs(_v.y)*0.9+0.05;_v.normalize().multiplyScalar(1100);a.push(_v.x,_v.y,_v.z);}stars.geometry.setAttribute('position',new THREE.Float32BufferAttribute(a,3));}
+// estrellas: tamaños muy distintos (pocas brillantes, muchas tenues), colores reales de estrella (azuladas, blancas, amarillentas, alguna anaranjada o rojiza) y halo suave que titila
+const starMat=new THREE.ShaderMaterial({uniforms:{opacity:{value:0},uT:{value:0},uPx:{value:1}},transparent:true,depthWrite:false,fog:false,blending:THREE.AdditiveBlending,
+  vertexShader:`attribute float aS;attribute vec3 aC;attribute float aP;varying vec3 vC;varying float vTw;uniform float uT,uPx;void main(){vC=aC;vTw=0.75+0.25*sin(uT*(1.5+aP*3.0)+aP*40.0);vec4 mv=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=aS*uPx;}`,
+  fragmentShader:`varying vec3 vC;varying float vTw;uniform float opacity;void main(){vec2 d=gl_PointCoord-0.5;float r=length(d)*2.0;float core=smoothstep(0.35,0.0,r);float halo=exp(-r*r*5.0)*0.45;float a=(core+halo)*vTw*opacity;if(a<0.004)discard;gl_FragColor=vec4(vC*(core*1.4+halo),a);}`});
+const stars=new THREE.Points(new THREE.BufferGeometry(),starMat);stars.frustumCulled=false;
+{const a=[],sz=[],col=[],ph=[];const pal=[[0.7,0.8,1.0],[0.85,0.9,1.0],[1,1,1],[1,0.96,0.86],[1,0.88,0.7],[1,0.72,0.55],[1,0.6,0.5]];const pw=[3,4,6,4,2,1,0.5];
+  for(let i=0;i<2600;i++){_v.randomDirection();_v.y=Math.abs(_v.y)*0.95+0.03;_v.normalize();a.push(_v.x,_v.y,_v.z);const r=Math.random();sz.push(r<0.006?11:r<0.04?6:r<0.2?3.6:2.2);
+    let t=Math.random()*21,k=0;while(t>pw[k]&&k<pw.length-1){t-=pw[k];k++;}const c=pal[k];const b=r<0.2?1:0.55+Math.random()*0.4;col.push(c[0]*b,c[1]*b,c[2]*b);ph.push(Math.random());}
+  stars.geometry.setAttribute('position',new THREE.Float32BufferAttribute(a,3));stars.geometry.setAttribute('aS',new THREE.Float32BufferAttribute(sz,1));stars.geometry.setAttribute('aC',new THREE.Float32BufferAttribute(col,3));stars.geometry.setAttribute('aP',new THREE.Float32BufferAttribute(ph,1));}
+// luna con halo
+const moon=new THREE.Sprite(new THREE.SpriteMaterial({map:cTexMoon(),transparent:true,depthWrite:false,fog:false,blending:THREE.AdditiveBlending,opacity:0}));scene.add(moon);
+function cTexMoon(){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');const h=g.createRadialGradient(128,128,0,128,128,128);h.addColorStop(0,'rgba(220,228,255,0.55)');h.addColorStop(0.18,'rgba(200,210,240,0.35)');h.addColorStop(0.5,'rgba(140,160,210,0.08)');h.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=h;g.fillRect(0,0,256,256);
+  g.fillStyle='#e8ecf4';g.beginPath();g.arc(128,128,22,0,7);g.fill();g.fillStyle='rgba(150,155,170,0.45)';for(const [x,y,r] of [[120,122,6],[134,131,4],[126,138,3],[137,119,3]]){g.beginPath();g.arc(x,y,r,0,7);g.fill();}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
 scene.add(stars);
 const hemi=new THREE.HemisphereLight(0xcfe3ff,0x4a4030,0.9);
 const sun=new THREE.DirectionalLight(0xfff4e0,2);scene.add(hemi,sun,sun.target);

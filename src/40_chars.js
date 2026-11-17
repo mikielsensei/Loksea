@@ -54,7 +54,9 @@ function prepTpl(gltf,name){if(!gltf)return null;const root=gltf.scene;root.upda
 function prepCarTpl(root,sc){root.scale.setScalar(sc);root.updateMatrixWorld(true);const wheels=[];const parts={};
   root.traverse(o=>{if(o.isMesh){o.castShadow=false;parts[o.name]=o;if(o.material&&o.material.map)o.material.map.anisotropy=4;}});
   for(const n of ['Front_Left_Wheel','Front_Right_Wheel','Rear_Left_Wheel','Rear_Right_Wheel']){const m=parts[n];if(!m)continue;const b=new THREE.Box3().setFromObject(m);const c=b.getCenter(new V3());wheels.push({name:n,c,r:(b.max.y-b.min.y)/2,front:n.startsWith('Front')});}
-  const box=new THREE.Box3().setFromObject(root);return{root,wheels,box,len:box.max.z-box.min.z,halfW:(parts.Car?new THREE.Box3().setFromObject(parts.Car):box).getSize(new V3()).x/2};}
+  const box=new THREE.Box3().setFromObject(root);const ws=parts.Windshield?new THREE.Box3().setFromObject(parts.Windshield):null,mir=parts.Mirrors?new THREE.Box3().setFromObject(parts.Mirrors):null;
+  for(const k of ['Windshield','Windows','RearWindow'])if(parts[k]){parts[k].geometry.computeBoundingBox();}
+  return{root,wheels,box,ws,mir,wsLocal:parts.Windshield?parts.Windshield.geometry.boundingBox.clone():null,len:box.max.z-box.min.z,halfW:(parts.Car?new THREE.Box3().setFromObject(parts.Car):box).getSize(new V3()).x/2};}
 function prepFerrari(g){if(!g)return null;const root=g.scene;const wn=['wheel_fl','wheel_fr','wheel_rl','wheel_rr'];const w=wn.map(n=>root.getObjectByName(n));if(w.some(x=>!x))return null;
   root.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(root);const sz=box.getSize(new V3());
   const fr=w[0].getWorldPosition(new V3()).add(w[1].getWorldPosition(new V3())).multiplyScalar(0.5);const re=w[2].getWorldPosition(new V3()).add(w[3].getWorldPosition(new V3())).multiplyScalar(0.5);

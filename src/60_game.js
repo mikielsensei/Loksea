@@ -416,12 +416,36 @@ const PLATEN=32;const texPlates=cTex(2048,896,(g)=>{const L='BCDFGHJKLMNPRSTVWXY
 const plateMat=new THREE.MeshLambertMaterial({map:texPlates,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
 function plateGeo(k,front,back){const u0=(k%4)/4,v1=1-Math.floor(k/4)/8,v0=v1-1/8;const gs=[];for(const [z,ry] of [[front,0],[back,Math.PI]]){const g=new THREE.PlaneGeometry(0.52,0.11);const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,u0+uv.getX(i)/4,v0+uv.getY(i)/8);g.rotateY(ry);g.translate(0,z[1],z[0]);gs.push(g);}return mergeGeometries(gs);}
 const shiftKnobGeo=mkG([[cy(0.009,0.009,0.2,0,0.1,0,6),0x2a2a2a],[sp(0.032,0,0.21,0,10),0x111111]]);
+// cristal sucio: polvo y mugre (más en los bordes), arañazos, motas y, en el parabrisas, los dos abanicos que dejan limpios los limpiaparabrisas; tiñe de sepia lo que se ve a través
+function dirtyGlass(box,wipers){const m=new THREE.MeshStandardMaterial({color:0x7a6e5c,roughness:0.15,metalness:0.3,transparent:true,opacity:1,side:THREE.DoubleSide,depthWrite:false,envMapIntensity:1.4});
+  const mn=box?box.min.clone():new V3(-1,-1,-1),mx=box?box.max.clone():new V3(1,1,1);
+  m.onBeforeCompile=sh=>{sh.uniforms.uMn={value:mn};sh.uniforms.uMx={value:mx};
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vGP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvGP=position;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vGP;uniform vec3 uMn,uMx;\n'+NOISE_GLSL)
+      .replace('#include <map_fragment>',`
+        vec3 q=(vGP-uMn)/max(uMx-uMn,vec3(1e-3));vec3 p=vGP*7.0;
+        float dirt=zn(p*0.8)*0.55+zn(p*2.6)*0.3+zn(p*9.0)*0.15;
+        float edge=1.0-smoothstep(0.0,0.18,min(min(q.x,1.0-q.x),min(q.y,1.0-q.y)+0.05));
+        float d=clamp((dirt-0.35)*1.4+edge*0.6+(1.0-q.y)*0.15,0.0,1.0);
+        ${wipers?`vec2 w=vec2(q.x,q.y*0.75);float a1=length(w-vec2(0.27,0.0)),a2=length(w-vec2(0.70,0.0));
+        float clean=max(smoothstep(0.47,0.44,a1),smoothstep(0.47,0.44,a2))*step(0.06,q.y);float rim=max(smoothstep(0.02,0.0,abs(a1-0.455)),smoothstep(0.02,0.0,abs(a2-0.455)))*step(0.06,q.y);
+        d=mix(d,d*0.25,clean)+rim*0.4;`:''}
+        float sc=0.0;for(int i=0;i<3;i++){float an=float(i)*1.9+0.4;vec2 dir=vec2(cos(an),sin(an));float l=dot(vGP.xy+vGP.zz,dir)*60.0;float k=zn(vec3(floor(l),float(i),0.0)*3.1);sc+=step(0.93,k)*smoothstep(0.08,0.0,abs(fract(l)-0.5))*0.6;}
+        float spk=step(0.82,zn(p*28.0));
+        diffuseColor.rgb=mix(vec3(0.42,0.38,0.31),vec3(0.62,0.56,0.46),d)+sc*0.3;
+        diffuseColor.a=clamp(0.16+d*0.5+sc*0.25+spk*0.18,0.0,0.85);`);};m.customProgramCacheKey=()=>'dglass'+(wipers?1:0);return pbr(m);}
+let WS_MAT=null,WIN_MAT=null;
+const WIPER_GEO=mkG([[bx(0.46,0.012,0.012,0.23,0.012,0.0),0x111111],[bx(0.42,0.004,0.02,0.24,0.02,0.0),0x0a0a0a],[cy(0.016,0.016,0.03,0,0.01,0,8),0x111111]]);
+const MIRROR_GEO=new THREE.PlaneGeometry(0.13,0.085);const mirrorMat=pbr(new THREE.MeshStandardMaterial({color:0x8a9aa8,metalness:1,roughness:0.06,envMapIntensity:2}));
 function makeCar(x,z,yaw,kind,o={}){const T=CARTPL;if(!T)return makeCarProc(x,z,yaw,kind);
   const g=new THREE.Group();const body=new THREE.Group();body.position.y=0.5;g.add(body);const wheels=[];const wreck=o.wreck||0;
   const inner=T.root.clone(true);inner.position.y=-0.5;body.add(inner);const taxi=!wreck&&Math.random()<0.12;const col=taxi?0x111214:wreck>0.9?0x222222:pick(CARCOL);
-  let bodyMesh=null,winMesh=[];inner.traverse(q=>{if(!q.isMesh)return;if(q.name==='Car'){q.material=wearMat(q.material,col,Math.random()*50,wreck);q.material.side=THREE.FrontSide;bodyMesh=q;}else if(/Window|Windshield/.test(q.name)){q.material=carGlassMat;winMesh.push(q);}else if(q.material.side!==THREE.FrontSide){q.material=q.material.clone();q.material.side=THREE.FrontSide;}});
+  let bodyMesh=null,winMesh=[];inner.traverse(q=>{if(!q.isMesh)return;if(q.name==='Car'){q.material=wearMat(q.material,col,Math.random()*50,wreck);q.material.side=THREE.FrontSide;bodyMesh=q;}else if(/Window|Windshield/.test(q.name)){if(!WS_MAT){WS_MAT=dirtyGlass(T.wsLocal,true);WIN_MAT=dirtyGlass(null,false);}q.material=q.name==='Windshield'?WS_MAT:WIN_MAT;q.renderOrder=3;winMesh.push(q);}else if(q.material.side!==THREE.FrontSide){q.material=q.material.clone();q.material.side=THREE.FrontSide;}});
   if(taxi){const tp=new THREE.Mesh(mkG([[bx(0.02,0.36,1.5,0.8,0.62,0.0),0xf2c400],[bx(0.02,0.36,1.5,-0.8,0.62,0.0),0xf2c400],[bx(0.36,0.11,0.14,0,1.52,0.1),0xf2f2f0],[bx(0.07,0.05,0.04,0.55,1.04,1.0),0x22c040]]),trimMat);tp.position.y=-0.5;body.add(tp);}
   {const pm=new THREE.Mesh(plateGeo(RI(0,PLATEN-1),[T.box.max.z+0.012,0.4-0.5],[T.box.min.z-0.012,0.62-0.5]),plateMat);body.add(pm);}
+  if(T.ws){const W=T.ws;const by=W.min.y-0.5+0.02,bz=W.max.z-0.03;const dy=W.max.y-W.min.y,dz=W.max.z-W.min.z;const ang=Math.atan2(dy,dz);
+    for(const px of [-0.4,0.06]){const g=new THREE.Group();g.position.set(px,by,bz);g.rotation.x=-ang;const arm=new THREE.Mesh(WIPER_GEO,carBlackMat);g.add(arm);g.rotation.z=0;body.add(g);}}
+  if(T.mir){const M=T.mir;for(const sx of [-1,1]){const gm=new THREE.Mesh(MIRROR_GEO,mirrorMat);gm.position.set(sx*(M.max.x-0.07),(M.min.y+M.max.y)/2-0.5,M.min.z-0.005);gm.rotation.y=Math.PI;body.add(gm);}}
   if(wreck&&Math.random()<0.6)for(const w of winMesh)w.visible=false;// lunas reventadas
   // ruedas: cada una en su pivote
   for(const w of T.wheels){const src=inner.getObjectByName(w.name);if(!src)continue;const piv=new THREE.Group();piv.position.set(w.c.x,w.c.y,w.c.z);piv.rotation.order='YXZ';g.add(piv);piv.attach(src);
@@ -543,8 +567,8 @@ function updateNeeds(hrs){P.food=Math.max(0,P.food-4.2*S.hunger*hrs);P.water=Mat
 // =====================================================================
 // CIELO
 // =====================================================================
-const cNight=new THREE.Color(0x070a14),cDay=new THREE.Color(0xa9bdd0),cDusk=new THREE.Color(0xd49a72),cFog=new THREE.Color(),_sunDir=new V3();
-const cHaze=new THREE.Color(0.66,0.6,0.5);
+const cNight=new THREE.Color(0x0e131c),cDay=new THREE.Color(0xa9bdd0),cDusk=new THREE.Color(0xd49a72),cFog=new THREE.Color(),_sunDir=new V3();
+const cHaze=new THREE.Color(0.66,0.6,0.5),cHazeN=new THREE.Color(0.045,0.05,0.058),_cHz=new THREE.Color();
 // nubes con volumen aparente: cúpula alrededor de la cámara que proyecta cada dirección sobre una capa a 600 m y la rellena con ruido fractal que avanza con el viento
 const CU={uTime:{value:0},uSun:{value:new V3(0,1,0)},uDay:{value:1},uCov:{value:0.6},uFog:{value:new THREE.Color()}};
 const clouds=new THREE.Mesh(new THREE.SphereGeometry(1,32,12,0,Math.PI*2,0,Math.PI*0.5),new THREE.ShaderMaterial({uniforms:CU,transparent:true,depthWrite:false,side:THREE.BackSide,fog:false,
@@ -568,9 +592,10 @@ const clouds=new THREE.Mesh(new THREE.SphereGeometry(1,32,12,0,Math.PI*2,0,Math.
 clouds.renderOrder=-1;clouds.frustumCulled=false;scene.add(clouds);
 function updateSky(){const h=hourF();const ang=(h-6)/24*Math.PI*2;const sy=Math.sin(ang),sx=Math.cos(ang);const day=THREE.MathUtils.smoothstep(sy,-0.1,0.2);nightF=1-day;
   _sunDir.set(sx*0.9,sy,0.35).normalize();su.sunPosition.value.copy(_sunDir);su.rayleigh.value=0.5+day*0.9;su.turbidity.value=9+(1-day)*4;su.mieCoefficient.value=0.012+(S.haze||0)*0.004;su.mieDirectionalG.value=0.88;
-  sky.position.copy(camW);stars.position.copy(camW);starMat.opacity=clamp(nightF*1.3-0.3,0,1);
+  sky.position.copy(camW);stars.position.copy(camW);starMat.uniforms.opacity.value=clamp(nightF*1.3-0.3,0,1)*(1-0.6*clamp(((S.clouds??2)-1)*0.6+(S.haze||0)*0.1,0,0.9));starMat.uniforms.uT.value=clockT;starMat.uniforms.uPx.value=inVR?1.6:1;
+  {const fr=Math.min(1100,camera.far*0.8);stars.scale.setScalar(fr);moon.position.copy(camW).addScaledVector(_v4.set(-_sunDir.x,Math.max(0.25,-_sunDir.y),-_sunDir.z).normalize(),fr*0.95);moon.scale.setScalar(fr*0.16);moon.material.opacity=clamp(nightF*1.4-0.2,0,1);}
   sun.position.copy(rig.position).addScaledVector(_sunDir,150);sun.target.position.copy(rig.position);sun.intensity=day*2.3;sun.color.setRGB(1,0.8+0.2*day,0.62+0.38*day);
-  hemi.intensity=0.08+day*0.9;cFog.copy(cNight).lerp(cDay,day);cFog.lerp(cDusk,clamp(1-Math.abs(sy)/0.28,0,1)*0.5);{const hz=S.haze||0;cFog.lerp(cHaze,[0,0.35,0.55,0.75,0.85][hz]*(0.4+day*0.6));scene.fog.color.copy(cFog);const vf=S.view||6000;const hf=[6000,420,200,110,70][hz];const far=Math.min(vf,hf*(0.45+day*0.55),vf);scene.fog.far=far;scene.fog.near=far*(hz?0.05:0.3);
+  hemi.intensity=0.08+day*0.9;cFog.copy(cNight).lerp(cDay,day);cFog.lerp(cDusk,clamp(1-Math.abs(sy)/0.28,0,1)*0.5);{const hz=S.haze||0;_cHz.copy(cHazeN).lerp(cHaze,day);cFog.lerp(_cHz,[0,0.35,0.55,0.75,0.85][hz]);scene.fog.color.copy(cFog);const vf=S.view||6000;const hf=[6000,420,200,110,70][hz];const far=Math.min(vf,Math.max(hz?28:900,hf*(0.28+day*0.72)),vf);scene.fog.far=far;scene.fog.near=far*(hz?0.05:0.3);
     const cf=(S.view||3000)+60;if(Math.abs(camera.far-cf)>1){camera.far=cf;camera.updateProjectionMatrix();}sky.scale.setScalar(Math.min(1200,cf*0.85));
     clouds.position.copy(camW);clouds.scale.setScalar(Math.min(900,cf*0.8));CU.uTime.value=clockT;CU.uSun.value.copy(_sunDir);CU.uDay.value=day;CU.uCov.value=[0,0.45,0.8][S.clouds??2]+hz*0.03;CU.uFog.value.copy(cFog);clouds.visible=(S.clouds??2)>0;}
   renderer.toneMappingExposure=(0.72+day*0.2)*(S.filter===1?1.08:1)+10*(S.filter||0);winMat.emissiveIntensity=nightF*1.0;if(SIGN_MAT)SIGN_MAT.emissiveIntensity=0.05+nightF*0.35;for(const m of PBR)m.envMapIntensity=0.1+0.9*day;
@@ -709,6 +734,7 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
     else{_bq.setFromAxisAngle(UP,q.rot);_bs.set(q.r*1.3,0.0012,q.r);}
     _m.compose(q.p,_bq,_bs);blood.setMatrixAt(i,_m);}blood.instanceMatrix.needsUpdate=true;
   for(let i=0;i<dps.length;i++){const q=dps[i];if(!q)continue;if(q.life<=0){dust.setMatrixAt(i,ZM);continue;}q.life-=dt;q.v.y-=4*dt;q.p.addScaledVector(q.v,dt);_m.makeTranslation(q.p.x,q.p.y,q.p.z);dust.setMatrixAt(i,q.life>0?_m:ZM);}dust.instanceMatrix.needsUpdate=true;
+  stepSmoke(dt,scene.fog.color,scene.fog.far,1-nightF);
   for(const t of tracers)if(t.t>0){t.t-=dt;t.l.material.opacity=Math.max(0,t.t/0.09);}
   for(let i=noises.length-1;i>=0;i--){noises[i].t-=dt;if(noises[i].t<=0)noises.splice(i,1);}
   stepDoors(dt);if(!P.inCar)pushDoorsAt(p.x,p.z,rig.position.y+0.9,0.34,P.vx||0,P.vz||0,1);
@@ -735,7 +761,7 @@ const startEl=document.getElementById('start'),vrmsg=document.getElementById('vr
 let worldReady=false;
 function enableStart(){if(!modelsReady)return;bflat.disabled=false;bvr.disabled=!navigator.xr;}
 function begin(vr){initAudio();started=true;startEl.style.display='none';gameMin=S.startHour*60;
-  if(!worldReady){worldReady=true;setupBody();placeCars();placeWrecks();populateNPCs();placeCorpses();}
+  if(!worldReady){worldReady=true;setupBody();placeCars();placeWrecks();populateNPCs();placeCorpses();setupSmoke();}
   resetPlayer();camera.getWorldPosition(camW);managePop(camW,true);
   if(!vr){hudC.style.display='block';document.getElementById('cross').style.display='block';if(isTouch){touchUI.style.display='block';document.querySelectorAll('.mn').forEach(b=>b.style.display='block');}}
   toast('Día 1. Eixample de Barcelona. Al lado tienes el Mercat del Ninot: una base de supervivientes. Habla con su líder.',7);}
@@ -751,7 +777,7 @@ setLoad('w','Construyendo Barcelona…');
 setTimeout(()=>{try{buildWorld();buildLootGrid();setLoad('w',`✔ Barcelona generada: ${BLOCKS.length} manzanas, ${shopCount} locales con interior, ${BASES.length} bases`);}catch(e){console.error(e);setLoad('w','❌ Error generando la ciudad: '+e.message);}
   resetPlayer();camera.getWorldPosition(camW);renderer.setAnimationLoop(loop);loadModels();},50);
 // ---- ganchos de depuración (solo con ?shot=1) ----
-if(DEBUG.has('shot')){window.__T={setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
+if(DEBUG.has('shot')){window.__T={VOL,setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
   applyDoor,TPL,poseHand,gl,viewModel,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}

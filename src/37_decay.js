@@ -49,3 +49,20 @@ function decayWorld(){
   // hojas acumuladas en la calzada junto al bordillo
   for(const bk of BLOCKS){if(bk.outer)continue;for(let e=0;e<8;e+=2){const a=bk.cp[e],b=bk.cp[(e+1)%8];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;const c=centroid(bk.bp);let nx=-uz,nz=ux;if(nx*((a[0]+b[0])/2-c[0])+nz*((a[1]+b[1])/2-c[1])<0){nx=-nx;nz=-nz;}
     for(let t=R(1,4);t<L;t+=R(2,6)){const x=a[0]+ux*t+nx*R(0.3,1.1),z=a[1]+uz*t+nz*R(0.3,1.1);addInst('leafLitter',x,H(x,z),z,R(0,6),R(0.8,1.8),1,R(0.6,1.2),0,0,0,pick(LEAFCOL));}}}}
+// ---------- humo: columnas que salen de algunos edificios incendiados (billboards instanciados, baratos) ----------
+const SMOKE_N=34,SMOKES=[];let smokeMesh=null;
+const smokeMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uFog:{value:new THREE.Color()},uFar:{value:300},uDay:{value:1}},
+  vertexShader:`attribute vec4 aP;attribute float aR;varying vec2 vUv;varying float vA;varying float vD;void main(){vUv=uv;vec4 mv=viewMatrix*vec4(aP.xyz,1.0);float c=cos(aR),s=sin(aR);vec2 q=mat2(c,-s,s,c)*position.xy;mv.xy+=q*aP.w;vD=-mv.z;vA=clamp(aR*0.0+1.0,0.0,1.0);gl_Position=projectionMatrix*mv;}`,
+  fragmentShader:`varying vec2 vUv;varying float vD;uniform vec3 uFog;uniform float uFar,uDay;
+    float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
+    void main(){vec2 d=vUv-0.5;float r=length(d)*2.0;float m=n(vUv*4.0+vD*0.01)*0.6+n(vUv*9.0)*0.4;float a=smoothstep(1.0,0.2,r+(m-0.5)*0.6)*0.5;if(a<0.01)discard;
+      vec3 c=mix(vec3(0.05,0.05,0.055),vec3(0.28,0.27,0.26),uDay)*(0.75+m*0.4);float f=clamp(vD/uFar,0.0,1.0);c=mix(c,uFog,f*0.85);gl_FragColor=vec4(c,a*(1.0-f*0.5));}`});
+function setupSmoke(){const src=FACADES.filter(f=>!f.outer&&f.L>8);for(let k=0;k<6&&src.length;k++){const f=src.splice(RI(0,src.length-1),1)[0];const t=R(2,f.L-2);const ux=(f.b[0]-f.a[0])/f.L,uz=(f.b[1]-f.a[1])/f.L;
+    SMOKES.push({x:f.a[0]+ux*t-f.nx*4,z:f.a[1]+uz*t-f.nz*4,y:f.yb+f.gf+f.fh*f.F+0.5,p:[]});}
+  const g=new THREE.InstancedBufferGeometry();const pl=new THREE.PlaneGeometry(1,1);g.index=pl.index;g.attributes.position=pl.attributes.position;g.attributes.uv=pl.attributes.uv;
+  const n=SMOKES.length*SMOKE_N;g.instanceCount=n;g.setAttribute('aP',new THREE.InstancedBufferAttribute(new Float32Array(n*4),4));g.setAttribute('aR',new THREE.InstancedBufferAttribute(new Float32Array(n),1));
+  smokeMesh=new THREE.Mesh(g,smokeMat);smokeMesh.frustumCulled=false;smokeMesh.renderOrder=2;scene.add(smokeMesh);
+  for(const s of SMOKES)for(let i=0;i<SMOKE_N;i++)s.p.push({t:Math.random()*14,o:R(0,6.28),sp:R(0.9,1.3)});}
+function stepSmoke(dt,fogC,far,day){if(!smokeMesh)return;const P_=smokeMesh.geometry.attributes.aP,R_=smokeMesh.geometry.attributes.aR;let k=0;const wx=1.6,wz=0.6;
+  for(const s of SMOKES)for(const q of s.p){q.t+=dt*q.sp;if(q.t>14)q.t-=14;const t=q.t;P_.setXYZW(k,s.x+wx*t*t*0.08+Math.sin(q.o+t*0.3)*0.6,s.y+t*2.2,s.z+wz*t*t*0.08+Math.cos(q.o+t*0.3)*0.6,2+t*1.5);R_.setX(k,q.o+t*0.15);k++;}
+  P_.needsUpdate=true;R_.needsUpdate=true;smokeMat.uniforms.uFog.value.copy(fogC);smokeMat.uniforms.uFar.value=far;smokeMat.uniforms.uDay.value=day;}

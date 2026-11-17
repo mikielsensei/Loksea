@@ -11,7 +11,7 @@ const H=(x,z)=>-z*0.012;
 // =====================================================================
 const VOL=[],VG=new Map(),VCG=16,VEMPTY=[];
 const vk=(i,j)=>i*10007+j;
-function insertVol(v){VOL.push(v);const i0=Math.floor((v.x0-2.5)/VCG),i1=Math.floor((v.x1+2.5)/VCG),j0=Math.floor((v.z0-2.5)/VCG),j1=Math.floor((v.z1+2.5)/VCG);
+function insertVol(v){VOL.push(v);if(DEBUG.has('volsrc'))v.src=(new Error().stack||'').split('\n').slice(2,6).join('|');const i0=Math.floor((v.x0-2.5)/VCG),i1=Math.floor((v.x1+2.5)/VCG),j0=Math.floor((v.z0-2.5)/VCG),j1=Math.floor((v.z1+2.5)/VCG);
   for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const k=vk(i,j);let a=VG.get(k);if(!a)VG.set(k,a=[]);a.push(v);}return v;}
 function addBoxV(x0,x1,z0,z1,y0,y1){if(x1<x0){const t=x0;x0=x1;x1=t;}if(z1<z0){const t=z0;z0=z1;z1=t;}return insertVol({k:0,x0,x1,z0,z1,y0,y1});}
 function addPolyV(pts,y0,y1){let area=0;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];area+=a[0]*b[1]-b[0]*a[1];}

@@ -202,7 +202,7 @@ function buildSideLot(lot){const s=lot.side;const L=lot.u1-lot.u0;const{A,B,ux,u
   buildFacade(lot,{a:A,b:B,nx,nz},units);
   // colisión: parcela maciza salvo los locales con interior
   const rooms=units.filter(u=>u.roomBuilt).map(u=>[u.u0,u.u1,u.roomBuilt.d]);rooms.sort((p,q)=>p[0]-q[0]);
-  const top=lotTop(lot);let cur=0;const box=(u0,u1,w0,w1)=>{if(u1-u0<0.05||w1-w0<0.05)return;const c0=P((u0+u1)/2,(w0+w1)/2);solidBox(c0[0],c0[1],(u1-u0)/2,(w1-w0)/2,Math.atan2(ux,uz),yb-2,top);};
+  const top=lotTop(lot);let cur=0;const box=(u0,u1,w0,w1)=>{if(u1-u0<0.05||w1-w0<0.05)return;const c0=P((u0+u1)/2,(w0+w1)/2);solidBox(c0[0],c0[1],(u1-u0)/2,(w1-w0)/2,Math.atan2(nx,nz),yb-2,top);};
   for(const r of rooms){box(cur,r[0],0,D);box(r[0],r[1],r[2],D);cur=r[1];}box(cur,L,0,D);
   // medianeras visibles (si el vecino de al lado es más bajo, se ve la pared lateral)
   for(const end of [0,L]){const p0=P(end,0),p1=P(end,D);const B2=bufOf(p0[0],p0[1],'concrete_wall');TINT=[0.92,0.9,0.86];const sx=end===0?-ux:ux,sz=end===0?-uz:uz;
