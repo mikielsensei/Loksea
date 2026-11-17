@@ -26,13 +26,26 @@ defInst('win',(()=>{const g=new THREE.PlaneGeometry(1,1);g.translate(0,0.5,0);re
 {const p=[[bx(1.3,0.07,0.16,0,-0.03,0.07),0xffffff],[bx(1.25,0.16,0.12,0,1.12,0.06),0xffffff]];
   defInst('winFrame',mkG(p),new THREE.MeshLambertMaterial({vertexColors:true}));}
 // balcón: losa de piedra + barandilla de hierro forjado (textura con alfa)
-const texRail=cTex(512,256,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#141514';g.fillRect(0,0,w,12);g.fillRect(0,h-10,w,10);g.fillRect(0,28,w,5);g.fillRect(0,h-34,w,5);
-  for(let x=6;x<w;x+=24){g.fillRect(x,0,5,h);}g.strokeStyle='#141514';g.lineWidth=5;for(let x=0;x<w;x+=96){g.beginPath();g.arc(x+48,h/2,26,0,7);g.stroke();g.beginPath();g.arc(x+48,h/2,10,0,7);g.stroke();
-    g.beginPath();g.moveTo(x+18,h/2);g.bezierCurveTo(x+18,h/2-40,x+78,h/2-40,x+78,h/2);g.stroke();}},{});
-{const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
+const texRail=cTex(1024,512,(g,W,Hh)=>{g.clearRect(0,0,W,Hh);const w=512,h=256;const I='#141514';
+  // 0: modernista con volutas
+  g.save();g.fillStyle=I;g.fillRect(0,0,w,12);g.fillRect(0,h-10,w,10);g.fillRect(0,28,w,5);g.fillRect(0,h-34,w,5);for(let x=6;x<w;x+=24)g.fillRect(x,0,5,h);g.strokeStyle=I;g.lineWidth=5;
+  for(let x=0;x<w;x+=96){g.beginPath();g.arc(x+48,h/2,26,0,7);g.stroke();g.beginPath();g.arc(x+48,h/2,10,0,7);g.stroke();g.beginPath();g.moveTo(x+18,h/2);g.bezierCurveTo(x+18,h/2-40,x+78,h/2-40,x+78,h/2);g.stroke();}g.restore();
+  // 1: barrotes rectos años 50 con pasamanos
+  g.save();g.translate(w,0);g.fillStyle=I;g.fillRect(0,0,w,14);g.fillRect(0,h-12,w,12);for(let x=8;x<w;x+=18)g.fillRect(x,0,4,h);g.fillRect(0,h*0.55,w,4);g.restore();
+  // 2: modernismo de látigo con flores
+  g.save();g.translate(0,h);g.fillStyle=I;g.fillRect(0,0,w,12);g.fillRect(0,h-12,w,12);g.strokeStyle=I;g.lineWidth=6;
+  for(let x=0;x<w;x+=128){g.beginPath();g.moveTo(x+4,h-12);g.bezierCurveTo(x+4,h*0.3,x+64,h*0.9,x+64,h*0.35);g.bezierCurveTo(x+64,h*0.9,x+124,h*0.3,x+124,h-12);g.stroke();
+    g.beginPath();g.moveTo(x+64,12);g.lineTo(x+64,h*0.35);g.stroke();for(let k=0;k<5;k++){g.beginPath();g.ellipse(x+64+Math.cos(k*1.256)*14,h*0.3+Math.sin(k*1.256)*14,9,5,k*1.256,0,7);g.stroke();}
+    g.beginPath();g.moveTo(x+4,12);g.quadraticCurveTo(x+34,h*0.2,x+4,h*0.45);g.stroke();g.beginPath();g.moveTo(x+124,12);g.quadraticCurveTo(x+94,h*0.2,x+124,h*0.45);g.stroke();}g.restore();
+  // 3: balaustrada de piedra
+  g.save();g.translate(w,h);const st='#d6ccbb',sh='#a89c88';g.fillStyle=st;g.fillRect(0,0,w,26);g.fillRect(0,h-22,w,22);g.fillStyle=sh;g.fillRect(0,24,w,4);
+  for(let x=10;x<w;x+=42){g.fillStyle=st;g.beginPath();g.moveTo(x+10,30);g.lineTo(x+22,30);g.quadraticCurveTo(x+34,h*0.45,x+26,h*0.62);g.quadraticCurveTo(x+36,h*0.82,x+24,h-22);g.lineTo(x+8,h-22);g.quadraticCurveTo(x-4,h*0.82,x+6,h*0.62);g.quadraticCurveTo(x-2,h*0.45,x+10,30);g.fill();
+    g.fillStyle='rgba(60,50,40,0.35)';g.fillRect(x+20,40,6,h-70);}
+  g.fillStyle='rgba(40,32,24,0.25)';for(let i=0;i<60;i++)g.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*30,1+Math.random()*6);g.restore();},{});
+{const slab=mkG([[bx(1,0.15,1,0,0.06,0.5),0xffffff],[bx(1,0.06,0.9,0,-0.04,0.45),0xe2dccf],[bx(1,0.04,0.8,0,-0.09,0.4),0xd4cdbf]]);defInst('balcSlab',slab,new THREE.MeshLambertMaterial({vertexColors:true}));
   const f=new THREE.PlaneGeometry(1,1);f.translate(0,0.5,1);const l=new THREE.PlaneGeometry(1,1);l.rotateY(Math.PI/2);l.translate(-0.5,0.5,0.5);const r=l.clone();r.translate(1,0,0);
-  const railM=new THREE.MeshLambertMaterial({map:texRail,alphaTest:0.18,alphaToCoverage:true,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM);
-  const fF=new THREE.PlaneGeometry(1,1);fF.translate(0,0.5,1);defInst('balcRailF',fF,railM);const sS=new THREE.PlaneGeometry(1,1);sS.rotateY(Math.PI/2);sS.translate(0,0.5,0.5);defInst('balcRailS',sS,railM);}
+  const railM=atlasMat(texRail,null,2,2,{alphaTest:0.18,alphaToCoverage:true,side:THREE.DoubleSide});defInst('balcRail',mergeGeometries([f,l,r]),railM,2,2);
+  const fF=new THREE.PlaneGeometry(1,1);fF.translate(0,0.5,1);defInst('balcRailF',fF,railM,2,2);const sS=new THREE.PlaneGeometry(1,1);sS.rotateY(Math.PI/2);sS.translate(0,0.5,0.5);defInst('balcRailS',sS,railM,2,2);}
 // macetas y ropa tendida y aire acondicionado
 defInst('maceta',mkG([[cy(0.14,0.1,0.25,0,0.12,0,5),0xa0522d],[sp(0.22,0,0.42,0,5),0x3f6a2a]]),plasticMat);
 const texLaundry=cTex(256,128,(g,w,h)=>{g.clearRect(0,0,w,h);g.strokeStyle='#444';g.lineWidth=2;line(g,0,6,w,6);let x=6;while(x<w-20){const ww=R(22,46),hh=R(40,100);g.fillStyle=pick(['#e8e8e8','#6a8ab8','#b84a4a','#e8d86a','#4a4a4a','#8ab86a','#d8a0c0']);g.fillRect(x,6,ww,hh);x+=ww+R(4,10);}},{});
