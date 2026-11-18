@@ -1,0 +1,178 @@
+// =====================================================================
+// EDIFICIOS: parcelas alrededor de cada manzana (fachada, planta baja con locales, medianeras, colisiones)
+// =====================================================================
+const BDEPTH=20;// profundidad edificable alrededor del patio de manzana
+// ---------- rótulos: atlas 4x16 celdas de 512x128 ----------
+// atlas de rótulos: 8x32 celdas de 384x96 (se dibujan como si fueran de 512x128)
+const SG_COLS=16,SG_ROWS=40,SG_W=256,SG_H=64;// 640 celdas de 256x64 (4096x2560)
+const SIGNC=document.createElement('canvas');SIGNC.width=SG_COLS*SG_W;SIGNC.height=SG_ROWS*SG_H;const sgc=SIGNC.getContext('2d');let signN=0;const SIGNIDX={};
+function signCell(key,draw){if(SIGNIDX[key]!==undefined)return SIGNIDX[key];if(signN>=SG_COLS*SG_ROWS)return undefined;const i=signN++;const x=(i%SG_COLS)*SG_W,y=Math.floor(i/SG_COLS)*SG_H;sgc.save();sgc.translate(x,y);sgc.beginPath();sgc.rect(0,0,SG_W,SG_H);sgc.clip();sgc.scale(SG_W/512,SG_H/128);draw(sgc,512,128);sgc.restore();SIGNIDX[key]=i;return i;}
+function textSign(key,text,bg,fg,o={}){return signCell(key,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);if(o.stripe){g.fillStyle=o.stripe;g.fillRect(0,h-16,w,16);}
+  if(o.border){g.strokeStyle=o.border;g.lineWidth=8;g.strokeRect(6,6,w-12,h-12);}
+  g.fillStyle=fg;g.textAlign='center';g.textBaseline='middle';let fs=o.fs||74;const font=o.font||'Arial';g.font=`${o.weight||'bold'} ${fs}px ${font}`;while(g.measureText(text).width>w-(o.pad||50)&&fs>20){fs-=2;g.font=`${o.weight||'bold'} ${fs}px ${font}`;}
+  if(o.cross){g.fillStyle='#19a347';const cx=70,cy=h/2;g.fillRect(cx-14,cy-40,28,80);g.fillRect(cx-40,cy-14,80,28);g.fillStyle=fg;g.fillText(text,w/2+40,h/2+4);}
+  else g.fillText(text,w/2,h/2+(o.stripe?-6:4));
+  // suciedad
+  for(let i=0;i<40;i++){g.fillStyle=`rgba(40,30,20,${R(0.03,0.12)})`;g.beginPath();g.arc(R(0,w),R(0,h),R(4,30),0,7);g.fill();}});}
+// ---------- comercios reales (OpenStreetMap): cada local toma el comercio que hay de verdad en ese punto de la calle ----------
+let POIG=null;const POIUSED=new Set();
+function poiGrid(){POIG=new Map();POIS.forEach((p,k)=>{const x=p[0],z=p[1];p.x=x;p.z=z;p.k=k;const key=Math.floor(x/20)+','+Math.floor(z/20);let L=POIG.get(key);if(!L)POIG.set(key,L=[]);L.push(p);});}
+function realShop(u,cx,cz,ux,uz,nx,nz,w){if(!POIG)poiGrid();let best=null,bd=1e9;const gx=Math.floor(cx/20),gz=Math.floor(cz/20);
+  for(let i=gx-1;i<=gx+1;i++)for(let j=gz-1;j<=gz+1;j++){const L=POIG.get(i+','+j);if(!L)continue;for(const p of L){if(POIUSED.has(p.k))continue;const dx=p.x-cx,dz=p.z-cz;const along=dx*ux+dz*uz,inw=-(dx*nx+dz*nz);
+      if(Math.abs(along)>w/2+4||inw<-9||inw>24)continue;const d=Math.abs(along)*1.5+Math.abs(inw-3)*0.5;if(d<bd){bd=d;best=p;}}}
+  if(!best)return;const idx=poiSign(best);if(idx===undefined)return;POIUSED.add(best.k);u.shop.type=best[2]==='super'?'fruteria':best[2];u.shop.name=best[3];u.shop.signIdx=idx;
+  u.shop.awning=['bar','restaurant','fruteria'].includes(u.shop.type)&&Math.random()<0.45;}
+// rótulo de un comercio real: marcas conocidas con sus colores; el resto con estilos variados de rótulo de barrio (caja, letras sueltas, madera, neón apagado...)
+const BRANDS=[[/caixabank|la caixa/i,'#ffffff','#007eae'],[/bbva/i,'#004481','#ffffff'],[/sabadell/i,'#ffffff','#0099cc'],[/santander/i,'#ec0000','#ffffff'],[/bankinter/i,'#ff6600','#ffffff'],[/\bing\b/i,'#ff6200','#ffffff'],[/ibercaja/i,'#003a70','#ffffff'],
+  [/mercadona/i,'#ffffff','#0b8a3e','#f39200'],[/lidl/i,'#0050aa','#fff000'],[/bon ?preu/i,'#ffffff','#d50f25','#ffcc00'],[/condis/i,'#ffffff','#e3001b','#e3001b'],[/caprabo/i,'#d6001c','#ffffff'],[/consum/i,'#ffffff','#f07d00','#f07d00'],[/bon[àa]rea/i,'#ffffff','#2e8b3a','#2e8b3a'],
+  [/aldi/i,'#00005f','#ffffff','#f8a71b'],[/spar/i,'#ffffff','#e2001a','#007a3d'],[/veritas/i,'#ffffff','#5c8a2b'],[/sorli/i,'#ffffff','#d3122a','#2b6cb0'],[/carrefour/i,'#ffffff','#1e4fa0','#e1001a'],[/dia\b/i,'#e3001b','#ffffff'],[/alcampo/i,'#ffffff','#e2001a','#009640'],
+  [/zara\b/i,'#000000','#ffffff'],[/mango/i,'#ffffff','#000000'],[/starbucks/i,'#00704a','#ffffff'],[/mcdonald/i,'#da291c','#ffc72c'],[/burger king/i,'#502314','#ff8732'],[/telepizza/i,'#e30613','#ffffff'],[/rossmann/i,'#c3002f','#ffffff'],[/druni/i,'#1a1a1a','#e4007c'],
+  [/farggi/i,'#5a2d1a','#f2e6c8'],[/caf[eè] de l.?ateneu/i,'#1a1a1a','#d8b86a'],[/365/,'#ffffff','#e2001a'],[/granier/i,'#4a2a17','#f2d39c'],[/fornet/i,'#7a1e1e','#ffffff']];
+const SIGNSTY=[{bg:'#1a1a1a',fg:'#f2f2f2',font:'Georgia,serif',w:''},{bg:'#f4f1e8',fg:'#1a1a1a',font:'Georgia,serif',w:'bold'},{bg:'#0f3b5f',fg:'#ffffff',font:'Arial,sans-serif',w:'bold'},{bg:'#7a1e1e',fg:'#f2e6c8',font:'Georgia,serif',w:'bold'},
+  {bg:null,fg:'#f0f0ea',font:'Arial,sans-serif',w:'bold',sh:true},{bg:null,fg:'#1c1c1c',font:'Georgia,serif',w:'',sh:true},{bg:null,fg:'#d8b86a',font:'Georgia,serif',w:'bold',sh:true},{bg:'#2e4a3a',fg:'#e8dcc0',font:'"Times New Roman",serif',w:'italic bold'},
+  {bg:'wood',fg:'#f2e6c8',font:'Georgia,serif',w:'bold'},{bg:'#e8e4da',fg:'#b0302a',font:'Arial,sans-serif',w:'900'},{bg:'#111',fg:'#ff4fa0',font:'Arial,sans-serif',w:'bold',neon:true},{bg:'#c8a96a',fg:'#2a1a10',font:'Georgia,serif',w:'bold'},
+  {bg:'#ffffff',fg:'#2a6db0',font:'Verdana,sans-serif',w:'bold'},{bg:'#3a3a3a',fg:'#f2c23a',font:'Arial,sans-serif',w:'bold'},{bg:null,fg:'#ffffff',font:'cursive',w:'bold',sh:true},{bg:'#5b2a4a',fg:'#f2e6f0',font:'Georgia,serif',w:''}];
+const hashStr=t=>{let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
+function poiSign(p){const name=p[3],ty=p[2],h=hashStr(name);
+  return signCell('poi:'+name,(g,w,hh)=>{const br=BRANDS.find(b=>b[0].test(name));let st,txt=name;
+    if(br)st={bg:br[1],fg:br[2],font:'Arial Black,Arial,sans-serif',w:'900',stripe:br[3]};
+    else if(ty==='farmacia')st={bg:'#ffffff',fg:'#19a347',font:'Arial,sans-serif',w:'bold',pharm:true};
+    else{st=SIGNSTY[h%SIGNSTY.length];if(ty==='bar'&&h%3===0)txt=name.toUpperCase();if(h%5===0&&!st.neon)txt=txt.toUpperCase();}
+    if(st.bg==='wood'){g.fillStyle='#5a3a22';g.fillRect(0,0,w,hh);for(let i=0;i<40;i++){g.strokeStyle=`rgba(30,15,5,${R(0.1,0.35)})`;g.lineWidth=R(1,3);g.beginPath();g.moveTo(0,R(0,hh));g.bezierCurveTo(w*0.3,R(0,hh),w*0.6,R(0,hh),w,R(0,hh));g.stroke();}}
+    else if(st.bg){g.fillStyle=st.bg;g.fillRect(0,0,w,hh);}else g.clearRect(0,0,w,hh);
+    if(st.stripe){g.fillStyle=st.stripe;g.fillRect(0,hh-16,w,16);}
+    g.textAlign='center';g.textBaseline='middle';
+    if(st.pharm){g.fillStyle='#19a347';g.fillRect(56,24,24,80);g.fillRect(28,52,80,24);g.font='bold 54px Arial,sans-serif';g.fillText('FARMÀCIA',w/2+50,hh*0.4);g.fillStyle='#1a1a1a';let f=26;g.font=`${f}px Arial,sans-serif`;g.fillText(txt.replace(/^farm[àa]cia\s*/i,'').slice(0,26),w/2+50,hh*0.78);return;}
+    let fs=st.neon?70:84;const F=()=>`${st.w} ${fs}px ${st.font}`;g.font=F();while(g.measureText(txt).width>w-44&&fs>18){fs-=2;g.font=F();}
+    if(st.sh){g.fillStyle='rgba(0,0,0,0.55)';g.fillText(txt,w/2+3,hh/2+6);}
+    if(st.neon){g.shadowColor=st.fg;g.shadowBlur=14;}
+    g.fillStyle=st.fg;g.fillText(txt,w/2,hh/2+(st.stripe?-4:3));g.shadowBlur=0;
+    if(st.bg&&!st.neon)for(let i=0;i<30;i++){g.fillStyle=`rgba(40,30,20,${R(0.03,0.1)})`;g.beginPath();g.arc(R(0,w),R(0,hh),R(4,26),0,7);g.fill();}});}
+// supermercados reales de Barcelona (solo el nombre con sus colores, sin logotipos)
+const SUPERS=[
+  {n:'Mercadona',s:()=>textSign('mercadona','MERCADONA','#ffffff','#0b8a3e',{stripe:'#f39200',font:'Arial Black'})},
+  {n:'Lidl',s:()=>textSign('lidl','LIDL','#0050aa','#fff000',{border:'#e60a14',font:'Arial Black',fs:90})},
+  {n:'Bonpreu',s:()=>textSign('bonpreu','bonpreu','#ffffff','#d50f25',{font:'Arial Black',weight:'',fs:84,stripe:'#ffcc00'})},
+  {n:'Esclat',s:()=>textSign('esclat','esclat','#ffffff','#e85a0c',{font:'Arial Black',weight:'',fs:84,stripe:'#d50f25'})},
+  {n:'Caprabo',s:()=>textSign('caprabo','Caprabo','#d6001c','#ffffff',{font:'Arial Black',weight:''})},
+  {n:'Condis',s:()=>textSign('condis','Condis','#ffffff','#e3001b',{font:'Arial Black',weight:'',stripe:'#e3001b'})},
+  {n:'Dia',s:()=>textSign('dia','Dia','#e3001b','#ffffff',{font:'Arial Black',fs:96})},
+  {n:'Consum',s:()=>textSign('consum','Consum','#ffffff','#f07d00',{font:'Arial Black',weight:'',stripe:'#f07d00'})},
+  {n:'Ametller Origen',s:()=>textSign('ametller','Ametller Origen','#1e3b2a','#ffffff',{font:'Georgia',fs:62})},
+  {n:'Carrefour Express',s:()=>textSign('carrefour','Carrefour Express','#ffffff','#1e4fa0',{font:'Arial',stripe:'#e1001a',fs:60})},
+  {n:'bonÀrea',s:()=>textSign('bonarea','bonÀrea','#ffffff','#2e8b3a',{font:'Arial Black',weight:'',stripe:'#2e8b3a'})},
+  {n:'Sorli',s:()=>textSign('sorli','SORLI','#ffffff','#d3122a',{font:'Arial Black',fs:84,stripe:'#2b6cb0'})},
+];
+// comercios de barrio (nombres genéricos de rótulo, en catalán, como en la calle)
+const SMALL=[
+  {t:'farmacia',w:[4,6],sign:()=>textSign('farm','FARMÀCIA','#ffffff','#19a347',{cross:true,font:'Arial'}),enter:0.8},
+  {t:'forn',w:[3.5,6],sign:()=>textSign('forn'+(Math.random()*3|0),pick(['FORN DE PA','FLECA','FORN I PASTISSERIA']),pick(['#6b3e1e','#f3e3c3','#3a2a1a']),pick(['#f6e7c8','#6b3e1e','#e8c67a']),{font:'Georgia'}),enter:0.75},
+  {t:'bar',w:[4,8],sign:()=>textSign('bar'+(Math.random()*4|0),pick(['BAR','BAR · CAFETERIA','BAR RESTAURANT','CERVESERIA']),pick(['#1d2b3a','#7a1e1e','#2e3a2a','#111']),pick(['#f2e6c8','#ffffff','#e8c67a']),{font:'Georgia'}),enter:0.8},
+  {t:'fruteria',w:[3.5,6],sign:()=>textSign('fruit','FRUITES I VERDURES','#2e6b2a','#ffffff'),enter:0.75},
+  {t:'ferre',w:[4,7],sign:()=>textSign('ferre','FERRETERIA','#c8102e','#ffffff'),enter:0.8},
+  {t:'estanc',w:[3,4.5],sign:()=>signCell('estanc',(g,w,h)=>{g.fillStyle='#8a4b12';g.fillRect(0,0,w,h);g.fillStyle='#f2c23a';g.fillRect(24,20,88,88);g.fillStyle='#8a4b12';g.font='bold 76px Arial';g.textAlign='center';g.textBaseline='middle';g.fillText('T',68,68);g.fillStyle='#f2c23a';g.font='bold 60px Arial';g.fillText('ESTANC',300,68);}),enter:0.7},
+  {t:'carnisseria',w:[3.5,6],sign:()=>textSign('carn','CARNISSERIA','#8a1c1c','#ffffff',{font:'Georgia'}),enter:0.7},
+  {t:'perruqueria',w:[3.5,6],sign:()=>textSign('perr','PERRUQUERIA','#111111','#e8c0d0',{font:'Georgia',weight:''}),enter:0.4},
+  {t:'banc',w:[6,10],sign:()=>pick([()=>textSign('caixa','CaixaBank','#ffffff','#007eae'),()=>textSign('bbva','BBVA','#004481','#ffffff',{fs:90}),()=>textSign('sabadell','Banc Sabadell','#ffffff','#0099cc'),()=>textSign('santander','Santander','#ec0000','#ffffff')])(),enter:0.3},
+  {t:'locutori',w:[3.5,5],sign:()=>textSign('locu','LOCUTORI · ENVIAMENTS','#f2d01e','#1a1a1a'),enter:0.4},
+  {t:'bugaderia',w:[3.5,5],sign:()=>textSign('buga','BUGADERIA','#2b6cb0','#ffffff'),enter:0.4},
+  {t:'optica',w:[3.5,5],sign:()=>textSign('opt','ÒPTICA','#ffffff','#1a1a1a',{font:'Georgia',weight:''}),enter:0.3},
+  {t:'immo',w:[3.5,5],sign:()=>textSign('immo','IMMOBILIÀRIA','#0f3b5f','#ffffff'),enter:0.2},
+  {t:'roba',w:[4,8],sign:()=>textSign('roba'+(Math.random()*2|0),pick(['MODA','BOTIGA']),'#1a1a1a','#ffffff',{font:'Georgia',weight:''}),enter:0.5},
+  {t:'electro',w:[4,7],sign:()=>textSign('elec','ELECTRODOMÈSTICS','#ffffff','#e85a0c'),enter:0.5},
+  {t:'restaurant',w:[5,9],sign:()=>textSign('rest'+(Math.random()*2|0),pick(['RESTAURANT','PIZZERIA']),pick(['#2a1a10','#7a1e1e']),'#f2e6c8',{font:'Georgia'}),enter:0.7},
+];
+const SMALLW=[['farmacia',6],['forn',6],['bar',12],['fruteria',6],['ferre',3],['estanc',3],['carnisseria',3],['perruqueria',4],['banc',4],['locutori',3],['bugaderia',2],['optica',2],['immo',3],['roba',4],['electro',2],['restaurant',4]];
+function pickSmall(){let tot=0;for(const w of SMALLW)tot+=w[1];let r=Math.random()*tot;for(const w of SMALLW){r-=w[1];if(r<=0)return SMALL.find(s=>s.t===w[0]);}return SMALL[0];}
+// planificación de supermercados por lado de manzana
+const SUPERPLAN=new Map();
+// ---------- materiales e instancias de planta baja ----------
+MATS.shutter=photoMat('shutter',{ns:1,roughness:0.6,metalness:0.4});MATS.shutter_rust=photoMat('shutter_rust',{ns:1,roughness:0.7,metalness:0.3});
+MATS.wood_door=photoMat('wood_door',{ns:0.6,roughness:0.6});MATS.wood_dark=photoMat('wood_dark',{ns:0.6,roughness:0.6});
+for(const k of ['shutter','shutter_rust','wood_door','wood_dark'])weatherMat(MATS[k],0.7);
+const signMatS=new THREE.MeshLambertMaterial({map:null,emissive:0xffffff,emissiveIntensity:0,side:THREE.DoubleSide});
+// toldo
+const texAwn=cTex(256,128,(g,w,h)=>{const c=pick(['#2e6b2a','#8a1c1c','#1d4f8a','#c8661a']);for(let x=0;x<w;x+=32){g.fillStyle=(x/32)%2?c:'#efe8d8';g.fillRect(x,0,32,h);}g.fillStyle='rgba(0,0,0,.18)';for(let i=0;i<30;i++){g.beginPath();g.arc(R(0,w),R(0,h),R(3,18),0,7);g.fill();}},{});
+// relleno de huecos de planta baja: plano a la profundidad del hueco
+function fillQuad(mat,a,ux,uz,nx,nz,u0,u1,y0,y1,dep,tint,usOverride){const p=[a[0]+ux*u0-nx*dep,a[1]+uz*u0-nz*dep],q=[a[0]+ux*u1-nx*dep,a[1]+uz*u1-nz*dep];const B=bufOf((p[0]+q[0])/2,(p[1]+q[1])/2,mat);TINT=tint||[1,1,1];
+  wall(B,p[0],p[1],q[0],q[1],y0,y1,nx,nz,usOverride||US(mat==='shutter'||mat==='shutter_rust'?'shutter':mat==='wood_door'?'wood_door':mat==='wood_dark'?'wood_dark':'concrete'),u0);TINT=[1,1,1];}
+const LOTS=[];
+// ---------- generación de una fachada (segmento) ----------
+// F: pisos sobre la planta baja; st: estilo; seg {a,b,nx,nz}; base y; units: planta baja [{u0,u1,kind,...}]
+function buildFacade(lot,seg,units){const{a,b,nx,nz}=seg;const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<0.5)return;const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;const st=lot.st,yb=lot.yb,gf=lot.gf,fh=lot.fh,F=lot.F;
+  const top=yb+gf+F*fh+0.6;const yaw=Math.atan2(nx,nz);const tint=hexTint(lot.tint);const tPB=lot.pbTint;
+  // planta baja con huecos
+  const holes=units.map(u=>[u.u0,u.u1,u.y0||0,u.y1]);wallHoles(st.pb,a,b,nx,nz,yb-0.25,yb+gf,holes.map(h=>[h[0],h[1],h[2]+0.25,h[3]+0.25]),0.35,US(st.pb),tPB);
+  // pisos superiores
+  {const B=bufOf((a[0]+b[0])/2,(a[1]+b[1])/2,st.up);TINT=tint;wall(B,a[0],a[1],b[0],b[1],yb+gf,top,nx,nz,US(st.up));TINT=[1,1,1];}
+  moldStrip(a,b,nx,nz,yb+gf-0.05,0.35,0.16,tint.map(v=>v*0.92));moldStrip(a,b,nx,nz,top-0.55,0.5,0.45,tint.map(v=>v*0.9));moldStrip(a,b,nx,nz,top-0.05,0.25,0.2,tint.map(v=>v*0.85));
+  // ventanas y balcones por crujía
+  const n=Math.max(1,Math.round(L/3.6));const bay=L/n;const contPrinc=lot.contBalc&&L>6;
+  const lite=lot.bk.outer;
+  for(let f=0;f<F;f++){const fy=yb+gf+f*fh;const topFloor=f===F-1;const wh=topFloor?1.75:(f===0?2.55:2.35),ww=topFloor?1.05:1.2;
+    if(f===0&&contPrinc&&!lite){// balcón corrido del principal
+      const cx=(a[0]+b[0])/2,cz=(a[1]+b[1])/2;addInst('balcSlab',cx,fy-0.02,cz,yaw,L-0.6,1,0.85,0,0,0,lot.tint);const nr=Math.max(1,Math.round((L-0.6)/1.6)),rw=(L-0.6)/nr;
+      for(let r=0;r<nr;r++){const t=0.3+(r+0.5)*rw;addInst('balcRailF',a[0]+ux*t,fy+0.12,a[1]+uz*t,yaw,rw,1.0,0.85,lot.railK);}addInst('balcRailS',a[0]+ux*0.3,fy+0.12,a[1]+uz*0.3,yaw,1,1.0,0.85,lot.railK);addInst('balcRailS',a[0]+ux*(L-0.3),fy+0.12,a[1]+uz*(L-0.3),yaw,1,1.0,0.85,lot.railK);}
+    for(let k=0;k<n;k++){const t=(k+0.5)*bay;const x=a[0]+ux*t+nx*0.015,z=a[1]+uz*t+nz*0.015;const wy=topFloor?fy+0.85:fy+0.06;
+      let cell=(Math.random()*16)|0;if(Math.random()<0.55)cell=pick([0,1,8,12,2,3]);const lit=(cell===6||cell===7||cell===5||cell===13)?0:(Math.random()<0.18?1:0);
+      addInst('win',x,wy,z,yaw,ww,wh,1,cell,lit);if(lite)continue;addInst('winFrame',x,wy,z,yaw,ww,wh,1,0,0,0,lot.trimHex);
+      const balc=!topFloor&&!(f===0&&contPrinc)&&(lot.balcAll||f===0||Math.random()<0.75);
+      if(balc){const bw=ww+0.55,bd=f===0?0.85:R(0.5,0.7);addInst('balcSlab',x,fy-0.02,z,yaw,bw,1,bd,0,0,0,lot.tint);addInst('balcRail',x,fy+0.12,z,yaw,bw,1.0,bd,lot.railK);
+        if(Math.random()<0.18)addInst('maceta',x+ux*R(-0.4,0.4)+nx*bd*0.6,fy+0.12,z+uz*R(-0.4,0.4)+nz*bd*0.6,0);
+        if(Math.random()<0.06)addInst('laundry',x+nx*(bd-0.05),fy+2.0,z+nz*(bd-0.05),yaw);}
+      if(Math.random()<0.07)addInst('ac',x+ux*(ww/2+0.5)+nx*0.02,fy+1.6,z+uz*(ww/2+0.5)+nz*0.02,yaw);}}
+  // grafitis en la planta baja (en pared y persianas)
+  {const occ=units.map(u=>[u.u0-0.12,u.u1+0.12]).sort((p,q)=>p[0]-q[0]);let c0=0.35;const free=[];for(const [o0,o1] of occ){if(o0-c0>0)free.push([c0,o0]);c0=Math.max(c0,o1);}if(L-0.35-c0>0)free.push([c0,L-0.35]);
+    for(const [f0,f1] of free){const fw=f1-f0;if(fw<1.1||Math.random()>0.5)continue;const s=Math.min(R(1.0,2.2),fw-0.15);const t=f0+fw/2+R(-1,1)*(fw-s)/2;const x=a[0]+ux*t+nx*0.02,z=a[1]+uz*t+nz*0.02;addInst('graffiti',x,yb+R(0.5,0.9)+s*0.5,z,yaw,s,s,1,(Math.random()*16)|0);}}
+  // planta baja: unidades
+  for(const u of units)buildUnit(lot,seg,u,ux,uz,L);
+  lot.facades.push({a,b,nx,nz,L});FACADES.push({a,b,nx,nz,L,yb,gf,F:lot.F,fh:lot.fh,outer:lot.bk.outer});}
+const FACADES=[];
+// ---------- unidades de planta baja: portal, local (persiana / cristal / roto / tapiado), garaje ----------
+function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const yaw=Math.atan2(nx,nz);const mid=(u.u0+u.u1)/2;const cx=a[0]+ux*mid,cz=a[1]+uz*mid;const w=u.u1-u.u0;
+  if(u.kind==='shop'&&u.shop&&!u.shop.brand)realShop(u,cx,cz,ux,uz,nx,nz,w);
+  const sign=(idx,y)=>{if(idx===undefined)return;{const sw=Math.min(w*0.85,3.4);addInst('shopSign',cx+nx*0.08,y,cz+nz*0.08,yaw,sw,sw/4,1,idx);}};
+  if(u.kind==='passage'){}
+  else if(u.kind==='portal'){fillQuad('wood_dark',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.34);// portal de madera doble
+    const dx=cx-nx*0.3,dz=cz-nz*0.3;if(focusD(cx,cz)<75)addInst('portalDeco',dx,yb,dz,yaw,w/2.4,u.y1/3.6,1);
+    if(Math.random()<0.6){const x=a[0]+ux*(u.u1+0.35)+nx*0.03,z=a[1]+uz*(u.u1+0.35)+nz*0.03;addInst('buzzer',x,yb+1.3,z,yaw);}}
+  else if(u.kind==='garage'){fillQuad(Math.random()<0.5?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.3);addInst('vado',cx+nx*0.03,yb+u.y1+0.25,cz+nz*0.03,yaw);}
+  else if(u.kind==='shop'){const s=u.shop;sign(s.signIdx,yb+u.y1+0.42);
+    // banderolas perpendiculares a la fachada: cruz verde de farmacia, la «T» del estanco, cerveza en los bares
+    {const bt=s.type==='farmacia'?'banCreu':s.type==='estanc'?'banEstanc':(s.type==='bar'||s.type==='restaurant')&&Math.random()<0.35?'banBirra':null;
+      if(bt){const ed=Math.random()<0.5?u.u0+0.25:u.u1-0.25;addInst(bt,a[0]+ux*ed,yb+u.y1+0.95,a[1]+uz*ed,yaw);}
+      if(s.type==='banc'&&w>3.5){const ed=u.u1-0.7;addInst('cajero',a[0]+ux*ed+nx*0.01,yb,a[1]+uz*ed+nz*0.01,yaw);}}
+    if(u.state==='closed'||u.state==='half'){const top=yb+u.y1;const half=u.state==='half'&&u.room;const y0=half?yb+1.15:yb;const sd=half?0.1:0.3;fillQuad(Math.random()<0.7?'shutter':'shutter_rust',a,ux,uz,nx,nz,u.u0,u.u1,y0,top,sd);
+      if(Math.random()<0.75){const gh=Math.min(w*0.8*0.8,2.1,(top-y0)*0.86),gw=gh/0.8;addInst('graffiti',cx-nx*(sd-0.025),y0+(top-y0)*0.5,cz-nz*(sd-0.025),yaw,gw,gh,1,(Math.random()*16)|0);}
+      if(half){solidBox(cx-nx*sd,cz-nz*sd,w/2,0.05,yaw,y0,top);makeShopInterior(lot,seg,u,ux,uz);}
+      else solidBox(cx-nx*0.3,cz-nz*0.3,w/2,0.06,yaw+Math.PI/2*0,yb,top);}
+    else if(u.state==='dark'){const top=yb+u.y1;TINT=[1,1,1];fillQuad('darkglass',a,ux,uz,nx,nz,u.u0+0.05,u.u1-0.05,yb+0.4,top-0.05,0.22);fillQuad('stone_dark',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+0.4,0.18,[0.5,0.5,0.52]);
+      solidBox(cx-nx*0.22,cz-nz*0.22,w/2,0.06,yaw,yb,top);SHOPS.push({x:cx+nx*1,z:cz+nz*1,type:s.type,name:s.name||s.type,nx,nz,dark:true});shopCount++;}
+    else if(u.state==='boarded'){fillQuad('wood_dark',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.32,[0.5,0.45,0.4]);
+      for(let y=yb+0.3;y<yb+u.y1-0.2;y+=R(0.35,0.6)){addInst('tablon',cx-nx*0.12,y,cz-nz*0.12,yaw+R(-0.15,0.15)*0+0,w*1.05,1,1,0,0,R(-0.12,0.12));}
+      solidBox(cx-nx*0.2,cz-nz*0.2,w/2,0.12,yaw,yb,yb+u.y1);if(u.room)makeShopInterior(lot,seg,u,ux,uz,true);}
+    else makeShopInterior(lot,seg,u,ux,uz);
+    if(u.sup&&u.sup.bandit){const P2=(uu,ww)=>[a[0]+ux*uu-nx*ww,a[1]+uz*uu-nz*ww];u.sup.built={out:P2(mid,-3),in:P2(mid,(u.room.d)/2),ux,uz,nx,nz};}
+    if(s.awning&&u.state!=='boarded'){addInst('toldo',cx+nx*0.05,yb+u.y1+0.05,cz+nz*0.05,yaw,w,1,1);}}}
+// instancias de planta baja
+defInst('shopSign',PLANE,new THREE.MeshLambertMaterial(),SG_COLS,SG_ROWS);// el material se crea al final con el atlas
+const texBan=cTex(256,128,(g,w,h)=>{// celda 0: estanco; celda 1: cerveza
+  g.fillStyle='#7a4210';g.fillRect(0,0,128,128);g.strokeStyle='#f2c23a';g.lineWidth=6;g.strokeRect(8,8,112,112);g.fillStyle='#f2c23a';g.font='bold 92px Georgia';g.textAlign='center';g.textBaseline='middle';g.fillText('T',64,70);
+  g.fillStyle='#b8141c';g.fillRect(128,0,128,128);g.fillStyle='#f4ead2';g.beginPath();g.arc(192,64,50,0,7);g.fill();g.fillStyle='#b8141c';g.font='bold 30px Arial';g.fillText('CERVESA',192,58);g.font='bold 22px Arial';g.fillText('BAR',192,88);
+  g.fillStyle='rgba(50,35,20,0.35)';for(let i=0;i<40;i++)g.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*20,1+Math.random()*8);},{});
+const banMat=new THREE.MeshLambertMaterial({map:texBan});
+{const plate=(u0)=>{const g=new THREE.BoxGeometry(0.03,0.62,0.62);g.translate(0,0,0.45);const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setX(i,u0+uv.getX(i)*0.5);return g;};
+  const brk=new THREE.BoxGeometry(0.04,0.04,0.2);brk.translate(0,0.25,0.1);const brk2=brk.clone().translate(0,-0.5,0);const z=(g)=>{const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,0.02,0.02);return g;};
+  defInst('banEstanc',mergeGeometries([plate(0),z(brk),z(brk2)]),banMat,1,1,false);defInst('banBirra',mergeGeometries([plate(0.5),z(brk),z(brk2)]),banMat,1,1,false);}
+defInst('banCreu',mkG([[bx(0.06,0.62,0.2,0,0,0.42),0xffffff],[bx(0.06,0.2,0.62,0,0,0.42),0xffffff],[bx(0.08,0.66,0.24,0,0,0.42),0x0f6e2c],[bx(0.08,0.24,0.66,0,0,0.42),0x0f6e2c],[bx(0.04,0.04,0.12,0,0,0.06),0x333333]].map(([g,c],k)=>[k<2?g.scale(1.4,1,1):g,k<2?0x2fd25a:c])),new THREE.MeshLambertMaterial({vertexColors:true,emissive:0x0a3a14}),1,1,false);
+defInst('portalDeco',mkG([[bx(0.06,3.2,0.04,0,1.6,0.02),0x2a1a10],[bx(2.4,0.08,0.05,0,3.2,0.02),0x2a1a10],[bx(0.18,0.05,0.05,-0.22,1.1,0.06),0xc9a227],[bx(0.18,0.05,0.05,0.22,1.1,0.06),0xc9a227],[bx(1.9,0.9,0.02,0,2.55,0.03),0x0c0e10]]),metalMat);
+defInst('buzzer',mkG([[bx(0.16,0.32,0.04,0,0,0.02),0xa8a8a0],[bx(0.1,0.03,0.02,0,0.1,0.045),0x222222]]),metalMat);
+defInst('vado',mkG([[bx(0.5,0.3,0.02,0,0,0.01),0x1d56a8],[bx(0.36,0.12,0.025,0,0.03,0.012),0xffffff]]),paintMat);
+defInst('toldo',(()=>{const g=new THREE.PlaneGeometry(1,1.1);g.rotateX(-Math.PI/2+0.45);g.translate(0,-0.2,0.5);return g;})(),new THREE.MeshLambertMaterial({map:texAwn,side:THREE.DoubleSide}));
+
+// ---------- parcelas de una manzana ----------
+function lotStyle(){const st=pick(FACADE_STY);const tint=pick(st.tints);const c=new THREE.Color(tint);const trim=c.clone().lerp(new THREE.Color(1,1,1),0.35);
+  return{st,tint,trimHex:'#'+trim.getHexString(),pbTint:hexTint(st.pb==='stone_dark'?'#d8d0c4':'#f2ede2'),F:RI(5,6),gf:R(4.4,4.9),fh:R(3.05,3.3),contBalc:Math.random()<0.55,balcAll:Math.random()<0.6,railK:pick([0,0,1,2,2,3])};}
+// (Les Corts: las manzanas salen del IFC; ver 30_world.js / 31_lcfacades.js)
+function finishSigns(){const t=new THREE.CanvasTexture(SIGNC);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=atlasMat(t,t,SG_COLS,SG_ROWS,{alphaTest:0.4});m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-6;INST.shopSign.mat=m;SIGN_MAT=m;}
+let SIGN_MAT=null;

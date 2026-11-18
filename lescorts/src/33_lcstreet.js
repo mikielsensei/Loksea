@@ -1,0 +1,65 @@
+// =====================================================================
+// LES CORTS · CALLE: aparcamiento real junto a los bordillos, mobiliario (bancos, papeleras, contenedores, Bicing,
+// marquesinas, semáforos, terrazas) y la red de aceras por la que camina la gente.
+// Los puntos salen de data/spots.json (calculado a partir de la calzada y las aceras del AMB).
+// =====================================================================
+let SPOTS=null;
+const LC_MOTOCOL=[0xf2f2f0,0xf2f2f0,0x1a1a1c,0x1a1a1c,0x8e9296,0xb01818,0x22325a,0x6a6e72,0x2f6d3a,0xd7d2c4];
+const BENCHES=[],CONTS=[],TERR=[],CHAINS=[];let KERB=[];
+// ocupación del suelo para no amontonar cosas
+const OCC=new Map();const occK=(x,z)=>Math.floor(x/1.2)+','+Math.floor(z/1.2);
+function occFree(x,z,r){const i0=Math.floor((x-r)/1.2),i1=Math.floor((x+r)/1.2),j0=Math.floor((z-r)/1.2),j1=Math.floor((z+r)/1.2);
+  for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const L=OCC.get(i+','+j);if(L)for(const o of L)if(Math.hypot(o[0]-x,o[1]-z)<r+o[2])return false;}return true;}
+function occAdd(x,z,r){const k=occK(x,z);let L=OCC.get(k);if(!L)OCC.set(k,L=[]);L.push([x,z,r]);}
+function placeMotoLC(x,z,yaw,o={}){const model=o.model||pick(['moto','motoT','motoT','moto','motoN','motoX','moto','motoT']);const col=o.col||pick(LC_MOTOCOL);const y=surfY(x,z);
+  const ref=addInst(model,x,y,z,yaw,1,1,1,0,0,0,col);if(model==='moto'||model==='motoT'){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=-0.09;}// en la pata de cabra
+  if(Math.random()<0.25)addInst('casco',x+Math.sin(yaw)*0.1,y+0.98,z+Math.cos(yaw)*0.1-0.0,yaw+R(-0.5,0.5),1,1,1,0,0,0,pick([0xffffff,0x1a1a1a,0xb01818,0x2a4a8a,0x8a8f94]));
+  const v=solidBox(x,z,0.32,0.95,yaw,y,y+1.1);MOTOS.push({x,y,z,yaw,model,col,ref,fallen:false,ok:true,vol:v});occAdd(x,z,0.9);}
+function nearTree(x,z,r){for(const t of TREES){if(Math.abs(t.x-x)<r&&Math.abs(t.z-z)<r&&Math.hypot(t.x-x,t.z-z)<r)return true;}return false;}
+function nearLamp(x,z,r){for(const l of WD.lamp){if(Math.abs(l[0]-x)<r&&Math.abs(l[2]-z)<r)return true;}return false;}
+function kerbNear(x,z,maxD,f){let best=null,bd=maxD;for(const k of KERB){const d=Math.hypot(k.x-x,k.z-z);if(d<bd&&(!f||f(k))){bd=d;best=k;}}return best;}
+function streetFurnitureLC(){
+  KERB=SPOTS.kerb.map(q=>({x:q[0],z:q[1],ux:q[2],uz:q[3],nx:q[4],nz:q[5],sw:q[6],W:q[7],trav:q[8],cwd:q[9],cid:q[10]}));
+  // cadenas de acera (para caminar): se cortan donde hay huecos
+  {let cur=null,last=null;for(const k of KERB){if(!last||k.cid!==last.cid||Math.hypot(k.x-last.x,k.z-last.z)>2.6){if(cur&&cur.pts.length>6)CHAINS.push(cur);cur={pts:[],id:CHAINS.length};}k.ch=cur;k.i=cur.pts.length;cur.pts.push(k);last=k;}
+    if(cur&&cur.pts.length>6)CHAINS.push(cur);
+    for(const c of CHAINS){c.id=CHAINS.indexOf(c);const a=c.pts[0],b=c.pts[c.pts.length-1];c.loop=Math.hypot(a.x-b.x,a.z-b.z)<2.6;}}
+  for(const t of TREES)occAdd(t.x,t.z,0.9);for(const l of WD.lamp)occAdd(l[0],l[2],0.5);
+  // --- marquesinas de bus en Travessera (posiciones de las fotos) ---
+  for(const [px,pz] of [[-57,16],[-26,-20],[52,-74],[96,-108]]){const k=kerbNear(px,pz,14,k=>k.trav&&k.sw>3.2);if(!k)continue;
+    const yaw=Math.atan2(k.ux,k.uz)+Math.PI/2;const x=k.x-k.nx*0.6,z=k.z-k.nz*0.6;const y=H(x,z);addInst('marquesina',x,y,z,yaw);addInst('marquesinaGlass',x,y,z,yaw);
+    solidBox(x-k.nx*0.6,z-k.nz*0.6,1.9,0.15,yaw+Math.PI/2,y,y+2.5);occAdd(x,z,2.6);BENCHES.push({x:x-k.nx*0.3,z:z-k.nz*0.3,yaw:Math.atan2(k.nx,k.nz),y:y+0.46,n:3,shelter:true});}
+  // --- Bicing de Vallespir, en el lado del parque ---
+  {const k0=kerbNear(19,80,12,k=>!k.trav);if(k0){const ch=k0.ch;for(let s=-6;s<6;s++){const k=ch.pts[(k0.i+s+ch.pts.length)%ch.pts.length];if(!k)continue;const x=k.x+k.nx*1.5,z=k.z+k.nz*1.5;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);
+      addInst('bicingDock',x,y,z,ya+Math.PI/2);if(Math.random()<0.6)addInst('bicingBike',x+k.nx*0.25,y,z+k.nz*0.25,Math.atan2(-k.nx,-k.nz)+R(-0.04,0.04));solidBox(x,z,0.12,0.9,ya,y,y+1.0);}
+    const t=ch.pts[(((k0.i-8)%ch.pts.length)+ch.pts.length)%ch.pts.length];if(t)addInst('bicingTotem',t.x+t.nx*1.4,H(t.x,t.z),t.z+t.nz*1.4,Math.atan2(t.ux,t.uz));}}
+  // --- recorrido de cada bordillo: motos, bancos, papeleras, semáforos, terrazas ---
+  let lastBin=new Map(),lastBench=new Map(),lastMoto=new Map(),semaf=new Set();
+  for(const k of KERB){const id=k.cid;
+    if(k.cwd<1.4&&k.W>6.5){const key=Math.round(k.x/7)+','+Math.round(k.z/7);if(!semaf.has(key)&&(k.trav||k.W>9)){semaf.add(key);const x=k.x+k.nx*0.15,z=k.z+k.nz*0.15;if(occFree(x,z,0.5)){addInst('semafor',x,H(x,z),z,Math.atan2(k.nx,k.nz)+Math.PI);addBoxV(x-0.1,x+0.1,z-0.1,z+0.1,H(x,z),H(x,z)+3.3);occAdd(x,z,0.6);}}}
+    if(k.cwd<3.2)continue;const far=focusD(k.x,k.z)>140;if(far&&Math.random()<0.6)continue;
+    const dB=lastBin.get(id),dS=lastBench.get(id),dM=lastMoto.get(id);
+    // motos aparcadas en la acera (Travessera está llena, como en las fotos)
+    if((k.trav?0.09:0.025)>Math.random()&&k.sw>3.0&&(!dM||Math.hypot(dM[0]-k.x,dM[1]-k.z)>(k.trav?22:45))){const n=RI(k.trav?3:2,k.trav?7:4);let ok=0;
+      for(let i=0;i<n;i++){const x=k.x+k.ux*i*0.95-k.nx*0.35,z=k.z+k.uz*i*0.95-k.nz*0.35;if(!occFree(x,z,0.55)||groundKind(x,z)!==3)break;placeMotoLC(x,z,Math.atan2(-k.nx,-k.nz)+R(-0.18,0.18)+(Math.random()<0.15?Math.PI:0));ok++;}
+      if(ok)lastMoto.set(id,[k.x,k.z]);continue;}
+    if(k.sw>2.6&&(!dB||Math.hypot(dB[0]-k.x,dB[1]-k.z)>(k.trav?38:55))&&occFree(k.x,k.z,0.6)){addInst('papelera',k.x,H(k.x,k.z),k.z,Math.atan2(k.nx,k.nz));addBoxV(k.x-0.2,k.x+0.2,k.z-0.2,k.z+0.2,H(k.x,k.z),H(k.x,k.z)+1);occAdd(k.x,k.z,0.6);lastBin.set(id,[k.x,k.z]);continue;}
+    if(k.sw>3.6&&(!dS||Math.hypot(dS[0]-k.x,dS[1]-k.z)>(k.trav?45:60))&&occFree(k.x-k.nx*0.2,k.z-k.nz*0.2,1.2)){const x=k.x-k.nx*0.25,z=k.z-k.nz*0.25;const yaw=Math.atan2(-k.nx,-k.nz);// el banco mira hacia la acera
+      addInst('banc',x,H(x,z),z,yaw);solidBox(x,z,0.95,0.3,yaw,H(x,z),H(x,z)+0.5);occAdd(x,z,1.2);lastBench.set(id,[k.x,k.z]);BENCHES.push({x:x-k.nx*0.05,z:z-k.nz*0.05,yaw,y:H(x,z)+0.45,n:2,ux:k.ux,uz:k.uz});continue;}}
+  // --- terrazas delante de bares y cafeterías con acera ancha ---
+  for(const s of SHOPS){if(!/bar|cafe|caf|rest|pizz|bocad|forn|pastis|cerve|tapas|horno|bakery/i.test(s.type+' '+s.name))continue;const k=kerbNear(s.x,s.z,9);if(!k||k.sw<4.2||k.cwd<4)continue;
+    const n=k.sw>6?RI(3,5):RI(2,3);for(let i=0;i<n;i++){const a=(i-(n-1)/2)*1.9;const x=k.x+k.ux*a-k.nx*(Math.min(k.sw-1.6,2.6)),z=k.z+k.uz*a-k.nz*(Math.min(k.sw-1.6,2.6));
+      if(!occFree(x,z,0.9)||groundKind(x,z)!==3)continue;const y=H(x,z);addInst('terrassa',x,y,z,R(0,6.28));addBoxV(x-0.3,x+0.3,z-0.3,z+0.3,y,y+0.75);occAdd(x,z,1.0);
+      const t={x,z,y,seats:[]};const ns=Math.random()<0.6?2:4;for(let c=0;c<ns;c++){const ca=Math.atan2(k.ux,k.uz)+c*(ns===2?Math.PI:Math.PI/2);t.seats.push({x:x+Math.sin(ca)*0.62,z:z+Math.cos(ca)*0.62,yaw:ca+Math.PI,y:y+0.46,used:null});}TERR.push(t);}}}
+// ---------- coches aparcados en su sitio real ----------
+function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
+  for(const s of SPOTS.cars){const [x,z,ya,nx,nz,W]=s;
+    // islas de contenedores cada cierto trecho (en Barcelona van en el carril de aparcamiento)
+    if(conts.every(c=>Math.hypot(c[0]-x,c[1]-z)>70)&&Math.random()<0.22){conts.push([x,z]);const facing=Math.atan2(-nx,-nz);const ux=Math.sin(ya),uz=Math.cos(ya);
+      CONTSET_LC.forEach((ty,i)=>{const t=(i-2.5)*2.05;const qx=x+ux*t+nx*0.15,qz=z+uz*t+nz*0.15;if(groundKind(qx,qz)!==2)return;const y=H(qx,qz);const ref=addInst('cont_'+ty,qx,y,qz,facing);const v=solidBox(qx,qz,0.95,0.82,facing,y,y+1.8);CONTS.push({x:qx-nx*1.2,z:qz-nz*1.2,cx:qx,cz:qz,ty,yaw:facing});});continue;}
+    if(Math.random()<(focusD(x,z)<45?0.12:0.5))continue;if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<4.9))continue;
+    const yaw=Math.atan2(nz,-nx);// el bordillo queda a la derecha del coche
+    const c=Object.keys(VTPL).length?makeParked(x,z,yaw+R(-0.025,0.025)):makeCar(x,z,yaw+R(-0.025,0.025),'proc');c.fuel=R(15,90);n++;}
+  buildVInst();
+  console.log('coches aparcados',n,'contenedores',CONTS.length);}
+const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];

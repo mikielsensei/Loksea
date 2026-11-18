@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Les Corts VR · hoy</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#eee;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block}
+#start{position:fixed;inset:0;background:radial-gradient(ellipse at center,rgba(10,18,28,.72),rgba(0,0,0,.94));display:flex;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:20px 0}
+.panel{max-width:660px;width:92%;padding:20px 22px;background:rgba(16,16,18,.95);border:1px solid #2a4a5a;border-radius:14px;box-shadow:0 0 40px rgba(0,90,150,.25)}
+h1{margin:0 0 4px;font-size:32px;letter-spacing:4px;color:#e0cfa8}
+.sub{color:#b9a;margin-bottom:10px;font-size:14px;line-height:1.4}
+#load{font-size:13px;color:#9ad;margin:6px 0 12px;line-height:1.5;white-space:pre-line}
+#sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:14px}
+label{font-size:12px;color:#cbb;display:flex;flex-direction:column;gap:3px}
+select{background:#222;color:#eee;border:1px solid #555;border-radius:6px;padding:6px;font-size:14px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}
+.big{flex:1;min-width:160px;padding:14px;border-radius:10px;border:0;font-size:17px;font-weight:700}
+.big:disabled{opacity:.4;cursor:default}
+#bvr{background:#1f6fa8;color:#fff}#bflat{background:#333;color:#eee;border:1px solid #666}
+#vrmsg{margin-top:10px;font-size:13px;color:#f3b37a;line-height:1.4}
+details{margin-top:10px;font-size:13px;color:#bbb;line-height:1.55}summary{cursor:pointer;color:#ddd;font-weight:600}
+#hud{position:fixed;left:8px;bottom:8px;width:250px;max-width:38vw;opacity:.93;pointer-events:none;display:none;z-index:5}
+#pnl{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,680px);pointer-events:none;display:none;z-index:8}
+#cross{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:rgba(255,255,255,.75);display:none;z-index:5;pointer-events:none}
+#toast{position:fixed;left:50%;top:14%;transform:translateX(-50%);background:rgba(0,0,0,.65);padding:8px 16px;border-radius:8px;font-size:17px;display:none;z-index:6;pointer-events:none;text-align:center;max-width:80vw}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:4;background:#000;opacity:0}
+#touch{position:fixed;inset:0;z-index:7;display:none}
+.tb{position:absolute;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:58px;height:58px;font-size:10px;font-weight:700;padding:0}
+.mn{border-radius:10px;width:46px;height:40px;font-size:16px;display:none}
+#stick{position:absolute;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,.25);display:none;pointer-events:none}
+#knob{position:absolute;left:35px;top:35px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.3)}
+</style>
+<script type="importmap">{"imports":{"three":"../lib/three.module.js","three/addons/":"../lib/addons/"}}</script>
+</head>
+<body>
+<div id="start"><div class="panel">
+  <h1>LES CORTS</h1>
+  <div class="sub">Barcelona, hoy. Travessera de les Corts entre Carrer de les Corts y Numància, y el Carrer del Vallespir hasta Marquès de Sentmenat, con la geometría real del AMB (edificios, aceras, bordillos, árboles y farolas). Vecinos con su rutina, coches y motos aparcados en los que puedes subirte, puertas y maleteros que se abren con la mano, día y noche con nubes. Primer try.</div>
+  <div id="load">Preparando el barrio…</div>
+  <div id="sgrid"></div>
+  <div class="btns"><button class="big" id="bvr" disabled>Jugar en VR</button><button class="big" id="bflat" disabled>Jugar en pantalla</button></div>
+  <div id="vrmsg"></div>
+  <details><summary>Controles Quest 3</summary>
+  <b>Stick izq</b> moverte · <b>gatillo izq</b> correr · <b>stick der</b> girar · <b>clic stick der</b> agacharte (o agáchate de verdad)<br>
+  <b>Gatillo der</b> disparar / golpe · <b>grip der</b> usar, registrar, hablar, beber en fuentes, subir al coche<br>
+  <b>A</b> cambiar arma (manos, bate, pistola) · <b>mantener A</b> soltar el cargador al suelo<br>
+  <b>B</b> linterna · <b>mantener B</b> mear<br>
+  <b>X</b> inventario · <b>mantener X</b> menú · <b>Y</b> mapa · <b>mantener Y</b> estado de salud<br>
+  <b>Pistola:</b> cuando se vacía, la corredera se queda atrás y el cargador sigue dentro. Con el grip izquierdo agarra el cargador por debajo de la empuñadura y sácalo; suéltalo y caerá rebotando. Coge uno nuevo de la cadera izquierda (llevas dos), mételo por abajo, agarra la parte trasera de la corredera con el grip izquierdo y tira hacia ti.<br>
+  <b>Coche:</b> gatillo der acelera, gatillo izq frena / marcha atrás, stick izq gira, grip der para bajar.<br>
+  El botón ☰ del mando izquierdo lo reservan las Quest y no llega a los juegos web.
+  </details>
+  <details><summary>Controles en pantalla</summary>
+  WASD mover · ratón mirar (clic para capturar; si no, mantén clic derecho) · clic atacar · Shift correr · C agacharse · E usar · Q arma · R recargar · F linterna · P mear · I inventario · M menú · N mapa · H estado · flechas, Enter y Retroceso en menús
+  </details>
+</div></div>
+<canvas id="hud" width="512" height="640"></canvas>
+<canvas id="pnl" width="1024" height="768"></canvas>
+<div id="cross"></div><div id="toast"></div><div id="fx"></div>
+<div id="touch">
+  <div id="stick"><div id="knob"></div></div>
+  <button class="tb" id="t_atk" style="right:22px;bottom:118px;width:76px;height:76px">ATACAR</button>
+  <button class="tb" id="t_use" style="right:112px;bottom:36px">USAR</button>
+  <button class="tb" id="t_wpn" style="right:22px;bottom:28px">ARMA</button>
+  <button class="tb" id="t_run" style="right:112px;bottom:122px">CORRER</button>
+  <button class="tb" id="t_rel" style="right:190px;bottom:36px">RECARGAR</button>
+  <button class="tb" id="t_light" style="right:22px;top:18px;width:50px;height:50px">LUZ</button>
+  <button class="tb" id="t_menu" style="right:80px;top:18px;width:50px;height:50px">MENÚ</button>
+  <button class="tb" id="t_inv" style="right:138px;top:18px;width:50px;height:50px">INV</button>
+  <button class="tb mn" id="t_up" style="right:150px;top:84px">▲</button>
+  <button class="tb mn" id="t_down" style="right:150px;top:130px">▼</button>
+  <button class="tb mn" id="t_left" style="right:200px;top:107px">◀</button>
+  <button class="tb mn" id="t_right" style="right:100px;top:107px">▶</button>
+  <button class="tb mn" id="t_ok" style="right:40px;top:107px;width:56px">OK</button>
+  <button class="tb mn" id="t_back" style="right:40px;top:160px;width:56px">VOLVER</button>
+</div>
+<script type="module" src="game.js?v=1&b=1"></script>
+</body>
+</html>
