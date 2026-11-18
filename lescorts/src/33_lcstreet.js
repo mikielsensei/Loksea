@@ -60,6 +60,6 @@ function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
     if(Math.random()<(focusD(x,z)<45?0.12:0.5))continue;if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<4.9))continue;
     const yaw=Math.atan2(nz,-nx);// el bordillo queda a la derecha del coche
     const c=Object.keys(VTPL).length?makeParked(x,z,yaw+R(-0.025,0.025)):makeCar(x,z,yaw+R(-0.025,0.025),'proc');c.fuel=R(15,90);n++;}
-  buildVInst();
+  buildVInst();for(const k in VTPL)needHi(VTPL[k]);
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];

@@ -64,7 +64,7 @@ function surfY(x,z,ref){let y=H(x,z);if(onSidewalk(x,z))y+=CURB;
 // =====================================================================
 // BUFFERS DE GEOMETRÍA POR ZONAS (para ocultar lo lejano)
 // =====================================================================
-const CHUNK=80,CHUNKI=48;const chunks=new Map();
+const CHUNK=120,CHUNKI=48;const chunks=new Map();
 let INTERIOR=false;
 const chunkKey=(x,z)=>INTERIOR?Math.floor((x-XMIN)/CHUNKI)+'_'+Math.floor((z-ZMIN)/CHUNKI)+'_i':Math.floor((x-XMIN)/CHUNK)+'_'+Math.floor((z-ZMIN)/CHUNK);
 function getChunk(x,z,key){const k=key||chunkKey(x,z);let c=chunks.get(k);if(!c){const inner=k.endsWith('_i'),sz=inner?CHUNKI:CHUNK;c={k,inner,buf:{},inst:{},meshes:[],cx:XMIN+(Math.floor((x-XMIN)/sz)+0.5)*sz,cz:ZMIN+(Math.floor((z-ZMIN)/sz)+0.5)*sz};chunks.set(k,c);}return c;}

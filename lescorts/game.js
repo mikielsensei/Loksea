@@ -270,7 +270,7 @@ function surfY(x,z,ref){let y=H(x,z);if(onSidewalk(x,z))y+=CURB;
 // =====================================================================
 // BUFFERS DE GEOMETRÍA POR ZONAS (para ocultar lo lejano)
 // =====================================================================
-const CHUNK=80,CHUNKI=48;const chunks=new Map();
+const CHUNK=120,CHUNKI=48;const chunks=new Map();
 let INTERIOR=false;
 const chunkKey=(x,z)=>INTERIOR?Math.floor((x-XMIN)/CHUNKI)+'_'+Math.floor((z-ZMIN)/CHUNKI)+'_i':Math.floor((x-XMIN)/CHUNK)+'_'+Math.floor((z-ZMIN)/CHUNK);
 function getChunk(x,z,key){const k=key||chunkKey(x,z);let c=chunks.get(k);if(!c){const inner=k.endsWith('_i'),sz=inner?CHUNKI:CHUNK;c={k,inner,buf:{},inst:{},meshes:[],cx:XMIN+(Math.floor((x-XMIN)/sz)+0.5)*sz,cz:ZMIN+(Math.floor((z-ZMIN)/sz)+0.5)*sz};chunks.set(k,c);}return c;}
@@ -639,7 +639,7 @@ function cardGeo(w,h,cx,cyy,cz,yaw,tilt,center){const g=new THREE.PlaneGeometry(
 // tronco curvado: serie de tramos que se van inclinando
 function limb(p0,dir,len,r0,r1,segs,bend,texM){const parts=[];let p=p0.clone(),d=dir.clone().normalize();const step=len/segs;
   for(let i=0;i<segs;i++){const ra=r0+(r1-r0)*i/segs,rb=r0+(r1-r0)*(i+1)/segs;const q=p.clone().addScaledVector(d,step);
-    const g=new THREE.CylinderGeometry(rb,ra,step*1.04,6,1,true);const uv=g.attributes.uv;for(let k=0;k<uv.count;k++)uv.setXY(k,uv.getX(k)*(2*Math.PI*ra)/texM,(uv.getY(k)*step+i*step)/texM);
+    const g=new THREE.CylinderGeometry(rb,ra,step*1.04,5,1,true);const uv=g.attributes.uv;for(let k=0;k<uv.count;k++)uv.setXY(k,uv.getX(k)*(2*Math.PI*ra)/texM,(uv.getY(k)*step+i*step)/texM);
     g.applyQuaternion(_q.setFromUnitVectors(UP,d));const m=p.clone().add(q).multiplyScalar(0.5);g.translate(m.x,m.y,m.z);parts.push(g);
     p=q;d.add(_v.set(R(-bend,bend),R(-bend*0.3,bend*0.2),R(-bend,bend))).normalize();}
   return{parts,end:p,dir:d};}
@@ -649,7 +649,7 @@ function buildTreeVariant(seed){const tm=TEXM.bark_platanus;const t=[];
   const L=[];const C=[0,7.5,0];const nl=R(3,5)|0;
   for(let i=0;i<nl;i++){const a=i/nl*Math.PI*2+R(-0.3,0.3);const d=new V3(Math.cos(a)*0.75,1,Math.sin(a)*0.75);
     const lb=limb(trunk.end,d,R(3.2,4.4),0.16,0.07,3,0.18,tm);t.push(...lb.parts);
-    for(let k=0;k<2;k++){const d2=lb.dir.clone().add(new V3(R(-0.6,0.6),R(0,0.3),R(-0.6,0.6)));const sb=limb(lb.end,d2,R(1.4,2.4),0.07,0.03,2,0.25,tm);t.push(...sb.parts);
+    for(let k=0;k<1;k++){const d2=lb.dir.clone().add(new V3(R(-0.6,0.6),R(0,0.3),R(-0.6,0.6)));const sb=limb(lb.end,d2,R(1.4,2.4),0.07,0.03,2,0.25,tm);t.push(...sb.parts);
       for(let n=0;n<4;n++){const e=sb.end;L.push(cardGeo(R(2.2,3.0),R(2.0,2.8),e.x+R(-1.2,1.2),e.y+R(-0.6,0.9),e.z+R(-1.2,1.2),R(0,6.28),R(-0.7,0.7),C));}}
     const e=lb.end;for(let n=0;n<4;n++)L.push(cardGeo(R(2.4,3.2),R(2.2,3.0),e.x+R(-1.5,1.5),e.y+R(-0.4,1.2),e.z+R(-1.5,1.5),R(0,6.28),-Math.PI/2+R(-0.5,0.5),C));}
   // relleno superior de la copa
@@ -991,7 +991,7 @@ function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
     if(Math.random()<(focusD(x,z)<45?0.12:0.5))continue;if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<4.9))continue;
     const yaw=Math.atan2(nz,-nx);// el bordillo queda a la derecha del coche
     const c=Object.keys(VTPL).length?makeParked(x,z,yaw+R(-0.025,0.025)):makeCar(x,z,yaw+R(-0.025,0.025),'proc');c.fuel=R(15,90);n++;}
-  buildVInst();
+  buildVInst();for(const k in VTPL)needHi(VTPL[k]);
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];
 
@@ -2202,9 +2202,9 @@ function activateCar(c){const T=c.vt.hi;if(!T)return false;const g=new THREE.Gro
   // volante del modelo: lo colgamos de un pivote con su eje
   if(T.sw&&N[T.sw.name]){const swp=new THREE.Group();swp.position.copy(T.sw.c).add(_v.set(0,-0.5,0));swp.quaternion.setFromUnitVectors(_v1.set(0,0,1),T.sw.ax);body.add(swp);const sw=new THREE.Group();swp.add(sw);body.updateMatrixWorld(true);sw.attach(N[T.sw.name]);c.swp=swp;c.sw=sw;c.swR=T.sw.r;}
   // selector del cambio en la consola
-  c.knob=null;{const kb=new THREE.Group();const base=T.sw?new V3(0,0,T.sw.c.z-0.32):new V3(0,0,0.1);
+  c.knob=null;{const kb=new THREE.Group();const base=T.sw?new V3(0.02,0,T.sw.c.z-0.2):new V3(0,0,0.1);
     const rc=new THREE.Raycaster(new V3(base.x,1.02,base.z),new V3(0,-1,0),0,0.8);const meshes=[];inner.traverse(o=>{if(o.isMesh&&o.material!==vGlassMat)meshes.push(o);});inner.updateMatrixWorld(true);const hit=rc.intersectObjects(meshes,false)[0];
-    const y=hit?hit.point.y:0.62;kb.position.set(base.x,y-0.5,base.z);const k=new THREE.Mesh(DSG_GEO,trimMat);kb.add(k);const bt=new THREE.Mesh(DSG_BOOT,trimMat);kb.add(bt);body.add(kb);c.knob=kb;c.knobPos=kb.position.clone();}
+    const y=Math.max(hit?hit.point.y:0.7,0.7);kb.position.set(base.x,y-0.5,base.z);const k=new THREE.Mesh(DSG_GEO,trimMat);kb.add(k);const bt=new THREE.Mesh(DSG_BOOT,trimMat);kb.add(bt);body.add(kb);c.knob=kb;c.knobPos=kb.position.clone();}
   g.position.set(c.x,c.y,c.z);g.rotation.y=c.yaw;scene.add(g);c.g=g;c.body=body;c.bodyMesh=inner;c.seat=T.seat.clone();c.eye=T.eye;c.halfW=T.halfW;c.len=T.len;c.lod='hi';c.T=T;
   for(const k in c.doorT)vDoorApply(c,k);vTrunkApply(c);
   if(c.G&&c.G.im){c.G.im.setMatrixAt(c.ii,ZM);c.G.im.instanceMatrix.needsUpdate=true;}VACTIVE.push(c);return true;}
@@ -2422,7 +2422,8 @@ function findInteract(){const p=camW;if(P.inCar)return{type:'exit',text:inVR?'A:
     if(h.dead&&h.type!=='zombie'&&!h.searched)consider(d,2,{type:'corpse',obj:h,text:'Usar: registrar cadáver'});
     else if(!h.dead&&h.type!=='zombie'&&!hostileToPlayer(h))consider(d,3,{type:'talk',obj:h,text:`Usar: hablar con ${h.name}${h.role?' ('+ROLEN[h.role]+')':''}`});}
   if(!best){let bm=null,bmd=1.6;for(const m of MOTOS){if(m.taken)continue;const d=Math.hypot(m.x-p.x,m.z-p.z);if(d<bmd){bmd=d;bm=m;}}if(bm)return bm.fallen?{type:'moto',obj:bm,text:'Usar: levantar la moto'}:{type:'moto',obj:bm,text:bm.ok?'Usar: subir a la moto':'Usar: probar la moto'};}
-  if(!best){const vd=vNearDoor(p);if(vd){const c=vd.c,k=vd.k;const t=k==='T'?c.trunkT:c.doorT[k];
+  if(!best){const vd=vNearDoor(p);if(vd&&inVR){const hr=gripBySide.right;if(hr){hr.getWorldPosition(_v6);const c=vd.c;for(const k of Object.keys(c.T.doors)){vHandle(c,k,c.doorT[k],false,_vh);if(_vh.distanceTo(_v6)<0.3)return null;}}}
+    if(vd){const c=vd.c,k=vd.k;const t=k==='T'?c.trunkT:c.doorT[k];
       if(k==='FL'&&t>0.45)return{type:'car',obj:c,text:'Usar: sentarte al volante'};
       if(!inVR)return{type:'vdoor',obj:vd,text:k==='T'?(t>0.5?'Usar: cerrar el maletero':'Usar: abrir el maletero'):(t>0.5?'Usar: cerrar la puerta':'Usar: abrir la puerta')};
       return null;}}

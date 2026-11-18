@@ -75,9 +75,9 @@ function activateCar(c){const T=c.vt.hi;if(!T)return false;const g=new THREE.Gro
   // volante del modelo: lo colgamos de un pivote con su eje
   if(T.sw&&N[T.sw.name]){const swp=new THREE.Group();swp.position.copy(T.sw.c).add(_v.set(0,-0.5,0));swp.quaternion.setFromUnitVectors(_v1.set(0,0,1),T.sw.ax);body.add(swp);const sw=new THREE.Group();swp.add(sw);body.updateMatrixWorld(true);sw.attach(N[T.sw.name]);c.swp=swp;c.sw=sw;c.swR=T.sw.r;}
   // selector del cambio en la consola
-  c.knob=null;{const kb=new THREE.Group();const base=T.sw?new V3(0,0,T.sw.c.z-0.32):new V3(0,0,0.1);
+  c.knob=null;{const kb=new THREE.Group();const base=T.sw?new V3(0.02,0,T.sw.c.z-0.2):new V3(0,0,0.1);
     const rc=new THREE.Raycaster(new V3(base.x,1.02,base.z),new V3(0,-1,0),0,0.8);const meshes=[];inner.traverse(o=>{if(o.isMesh&&o.material!==vGlassMat)meshes.push(o);});inner.updateMatrixWorld(true);const hit=rc.intersectObjects(meshes,false)[0];
-    const y=hit?hit.point.y:0.62;kb.position.set(base.x,y-0.5,base.z);const k=new THREE.Mesh(DSG_GEO,trimMat);kb.add(k);const bt=new THREE.Mesh(DSG_BOOT,trimMat);kb.add(bt);body.add(kb);c.knob=kb;c.knobPos=kb.position.clone();}
+    const y=Math.max(hit?hit.point.y:0.7,0.7);kb.position.set(base.x,y-0.5,base.z);const k=new THREE.Mesh(DSG_GEO,trimMat);kb.add(k);const bt=new THREE.Mesh(DSG_BOOT,trimMat);kb.add(bt);body.add(kb);c.knob=kb;c.knobPos=kb.position.clone();}
   g.position.set(c.x,c.y,c.z);g.rotation.y=c.yaw;scene.add(g);c.g=g;c.body=body;c.bodyMesh=inner;c.seat=T.seat.clone();c.eye=T.eye;c.halfW=T.halfW;c.len=T.len;c.lod='hi';c.T=T;
   for(const k in c.doorT)vDoorApply(c,k);vTrunkApply(c);
   if(c.G&&c.G.im){c.G.im.setMatrixAt(c.ii,ZM);c.G.im.instanceMatrix.needsUpdate=true;}VACTIVE.push(c);return true;}

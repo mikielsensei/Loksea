@@ -174,7 +174,8 @@ function findInteract(){const p=camW;if(P.inCar)return{type:'exit',text:inVR?'A:
     if(h.dead&&h.type!=='zombie'&&!h.searched)consider(d,2,{type:'corpse',obj:h,text:'Usar: registrar cadáver'});
     else if(!h.dead&&h.type!=='zombie'&&!hostileToPlayer(h))consider(d,3,{type:'talk',obj:h,text:`Usar: hablar con ${h.name}${h.role?' ('+ROLEN[h.role]+')':''}`});}
   if(!best){let bm=null,bmd=1.6;for(const m of MOTOS){if(m.taken)continue;const d=Math.hypot(m.x-p.x,m.z-p.z);if(d<bmd){bmd=d;bm=m;}}if(bm)return bm.fallen?{type:'moto',obj:bm,text:'Usar: levantar la moto'}:{type:'moto',obj:bm,text:bm.ok?'Usar: subir a la moto':'Usar: probar la moto'};}
-  if(!best){const vd=vNearDoor(p);if(vd){const c=vd.c,k=vd.k;const t=k==='T'?c.trunkT:c.doorT[k];
+  if(!best){const vd=vNearDoor(p);if(vd&&inVR){const hr=gripBySide.right;if(hr){hr.getWorldPosition(_v6);const c=vd.c;for(const k of Object.keys(c.T.doors)){vHandle(c,k,c.doorT[k],false,_vh);if(_vh.distanceTo(_v6)<0.3)return null;}}}
+    if(vd){const c=vd.c,k=vd.k;const t=k==='T'?c.trunkT:c.doorT[k];
       if(k==='FL'&&t>0.45)return{type:'car',obj:c,text:'Usar: sentarte al volante'};
       if(!inVR)return{type:'vdoor',obj:vd,text:k==='T'?(t>0.5?'Usar: cerrar el maletero':'Usar: abrir el maletero'):(t>0.5?'Usar: cerrar la puerta':'Usar: abrir la puerta')};
       return null;}}

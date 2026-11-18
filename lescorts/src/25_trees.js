@@ -23,7 +23,7 @@ function cardGeo(w,h,cx,cyy,cz,yaw,tilt,center){const g=new THREE.PlaneGeometry(
 // tronco curvado: serie de tramos que se van inclinando
 function limb(p0,dir,len,r0,r1,segs,bend,texM){const parts=[];let p=p0.clone(),d=dir.clone().normalize();const step=len/segs;
   for(let i=0;i<segs;i++){const ra=r0+(r1-r0)*i/segs,rb=r0+(r1-r0)*(i+1)/segs;const q=p.clone().addScaledVector(d,step);
-    const g=new THREE.CylinderGeometry(rb,ra,step*1.04,6,1,true);const uv=g.attributes.uv;for(let k=0;k<uv.count;k++)uv.setXY(k,uv.getX(k)*(2*Math.PI*ra)/texM,(uv.getY(k)*step+i*step)/texM);
+    const g=new THREE.CylinderGeometry(rb,ra,step*1.04,5,1,true);const uv=g.attributes.uv;for(let k=0;k<uv.count;k++)uv.setXY(k,uv.getX(k)*(2*Math.PI*ra)/texM,(uv.getY(k)*step+i*step)/texM);
     g.applyQuaternion(_q.setFromUnitVectors(UP,d));const m=p.clone().add(q).multiplyScalar(0.5);g.translate(m.x,m.y,m.z);parts.push(g);
     p=q;d.add(_v.set(R(-bend,bend),R(-bend*0.3,bend*0.2),R(-bend,bend))).normalize();}
   return{parts,end:p,dir:d};}
@@ -33,7 +33,7 @@ function buildTreeVariant(seed){const tm=TEXM.bark_platanus;const t=[];
   const L=[];const C=[0,7.5,0];const nl=R(3,5)|0;
   for(let i=0;i<nl;i++){const a=i/nl*Math.PI*2+R(-0.3,0.3);const d=new V3(Math.cos(a)*0.75,1,Math.sin(a)*0.75);
     const lb=limb(trunk.end,d,R(3.2,4.4),0.16,0.07,3,0.18,tm);t.push(...lb.parts);
-    for(let k=0;k<2;k++){const d2=lb.dir.clone().add(new V3(R(-0.6,0.6),R(0,0.3),R(-0.6,0.6)));const sb=limb(lb.end,d2,R(1.4,2.4),0.07,0.03,2,0.25,tm);t.push(...sb.parts);
+    for(let k=0;k<1;k++){const d2=lb.dir.clone().add(new V3(R(-0.6,0.6),R(0,0.3),R(-0.6,0.6)));const sb=limb(lb.end,d2,R(1.4,2.4),0.07,0.03,2,0.25,tm);t.push(...sb.parts);
       for(let n=0;n<4;n++){const e=sb.end;L.push(cardGeo(R(2.2,3.0),R(2.0,2.8),e.x+R(-1.2,1.2),e.y+R(-0.6,0.9),e.z+R(-1.2,1.2),R(0,6.28),R(-0.7,0.7),C));}}
     const e=lb.end;for(let n=0;n<4;n++)L.push(cardGeo(R(2.4,3.2),R(2.2,3.0),e.x+R(-1.5,1.5),e.y+R(-0.4,1.2),e.z+R(-1.5,1.5),R(0,6.28),-Math.PI/2+R(-0.5,0.5),C));}
   // relleno superior de la copa
