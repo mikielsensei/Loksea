@@ -5,7 +5,12 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 
 
 ## TUS PETICIONES (escribe aquí lo que quieras; lo leo antes de empezar cada tanda)
-- 
+- (18-nov) NUEVO PROYECTO en Les Corts (hoja AMB 420-39-28): otro html/repo aparte, reutilizando todo lo del Eixample. Datos AMB: GLB realista (release `realistic_render_3d`), GLB 3dtc, IFC (edificios con altura, 1594 árboles, 609 farolas, aceras, terreno con cotas 37,7-61,7 m). Esperar a las fotos del usuario antes de empezar.
+- (18-nov) NPC variados: altura y complexión distintas, ropa y colores distintos, clase social y uniformes de trabajo (bombero, policía, médico, oficinista...). Idea: más avatares Rocketbox (MIT, hay profesiones) + escala de huesos + tinte de ropa.
+- (18-nov) Animación de levantarse tras caer: ahora es rara; hacerla realista.
+- (18-nov) Zombis: andar, correr y atacar mucho más realistas y con muchas variantes por zombi (cojo de una pierna u otra, muy lento, rápido, sin pie, sin brazo...). Idea: animaciones Mixamo (FBX) mezcladas con lo procedural.
+- (18-nov) Manos del avatar: uñas, más detalle y realismo; el codo no se ve natural al mover los brazos.
+- (18-nov) El usuario buscará modelos gratuitos de la comunidad (formato pedido: GLB; si no, FBX/OBJ con texturas).
 
 ## Hecho en v5 (16-nov)
 - Personajes realistas (Rocketbox, `assets/models/p_*.glb`); zombis sin armas, piel cadavérica, sangre en boca y manos (`charMat` en `40_chars.js`).
