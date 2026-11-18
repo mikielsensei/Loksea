@@ -101,3 +101,18 @@ Tras cada cambio: subir el número de `game.js?v=5&b=N` en `index.html`, `node -
 ## Datos de la zona (del usuario, 17-nov)
 - `docs/zona/zona-vissir.kml`: polígono exacto de la zona a recrear (lon/lat WGS84). Ábrelo en Google Earth para ir a Street View de esas calles (escaparates, rótulos, semáforos).
 - `docs/zona/MapaVissir.qgs`: proyecto QGIS del visor Vissir del ICGC (ETRS89 / UTM 31N, EPSG:25831) con el mapa topográfico WMS `https://geoserveis.icgc.cat/servei/catalunya/mapa-base/wms`. No trae altitudes: para las pendientes reales hay que pedir el modelo de elevaciones del ICGC (MDT) de esa misma zona.
+
+## LES CORTS (proyecto nuevo: https://mikielsensei.github.io/Loksea/lescorts/)
+Hecho (primer try, 18-nov):
+- Mundo con los datos del AMB (hoja 420-39-28): calzada, aceras con bordillo, cuestas, 4.134 edificios con su altura, 1.594 árboles y 609 farolas en su sitio, marcas viales de la ortofoto.
+- Detalle máximo en Travessera (C. de les Corts → Numància) y Vallespir (Travessera → Marquès de Sentmenat): locales con interior, balcones, toldos. Resto del barrio más sencillo.
+- Aparcamiento calculado desde los bordillos reales (sin coches en carriles con flechas ni en Travessera), contenedores en el carril, motos en la acera de Travessera, bancos, papeleras, semáforos en los pasos, marquesinas, Bicing de Vallespir, terrazas.
+- Coches: VW Golf, Passat, ID.3, Tiguan y Jetta (modelos que pasaste). Lejos: versión ligera; a <13 m: modelo completo con interior, puertas y maletero que se abren con la mano (grip en la maneta), volante del propio modelo.
+- Vecinos (26 modelos: complexiones, oficina, deporte, sanitaria, reparto): pasean por las aceras, cruzan por los pasos esperando, corren, entran en tiendas, se sientan en bancos y terrazas a beber, charlan en corrillos y se ríen, tiran la basura al contenedor, miran el móvil, llaman. Si les pegas, huyen.
+- Día/noche con cúmulos, viento con ráfagas en las copas, farolas encendidas de noche.
+Pendiente:
+- Ningún modelo VW trae la palanca como pieza separada (Golf/ID.3/Tiguan 2025 llevan el selector en el volante o el salpicadero): he puesto un selector DSG nuevo (P-R-N-D) en la consola.
+- Motos reales (nmax, Vespa, etc.) con manillar que gira de verdad: ahora siguen las motos propias.
+- Rótulos reales de los comercios de Travessera y Vallespir (Mercat, Lidl, Calvet, Rayo Optics, Aural, Ciurana…), fachadas fieles a las fotos.
+- Versión lejana de los coches (se ve "derretida" de cerca, pero solo se ve a más de 13 m).
+- Rendimiento en las Quest: ~0,9 M triángulos y ~520 draw calls en la Travessera; si va a tirones, bajar distancia de visión.
