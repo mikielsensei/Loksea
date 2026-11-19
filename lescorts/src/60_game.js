@@ -709,6 +709,12 @@ function updateHands(){for(const side of ['left','right']){const hr=hands[side];
     {const g=hr.handRoot.parent;g.getWorldPosition(_v);hr.real=(hr.real||new V3()).copy(_v);if(inVR&&!P.inCar&&g.matrixAutoUpdate===false){camera.getWorldPosition(_v1);_v1.y-=0.18;_v2.subVectors(_v,_v1);const d=_v2.length();
         if(d>0.08){_v2.divideScalar(d);const pad=0.075;const t=rayWorld(_v1,_v2,d+pad);if(t>0.03&&t<d+pad){_v3.copy(_v2).multiplyScalar(t-pad-d);rig.getWorldQuaternion(_q).invert();_v3.applyQuaternion(_q);const e=g.matrix.elements;e[12]+=_v3.x;e[13]+=_v3.y;e[14]+=_v3.z;
             g.position.set(e[12],e[13],e[14]);g.updateMatrixWorld(true);if(!hr.blocked){hr.blocked=true;haptic(side==='left'?srcL:srcR,0.35,25);}}else hr.blocked=false;}}}
+    // ni a través de la carrocería de los coches (caja ajustada al cuerpo: ancho, largo y altura del techo)
+    if(inVR){const g=hr.handRoot.parent;g.getWorldPosition(_v);for(const c of cars){if(c===P.inCar)continue;const dx=_v.x-c.x,dz=_v.z-c.z;if(dx*dx+dz*dz>9)continue;const sn=Math.sin(c.yaw),cs=Math.cos(c.yaw);
+        const lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,ly=_v.y-c.y;const hx=c.halfW+0.02,hz=c.len/2-0.05,top=(c.T&&c.T.h?c.T.h:1.45)-0.04;if(Math.abs(lx)>=hx||Math.abs(lz)>=hz||ly>top||ly<0.25)continue;
+        const ex=hx-Math.abs(lx),ez=hz-Math.abs(lz),ey=top-ly;let px=0,pz=0,py=0;if(ey<ex&&ey<ez)py=ey;else if(ex<ez)px=Math.sign(lx)*ex;else pz=Math.sign(lz)*ez;
+        _v1.set(px*cs+pz*sn,py,-px*sn+pz*cs);rig.getWorldQuaternion(_q).invert();_v1.applyQuaternion(_q);const e=g.matrix.elements;e[12]+=_v1.x;e[13]+=_v1.y;e[14]+=_v1.z;g.position.set(e[12],e[13],e[14]);g.updateMatrixWorld(true);
+        if(!hr.blocked){hr.blocked=true;haptic(side==='left'?srcL:srcR,0.35,25);}break;}}
     hr.off.set(0,0,0);applyHC();poseHand(hr);
     // puertas: agarrar la manilla con el grip; con la mano libre se empujan
     const hp=hr.handRoot.parent.getWorldPosition(_v5);const free=side==='left'?!leftHold:(P.weapon==='manos');

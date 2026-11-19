@@ -700,7 +700,7 @@ async function loadWorldData(){setLoad('w','Descargando Les Corts (datos del AMB
   HMD={x0,z0,res,nx,nz,h,k:new Uint8Array(hb,24+nx*nz*2,nx*nz)};WD=w;MARKS=mk;KERBS=kb;prepVados();
   for(const [k,f,sc,rot] of [['papelera','papelera',1.0,0],['armari','armari',1.0,0]]){try{const g=await gl.loadAsync('models/props/'+f+'.glb');const G=propGeo(g.scene,k==='papelera'?1.05:1.55);if(G){INST[k].geo=G.geo;INST[k].mat=G.mat;}}catch(e){console.warn('prop',k,e);}}}
 // un modelo de la comunidad convertido en una geometría por instancias (alto real en metros, apoyado en el suelo)
-function propGeo(root,height){root.updateMatrixWorld(true);const parts=[],mats=[];root.traverse(o=>{if(!o.isMesh)return;let g=o.geometry.clone();for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);g.applyMatrix4(o.matrixWorld);if(g.index)g=g.toNonIndexed();parts.push(g);const m=o.material.clone();if(m.map)m.map.anisotropy=4;mats.push(pbr(m));});
+function propGeo(root,height){root.updateMatrixWorld(true);const parts=[],mats=[];root.traverse(o=>{if(!o.isMesh)return;let g=o.geometry.clone();for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);g.applyMatrix4(o.matrixWorld);if(g.index)g=g.toNonIndexed();parts.push(g);const m=o.material.clone();m.aoMap=null;m.lightMap=null;if(m.map)m.map.anisotropy=4;mats.push(pbr(m));});
   if(!parts.length)return null;const geo=mergeGeometries(parts,true);geo.computeBoundingBox();const b=geo.boundingBox;const s=height/(b.max.y-b.min.y);geo.translate(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);geo.scale(s,s,s);geo.computeBoundingSphere();return{geo,mat:mats.length>1?mats:mats[0]};}
 // ---------- materiales propios ----------
 const texPaint=cTex(256,256,(g,w,h)=>{g.fillStyle='#ecebe4';g.fillRect(0,0,w,h);const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=Math.random();const v=n<0.06?-60:n<0.2?-22:0;d.data[i]+=v;d.data[i+1]+=v;d.data[i+2]+=v;}g.putImageData(d,0,0);});
@@ -2324,7 +2324,14 @@ function loBin(buf){const dv=new DataView(buf);const hl=dv.getUint32(0,true);con
   const cf=new Float32Array(H0.nv*3);for(let i=0;i<cf.length;i++)cf[i]=(C[i]/255)**2.2;g.setAttribute('color',new THREE.BufferAttribute(cf,3));
   const pf=new Float32Array(H0.nv);for(let i=0;i<H0.nv;i++)pf[i]=Pa[i];g.setAttribute('aPaint',new THREE.BufferAttribute(pf,1));g.setIndex(new THREE.BufferAttribute(I,1));
   g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();return g;}
-async function loadVehicles(){for(const v of VW){try{const r=await fetch('models/cars/'+v.k+'_lo.bin');if(!r.ok)continue;VTPL[v.k]={k:v.k,w:v.w,lo:loBin(await r.arrayBuffer()),hi:null,hiP:null};}catch(e){console.warn('coche',v.k,e);}}
+// distancia media (< 38 m): el modelo de verdad reducido (~11k triángulos) con sus texturas, por instancias; la pintura toma el color de cada coche
+function prepMid(g){const s=g.scene;s.rotation.y=Math.PI;s.updateMatrixWorld(true);const parts=[],mats=[];
+  s.traverse(o=>{if(!o.isMesh)return;let gg=o.geometry.clone();for(const k of Object.keys(gg.attributes))if(!['position','normal','uv'].includes(k))gg.deleteAttribute(k);if(!gg.attributes.uv)gg.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(gg.attributes.position.count*2),2));
+    gg.applyMatrix4(o.matrixWorld);if(gg.index)gg=gg.toNonIndexed();if(!gg.attributes.normal)gg.computeVertexNormals();parts.push(gg);
+    let m=o.material;{let cl=false;for(const k in m){const t=m[k];if(t&&t.isTexture&&t.channel){if(!cl){m=m.clone();cl=true;}const t2=t.clone();t2.channel=0;m[k]=t2;}}if(m.aoMap||m.lightMap){m=m.clone();m.aoMap=null;m.lightMap=null;}}if(/^GLASS_/.test(m.name)||(m.transparent&&m.opacity<0.3&&!/red|light|lamp/i.test(m.name)))m=vGlassMat;else{m=m.clone();if(m.name!=='PAINT')m.onBeforeCompile=sh=>{sh.vertexShader=sh.vertexShader.replace('#include <color_vertex>','#if defined( USE_COLOR_ALPHA )\nvColor=vec4(1.0);\n#elif defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )\nvColor=vec3(1.0);\n#endif');};else{m.color.set(0xffffff);}m.customProgramCacheKey=()=>'mid'+(m.name==='PAINT'?'p':'o');pbr(m);if(m.map)m.map.anisotropy=4;}
+    mats.push(m);});
+  const geo=mergeGeometries(parts,true);geo.computeBoundingSphere();return{geo,mats};}
+async function loadVehicles(){for(const v of VW){try{const r=await fetch('models/cars/'+v.k+'_lo.bin');if(!r.ok)continue;VTPL[v.k]={k:v.k,w:v.w,lo:loBin(await r.arrayBuffer()),hi:null,hiP:null};{const g=await loadAny(['models/cars/'+v.k+'_lo.glb']);if(g)VTPL[v.k].mid=prepMid(g);}}catch(e){console.warn('coche',v.k,e);}}
   setLoad('v',`✔ Coches: ${Object.keys(VTPL).length} modelos reales (VW Golf, Passat, ID.3, Tiguan, Jetta)`);}
 function needHi(t){if(t.hi||t.hiP)return;t.hiP=loadAny(['models/cars/'+t.k+'_hi.glb']).then(g=>{if(g)t.hi=prepHi(g);});}
 // ---------- aparcar ----------
@@ -2363,11 +2370,17 @@ function vHandle(c,k,t,inside,out,pi){const D=k==='T'?c.T.trunk:c.T.doors[k];con
 const DSG_GEO=mkG([[cy(0.016,0.02,0.07,0,0.035,0,10),0x1a1a1b],[ell(0.03,0.045,0.05,0,0.1,0.005,12),0x141415],[bx(0.036,0.012,0.04,0,0.142,-0.004),0x2a2b2d],[bx(0.012,0.006,0.012,-0.012,0.149,0.008),0xb8bcc0]]);
 const DSG_BOOT=mkG([[cy(0.03,0.055,0.035,0,0.012,0,12),0x0e0e0f],[bx(0.11,0.006,0.15,0,0.0,0),0x232426]]);
 // gestión cada poco: los cercanos pasan a modelo completo, los lejanos vuelven a instancia
-let vT=0;
+let vT=0;const MIDN=6,MIDIM={};
+function stepMid(p){for(const k in VTPL){const t=VTPL[k];if(!t.mid)continue;let M=MIDIM[k];if(!M){const im=new THREE.InstancedMesh(t.mid.geo,t.mid.mats,MIDN);im.count=0;im.frustumCulled=false;im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MIDN*3).fill(1),3);scene.add(im);M=MIDIM[k]={im,cars:[]};}
+    for(const c of M.cars)if(c.lod==='mid'){c.lod='lo';if(c.G&&c.G.im)vSetInst(c.G.im,c.ii,c);}
+    const L=cars.filter(c=>c.kind==='vw'&&c.vt===t&&c.lod==='lo'&&Math.hypot(c.x-p.x,c.z-p.z)<30).sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z)).slice(0,MIDN);
+    M.cars=L;L.forEach((c,i)=>{c.lod='mid';_m.compose(_p.set(c.x,c.y,c.z),_q.setFromAxisAngle(UP,c.yaw),_s.set(1,1,1));M.im.setMatrixAt(i,_m);M.im.setColorAt(i,_c.set(c.col));if(c.G&&c.G.im){c.G.im.setMatrixAt(c.ii,ZM);c.G.im.instanceMatrix.needsUpdate=true;}});
+    M.im.count=L.length;M.im.instanceMatrix.needsUpdate=true;if(M.im.instanceColor)M.im.instanceColor.needsUpdate=true;}}
 function stepVehicles(dt,p){vT-=dt;if(vT>0)return;vT=0.3;
   for(const c of cars){if(c.kind!=='vw')continue;const d=Math.hypot(c.x-p.x,c.z-p.z);
-    if(c.lod==='lo'&&(d<(inVR?13:15)||Math.abs(c.speed)>0.05)){needHi(c.vt);if(c.vt.hi&&VACTIVE.length<6)activateCar(c);}
+    if((c.lod==='lo'||c.lod==='mid')&&(d<(inVR?11:13)||Math.abs(c.speed)>0.05)){if(c.lod==='mid')c.lod='lo';needHi(c.vt);if(c.vt.hi&&VACTIVE.length<6)activateCar(c);}
     else if(c.lod==='hi'&&d>28&&c!==P.inCar&&Math.abs(c.speed)<0.05){for(const k in c.doorT)c.doorT[k]=0;c.trunkT=0;deactivateCar(c);}}
+  stepMid(p);
   if(VACTIVE.length>6){VACTIVE.sort((a,b)=>Math.hypot(b.x-p.x,b.z-p.z)-Math.hypot(a.x-p.x,a.z-p.z));for(const c of VACTIVE.slice(0,VACTIVE.length-6))if(c!==P.inCar)deactivateCar(c);}}
 // ---------- puertas y maletero con las manos (VR) o con «usar» (pantalla) ----------
 const vGrab={left:null,right:null};const _vh=new V3(),_vh2=new V3();
@@ -2403,7 +2416,7 @@ function prepMoto(g,m){const s=g.scene;s.rotation.y=m.rot;s.updateMatrixWorld(tr
   s.traverse(o=>{if(!o.isMesh)return;let p=o,isH=false;while(p){if(m.head&&p.name===m.head)isH=true;p=p.parent;}
     let gg=o.geometry.clone();for(const k of Object.keys(gg.attributes))if(!['position','normal','uv'].includes(k))gg.deleteAttribute(k);if(!gg.attributes.uv){gg.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(gg.attributes.position.count*2),2));}
     gg.applyMatrix4(o.matrixWorld);gg.translate(-cx,-y0,-cz);gg.scale(sc,sc,sc);if(gg.index)gg=gg.toNonIndexed();if(!gg.attributes.normal)gg.computeVertexNormals();
-    const mt=o.material.clone();mt.side=THREE.FrontSide;if(mt.map)mt.map.anisotropy=4;if(mt.transparent&&mt.opacity>0.6)mt.transparent=false;pbr(mt);(isH?head:body).push(gg);(isH?hmats:mats).push(mt);});
+    const mt=o.material.clone();mt.aoMap=null;mt.lightMap=null;mt.side=THREE.FrontSide;if(mt.map)mt.map.anisotropy=4;if(mt.transparent&&mt.opacity>0.6)mt.transparent=false;pbr(mt);(isH?head:body).push(gg);(isH?hmats:mats).push(mt);});
   const geo=mergeGeometries(body,true);geo.computeBoundingBox();const T={k:m.k,geo,mats,tint:m.tint,len:m.len,allG:mergeGeometries([...body,...head],true),allM:[...mats,...hmats]};
   if(head.length){const hg=mergeGeometries(head,true);hg.computeBoundingBox();const hb=hg.boundingBox;
     // eje de dirección: de la rueda delantera (abajo) al centro del manillar (arriba)
@@ -3143,6 +3156,12 @@ function updateHands(){for(const side of ['left','right']){const hr=hands[side];
     {const g=hr.handRoot.parent;g.getWorldPosition(_v);hr.real=(hr.real||new V3()).copy(_v);if(inVR&&!P.inCar&&g.matrixAutoUpdate===false){camera.getWorldPosition(_v1);_v1.y-=0.18;_v2.subVectors(_v,_v1);const d=_v2.length();
         if(d>0.08){_v2.divideScalar(d);const pad=0.075;const t=rayWorld(_v1,_v2,d+pad);if(t>0.03&&t<d+pad){_v3.copy(_v2).multiplyScalar(t-pad-d);rig.getWorldQuaternion(_q).invert();_v3.applyQuaternion(_q);const e=g.matrix.elements;e[12]+=_v3.x;e[13]+=_v3.y;e[14]+=_v3.z;
             g.position.set(e[12],e[13],e[14]);g.updateMatrixWorld(true);if(!hr.blocked){hr.blocked=true;haptic(side==='left'?srcL:srcR,0.35,25);}}else hr.blocked=false;}}}
+    // ni a través de la carrocería de los coches (caja ajustada al cuerpo: ancho, largo y altura del techo)
+    if(inVR){const g=hr.handRoot.parent;g.getWorldPosition(_v);for(const c of cars){if(c===P.inCar)continue;const dx=_v.x-c.x,dz=_v.z-c.z;if(dx*dx+dz*dz>9)continue;const sn=Math.sin(c.yaw),cs=Math.cos(c.yaw);
+        const lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,ly=_v.y-c.y;const hx=c.halfW+0.02,hz=c.len/2-0.05,top=(c.T&&c.T.h?c.T.h:1.45)-0.04;if(Math.abs(lx)>=hx||Math.abs(lz)>=hz||ly>top||ly<0.25)continue;
+        const ex=hx-Math.abs(lx),ez=hz-Math.abs(lz),ey=top-ly;let px=0,pz=0,py=0;if(ey<ex&&ey<ez)py=ey;else if(ex<ez)px=Math.sign(lx)*ex;else pz=Math.sign(lz)*ez;
+        _v1.set(px*cs+pz*sn,py,-px*sn+pz*cs);rig.getWorldQuaternion(_q).invert();_v1.applyQuaternion(_q);const e=g.matrix.elements;e[12]+=_v1.x;e[13]+=_v1.y;e[14]+=_v1.z;g.position.set(e[12],e[13],e[14]);g.updateMatrixWorld(true);
+        if(!hr.blocked){hr.blocked=true;haptic(side==='left'?srcL:srcR,0.35,25);}break;}}
     hr.off.set(0,0,0);applyHC();poseHand(hr);
     // puertas: agarrar la manilla con el grip; con la mano libre se empujan
     const hp=hr.handRoot.parent.getWorldPosition(_v5);const free=side==='left'?!leftHold:(P.weapon==='manos');

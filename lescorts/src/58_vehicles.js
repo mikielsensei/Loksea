@@ -54,7 +54,14 @@ function loBin(buf){const dv=new DataView(buf);const hl=dv.getUint32(0,true);con
   const cf=new Float32Array(H0.nv*3);for(let i=0;i<cf.length;i++)cf[i]=(C[i]/255)**2.2;g.setAttribute('color',new THREE.BufferAttribute(cf,3));
   const pf=new Float32Array(H0.nv);for(let i=0;i<H0.nv;i++)pf[i]=Pa[i];g.setAttribute('aPaint',new THREE.BufferAttribute(pf,1));g.setIndex(new THREE.BufferAttribute(I,1));
   g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();return g;}
-async function loadVehicles(){for(const v of VW){try{const r=await fetch('models/cars/'+v.k+'_lo.bin');if(!r.ok)continue;VTPL[v.k]={k:v.k,w:v.w,lo:loBin(await r.arrayBuffer()),hi:null,hiP:null};}catch(e){console.warn('coche',v.k,e);}}
+// distancia media (< 38 m): el modelo de verdad reducido (~11k triángulos) con sus texturas, por instancias; la pintura toma el color de cada coche
+function prepMid(g){const s=g.scene;s.rotation.y=Math.PI;s.updateMatrixWorld(true);const parts=[],mats=[];
+  s.traverse(o=>{if(!o.isMesh)return;let gg=o.geometry.clone();for(const k of Object.keys(gg.attributes))if(!['position','normal','uv'].includes(k))gg.deleteAttribute(k);if(!gg.attributes.uv)gg.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(gg.attributes.position.count*2),2));
+    gg.applyMatrix4(o.matrixWorld);if(gg.index)gg=gg.toNonIndexed();if(!gg.attributes.normal)gg.computeVertexNormals();parts.push(gg);
+    let m=o.material;{let cl=false;for(const k in m){const t=m[k];if(t&&t.isTexture&&t.channel){if(!cl){m=m.clone();cl=true;}const t2=t.clone();t2.channel=0;m[k]=t2;}}if(m.aoMap||m.lightMap){m=m.clone();m.aoMap=null;m.lightMap=null;}}if(/^GLASS_/.test(m.name)||(m.transparent&&m.opacity<0.3&&!/red|light|lamp/i.test(m.name)))m=vGlassMat;else{m=m.clone();if(m.name!=='PAINT')m.onBeforeCompile=sh=>{sh.vertexShader=sh.vertexShader.replace('#include <color_vertex>','#if defined( USE_COLOR_ALPHA )\nvColor=vec4(1.0);\n#elif defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )\nvColor=vec3(1.0);\n#endif');};else{m.color.set(0xffffff);}m.customProgramCacheKey=()=>'mid'+(m.name==='PAINT'?'p':'o');pbr(m);if(m.map)m.map.anisotropy=4;}
+    mats.push(m);});
+  const geo=mergeGeometries(parts,true);geo.computeBoundingSphere();return{geo,mats};}
+async function loadVehicles(){for(const v of VW){try{const r=await fetch('models/cars/'+v.k+'_lo.bin');if(!r.ok)continue;VTPL[v.k]={k:v.k,w:v.w,lo:loBin(await r.arrayBuffer()),hi:null,hiP:null};{const g=await loadAny(['models/cars/'+v.k+'_lo.glb']);if(g)VTPL[v.k].mid=prepMid(g);}}catch(e){console.warn('coche',v.k,e);}}
   setLoad('v',`✔ Coches: ${Object.keys(VTPL).length} modelos reales (VW Golf, Passat, ID.3, Tiguan, Jetta)`);}
 function needHi(t){if(t.hi||t.hiP)return;t.hiP=loadAny(['models/cars/'+t.k+'_hi.glb']).then(g=>{if(g)t.hi=prepHi(g);});}
 // ---------- aparcar ----------
@@ -93,11 +100,17 @@ function vHandle(c,k,t,inside,out,pi){const D=k==='T'?c.T.trunk:c.T.doors[k];con
 const DSG_GEO=mkG([[cy(0.016,0.02,0.07,0,0.035,0,10),0x1a1a1b],[ell(0.03,0.045,0.05,0,0.1,0.005,12),0x141415],[bx(0.036,0.012,0.04,0,0.142,-0.004),0x2a2b2d],[bx(0.012,0.006,0.012,-0.012,0.149,0.008),0xb8bcc0]]);
 const DSG_BOOT=mkG([[cy(0.03,0.055,0.035,0,0.012,0,12),0x0e0e0f],[bx(0.11,0.006,0.15,0,0.0,0),0x232426]]);
 // gestión cada poco: los cercanos pasan a modelo completo, los lejanos vuelven a instancia
-let vT=0;
+let vT=0;const MIDN=6,MIDIM={};
+function stepMid(p){for(const k in VTPL){const t=VTPL[k];if(!t.mid)continue;let M=MIDIM[k];if(!M){const im=new THREE.InstancedMesh(t.mid.geo,t.mid.mats,MIDN);im.count=0;im.frustumCulled=false;im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MIDN*3).fill(1),3);scene.add(im);M=MIDIM[k]={im,cars:[]};}
+    for(const c of M.cars)if(c.lod==='mid'){c.lod='lo';if(c.G&&c.G.im)vSetInst(c.G.im,c.ii,c);}
+    const L=cars.filter(c=>c.kind==='vw'&&c.vt===t&&c.lod==='lo'&&Math.hypot(c.x-p.x,c.z-p.z)<30).sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z)).slice(0,MIDN);
+    M.cars=L;L.forEach((c,i)=>{c.lod='mid';_m.compose(_p.set(c.x,c.y,c.z),_q.setFromAxisAngle(UP,c.yaw),_s.set(1,1,1));M.im.setMatrixAt(i,_m);M.im.setColorAt(i,_c.set(c.col));if(c.G&&c.G.im){c.G.im.setMatrixAt(c.ii,ZM);c.G.im.instanceMatrix.needsUpdate=true;}});
+    M.im.count=L.length;M.im.instanceMatrix.needsUpdate=true;if(M.im.instanceColor)M.im.instanceColor.needsUpdate=true;}}
 function stepVehicles(dt,p){vT-=dt;if(vT>0)return;vT=0.3;
   for(const c of cars){if(c.kind!=='vw')continue;const d=Math.hypot(c.x-p.x,c.z-p.z);
-    if(c.lod==='lo'&&(d<(inVR?13:15)||Math.abs(c.speed)>0.05)){needHi(c.vt);if(c.vt.hi&&VACTIVE.length<6)activateCar(c);}
+    if((c.lod==='lo'||c.lod==='mid')&&(d<(inVR?11:13)||Math.abs(c.speed)>0.05)){if(c.lod==='mid')c.lod='lo';needHi(c.vt);if(c.vt.hi&&VACTIVE.length<6)activateCar(c);}
     else if(c.lod==='hi'&&d>28&&c!==P.inCar&&Math.abs(c.speed)<0.05){for(const k in c.doorT)c.doorT[k]=0;c.trunkT=0;deactivateCar(c);}}
+  stepMid(p);
   if(VACTIVE.length>6){VACTIVE.sort((a,b)=>Math.hypot(b.x-p.x,b.z-p.z)-Math.hypot(a.x-p.x,a.z-p.z));for(const c of VACTIVE.slice(0,VACTIVE.length-6))if(c!==P.inCar)deactivateCar(c);}}
 // ---------- puertas y maletero con las manos (VR) o con «usar» (pantalla) ----------
 const vGrab={left:null,right:null};const _vh=new V3(),_vh2=new V3();

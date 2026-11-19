@@ -10,7 +10,7 @@ function prepMoto(g,m){const s=g.scene;s.rotation.y=m.rot;s.updateMatrixWorld(tr
   s.traverse(o=>{if(!o.isMesh)return;let p=o,isH=false;while(p){if(m.head&&p.name===m.head)isH=true;p=p.parent;}
     let gg=o.geometry.clone();for(const k of Object.keys(gg.attributes))if(!['position','normal','uv'].includes(k))gg.deleteAttribute(k);if(!gg.attributes.uv){gg.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(gg.attributes.position.count*2),2));}
     gg.applyMatrix4(o.matrixWorld);gg.translate(-cx,-y0,-cz);gg.scale(sc,sc,sc);if(gg.index)gg=gg.toNonIndexed();if(!gg.attributes.normal)gg.computeVertexNormals();
-    const mt=o.material.clone();mt.side=THREE.FrontSide;if(mt.map)mt.map.anisotropy=4;if(mt.transparent&&mt.opacity>0.6)mt.transparent=false;pbr(mt);(isH?head:body).push(gg);(isH?hmats:mats).push(mt);});
+    const mt=o.material.clone();mt.aoMap=null;mt.lightMap=null;mt.side=THREE.FrontSide;if(mt.map)mt.map.anisotropy=4;if(mt.transparent&&mt.opacity>0.6)mt.transparent=false;pbr(mt);(isH?head:body).push(gg);(isH?hmats:mats).push(mt);});
   const geo=mergeGeometries(body,true);geo.computeBoundingBox();const T={k:m.k,geo,mats,tint:m.tint,len:m.len,allG:mergeGeometries([...body,...head],true),allM:[...mats,...hmats]};
   if(head.length){const hg=mergeGeometries(head,true);hg.computeBoundingBox();const hb=hg.boundingBox;
     // eje de dirección: de la rueda delantera (abajo) al centro del manillar (arriba)
