@@ -16,7 +16,7 @@ const ITEMS={
 };
 const CONDN=['fresco','rancio','podrido'];
 const P={};
-const G={mag:12,chamber:true,locked:false,kick:0};let BELT=[12,12];let leftHold=null,slideGrab=null;
+const G={mag:7,chamber:true,locked:false,kick:0,cocked:true};let BELT=[7,7];let leftHold=null,slideGrab=null;
 function resetPlayer(){Object.assign(P,{hp:100,food:80,water:80,bladder:20,bowels:20,energy:90,mood:70,sick:0,infected:false,infT:0,
   items:[],bag:false,weapon:'manos',alive:true,inCar:null,light:false,sleeping:false,sleepLeft:0,kills:0,yaw:0,pitch:0,carYaw:0,sprinting:false,crouch:false,crouchToggle:false,crouchOff:0,feetY:undefined,hOff:0,deadT:0,accT:0,peeT:0,stepT:0,vomitT:2,lastSafe:new V3()});
   addItem('judias',1,'gift');addItem('agua',2,'gift');addItem('vendas',1,'gift');addItem('balas',14,'gift');addItem('papel',1,'gift');
@@ -106,6 +106,24 @@ function makeGun(){const g=new THREE.Group();
   const flash=new THREE.Mesh(new THREE.SphereGeometry(0.03,8,6),new THREE.MeshBasicMaterial({color:0xffd27a,transparent:true,opacity:0}));flash.position.set(0,0.082,-0.18);g.add(flash);
   const mk=(x,y,z)=>{const o=new THREE.Object3D();o.position.set(x,y,z);g.add(o);return o;};
   g.userData={slide,mag,flash,muzzle:mk(0,0.082,-0.16),magwell:mk(0,-0.084,0.032),slideRear:mk(0,0.085,0.055),port:mk(-0.014,0.093,-0.028)};return g;}
+// Desert Eagle (modelo que pasaste): se cuelga del grupo de la pistola y sus huesos (corredera, cargador, martillo, gatillo) siguen la mecánica
+const DEAGLE=[];
+function fitDeagle(gun,src){const sc=SkeletonUtils.clone(src);sc.rotation.y=Math.PI;sc.position.set(0,-0.012,0.006);gun.add(sc);gun.updateMatrixWorld(true);
+  let sk=null;sc.traverse(o=>{if(o.isSkinnedMesh){sk=o;o.frustumCulled=false;const m=o.material;if(m){m.envMapIntensity=0.8;pbr(m);}}});if(!sk)return;
+  for(const c of gun.children)if(c!==sc&&c.isMesh&&c!==gun.userData.flash)c.visible=false;gun.userData.slide.traverse(o=>{if(o.isMesh)o.visible=false;});gun.userData.mag.traverse(o=>{if(o.isMesh)o.visible=false;});gun.userData.mag.visible=false;gun.userData.magHidden=true;
+  const B={};for(const b of sk.skeleton.bones){const n=b.name;if(/slide/.test(n))B.slide=b;else if(/clip/.test(n))B.clip=b;else if(/hammer/.test(n))B.hammer=b;else if(/trigger/.test(n))B.trig=b;}
+  // eje «hacia atrás» del arma (+z del grupo) y eje lateral (x) en el espacio de cada padre
+  const ax=(b,v)=>{const p=b.parent;p.updateMatrixWorld(true);const o=gun.localToWorld(new V3(0,0,0)),e=gun.localToWorld(v.clone());return p.worldToLocal(e).sub(p.worldToLocal(o));};
+  const axL=(b,v)=>{b.updateMatrixWorld(true);const o=gun.localToWorld(new V3(0,0,0)),e=gun.localToWorld(v.clone());const q=b.getWorldQuaternion(new Q4()).invert();return e.sub(o).applyQuaternion(q).normalize();};
+  const D={gun,sk,B,rest:{},back:{},side:{}};for(const k in B){D.rest[k]={p:B[k].position.clone(),q:B[k].quaternion.clone()};D.back[k]=ax(B[k],new V3(0,0,1));D.side[k]=axL(B[k],new V3(1,0,0));}
+  // marcas donde están de verdad la boca, el pozo del cargador, la corredera y el martillo
+  const u=gun.userData;u.muzzle.position.set(0,0.083,-0.24);u.flash.position.set(0,0.083,-0.26);u.magwell.position.set(0,-0.058,0.012);u.slideRear.position.set(0,0.095,0.03);u.port.position.set(-0.016,0.1,-0.03);
+  u.hammerP=new THREE.Object3D();u.hammerP.position.set(0,0.09,0.04);gun.add(u.hammerP);DEAGLE.push(D);}
+function poseDeagle(D,slideOff,trig){const B=D.B;
+  if(B.slide){B.slide.position.copy(D.rest.slide.p).addScaledVector(D.back.slide,slideOff);}
+  if(B.clip){B.clip.scale.setScalar(G.mag>=0?1:0.0001);}
+  if(B.hammer){const a=G.cocked?-0.75:0;B.hammer.quaternion.copy(D.rest.hammer.q).multiply(_q.setFromAxisAngle(D.side.hammer,a));}
+  if(B.trig){B.trig.quaternion.copy(D.rest.trig.q).multiply(_q.setFromAxisAngle(D.side.trig,-trig*0.35));}}
 function makeMachete(){const g=new THREE.Group();const steel=pbr(new THREE.MeshStandardMaterial({map:ltex('det_metal_diff.jpg'),roughnessMap:ltex('det_metal_rough.jpg',false),color:0xb8b4ac,metalness:0.85,roughness:0.45}));
   const blade=shapeFrom([[0,-0.012],[0.05,-0.016],[0.3,-0.02],[0.44,-0.012],[0.48,0.004],[0.46,0.022],[0.3,0.03],[0.05,0.022],[0,0.02]]);const bg=new THREE.ExtrudeGeometry(blade,{depth:0.003,bevelEnabled:true,bevelThickness:0.0012,bevelSize:0.002,bevelSegments:1});
   bg.translate(0,0,-0.0015);bg.rotateY(Math.PI/2);bg.rotateX(0);const bm=new THREE.Mesh(bg,steel);bm.rotation.y=0;bm.position.z=-0.06;bm.rotation.set(0,0,-Math.PI/2);g.add(bm);
@@ -261,9 +279,9 @@ function rayChars(o,d,maxT,skip){let best=null,bt=maxT,bp=-1,part=null;
     for(const [a,b,r,pp] of HIT_SEGS){const [d2,s,t]=closestSegT(o,d,pts[a],pts[b]);if(d2<r*r&&s<bt){bt=s;best=h;bp=t<0.5?a:b;part=pp;}}}
   return{h:best,t:bt,pi:bp,part};}
 const _o2=new V3(),_d2=new V3(),_e2=new V3(),_imp=new V3();
-function fireGun(o,d){if(!G.chamber){sfx('click');if(!inVR)toast(G.mag>0?'Pulsa R para recargar':'Sin balas');return;}
+function fireGun(o,d){if(!G.cocked){sfx('click');haptic(srcR,0.2,15);if(!inVR)toast('El martillo no está montado');return;}if(!G.chamber){G.cocked=false;sfx('click');if(!inVR)toast(G.mag>0?'Pulsa R para recargar':'Sin balas');return;}
   G.chamber=false;G.kick=0.028;sfx('shot');makeNoise(o.x,o.z,75);haptic(srcR,1,70);const gun=inVR?vrGun:vmGun;gun.userData.flash.material.opacity=1;ejectCasing(gun);
-  if(G.mag>0){G.mag--;G.chamber=true;}else G.locked=true;
+  if(G.mag>0){G.mag--;G.chamber=true;G.cocked=true;}else{G.locked=true;G.cocked=true;}
   let tb=rayWorld(o,d,150);const pn=rayPanes(o,d,tb);if(pn&&pn.t<tb){breakPane(pn.p);tb=pn.t+0.05;tb=rayWorld(o,d,150);}const r=rayChars(o,d,tb);_e2.copy(o).addScaledVector(d,r.h?r.t:tb);tracer(o,_e2);
   if(r.h){const head=r.part==='head';const dmg=head?999:r.part==='body'?(r.h.type==='zombie'?30:45):50;
     hitChar(r.h,r.part,dmg,_imp.copy(d).multiplyScalar(head?6:4.5),r.pi,'player',_e2,d);spray(_e2,d,head?18:8);sfx(head?'hithead':'hit',0.6);}
@@ -272,10 +290,10 @@ function ejectMag(drop){if(G.mag<0)return null;const n=G.mag;G.mag=-1;sfx('magou
   if(drop){gun.userData.magwell.getWorldPosition(_v);const m=makeMag();m.userData.bullet.visible=m.userData.tip.visible=n>0;gun.getWorldQuaternion(m.quaternion);dropObj(m,_v,_v1.set(0,-1.2,0),true,n);if(!inVR&&n>0)addItem('balas',n,'gift');}
   return n;}
 function insertMag(n){G.mag=n;sfx('magin');haptic(srcL,0.6,40);haptic(srcR,0.6,40);}
-function rack(){sfx('rack');haptic(srcL,0.7,50);haptic(srcR,0.5,40);if(G.chamber){/* la bala de la recámara sale */ejectCasing(inVR?vrGun:vmGun);G.chamber=false;}if(G.mag>0){G.mag--;G.chamber=true;}G.locked=false;}
-function refillBelt(){for(let i=0;i<2;i++)if(BELT[i]===null||BELT[i]===0){const n=takeItem('balas',12);if(n)BELT[i]=n;else if(BELT[i]===0)BELT[i]=null;}}
-function reloadFlat(){if(G.mag>=12&&G.chamber)return;if(G.mag>0)addItem('balas',G.mag,'gift');G.mag=-1;const n=takeItem('balas',12);if(!n){toast('No te quedan balas');return;}
-  G.mag=n;if(!G.chamber&&G.mag>0){G.mag--;G.chamber=true;}G.locked=false;sfx('magin');setTimeout(()=>sfx('rack'),300);toast(`Recargas (${G.mag}+${G.chamber?1:0})`);}
+function rack(){G.cocked=true;sfx('rack');haptic(srcL,0.7,50);haptic(srcR,0.5,40);if(G.chamber){/* la bala de la recámara sale */ejectCasing(inVR?vrGun:vmGun);G.chamber=false;}if(G.mag>0){G.mag--;G.chamber=true;}G.locked=false;}
+function refillBelt(){for(let i=0;i<2;i++)if(BELT[i]===null||BELT[i]===0){const n=takeItem('balas',7);if(n)BELT[i]=n;else if(BELT[i]===0)BELT[i]=null;}}
+function reloadFlat(){if(G.mag>=12&&G.chamber)return;if(G.mag>0)addItem('balas',G.mag,'gift');G.mag=-1;const n=takeItem('balas',7);if(!n){toast('No te quedan balas');return;}
+  G.mag=n;if(!G.chamber&&G.mag>0){G.mag--;G.chamber=true;}G.locked=false;G.cocked=true;sfx('magin');setTimeout(()=>sfx('rack'),300);toast(`Recargas (${G.mag}+${G.chamber?1:0})`);}
 let swingT=0;
 function meleeFlat(){swingT=0.28;sfx('swish');camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);const r=rayChars(_o2,_d2,2.4);
   if(r.h){const s=P.weapon==='bate'?7.5:P.weapon==='machete'?8:3;const moodF=0.75+P.mood/400;_imp.copy(_d2).multiplyScalar(s*0.75).add(_v.set(0,0.6,0));

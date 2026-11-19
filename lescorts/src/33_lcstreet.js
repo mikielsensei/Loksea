@@ -31,8 +31,10 @@ function streetFurnitureLC(){
   for(const t of TREES)occAdd(t.x,t.z,0.9);for(const l of WD.lamp)occAdd(l[0],l[2],0.5);
   // --- marquesinas de bus en Travessera (posiciones de las fotos) ---
   for(const [px,pz] of [[-57,16],[-26,-20],[52,-74],[96,-108]]){const k=kerbNear(px,pz,14,k=>k.trav&&k.sw>3.2);if(!k)continue;
-    const yaw=Math.atan2(k.ux,k.uz)+Math.PI/2;const x=k.x-k.nx*0.6,z=k.z-k.nz*0.6;const y=H(x,z);addInst('marquesina',x,y,z,yaw);addInst('marquesinaGlass',x,y,z,yaw);
-    solidBox(x-k.nx*0.6,z-k.nz*0.6,1.9,0.15,yaw+Math.PI/2,y,y+2.5);occAdd(x,z,2.6);BENCHES.push({x:x-k.nx*0.3,z:z-k.nz*0.3,yaw:Math.atan2(k.nx,k.nz),y:y+0.46,n:3,shelter:true});}
+    const yaw=Math.atan2(k.nx,k.nz);// el frente abierto (+z del modelo) mira a la calzada
+    const x=k.x-k.nx*1.15,z=k.z-k.nz*1.15;const y=H(x,z);addInst('marquesina',x,y,z,yaw);addInst('marquesinaGlass',x,y,z,yaw);
+    {const lx=[Math.cos(yaw),-Math.sin(yaw)],lz=[Math.sin(yaw),Math.cos(yaw)];for(const [dz,yy] of [[-0.74+0.085,yaw],[-0.74-0.085,yaw+Math.PI]]){const mx=x+lx[0]*1.42+lz[0]*dz,mz=z+lx[1]*1.42+lz[1]*dz;addInst('mupi',mx,y+1.28,mz,yy,1,1,1,RI(0,7),1);}}
+    solidBox(x-k.nx*0.74,z-k.nz*0.74,2.2,0.12,yaw,y,y+2.5);occAdd(x,z,2.6);BENCHES.push({x:x-k.nx*0.35,z:z-k.nz*0.35,yaw:Math.atan2(-k.nx,-k.nz),y:y+0.47,n:3,shelter:true});}
   // --- Bicing de Vallespir, en el lado del parque ---
   {const k0=kerbNear(19,80,12,k=>!k.trav);if(k0){const ch=k0.ch;for(let s=-6;s<6;s++){const k=ch.pts[(k0.i+s+ch.pts.length)%ch.pts.length];if(!k)continue;const x=k.x+k.nx*1.5,z=k.z+k.nz*1.5;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);
       addInst('bicingDock',x,y,z,ya+Math.PI/2);if(Math.random()<0.6)addInst('bicingBike',x+k.nx*0.25,y,z+k.nz*0.25,Math.atan2(-k.nx,-k.nz)+R(-0.04,0.04));solidBox(x,z,0.12,0.9,ya,y,y+1.0);}
@@ -46,6 +48,7 @@ function streetFurnitureLC(){
   {let n=0;for(const k of KERB){if(focusD(k.x,k.z)>60||k.cid===undefined)continue;if((k.i||0)%2)continue;const off=k.sw+0.05;const x=k.x-k.nx*off,z=k.z-k.nz*off;
     if(groundKind(x-k.nx*0.6,z-k.nz*0.6)!==1||groundKind(x-k.nx*2.5,z-k.nz*2.5)!==1)continue;if(insideVol(x-k.nx*1.2,H(x,z)+1,z-k.nz*1.2))continue;
     const y=H(x,z),ya=Math.atan2(k.ux,k.uz)+Math.PI/2;addInst('vallaPark',x,y,z,ya);if(n%3===0)addInst('pilarObra',x+k.ux,y,z+k.uz,ya);solidBox(x,z,1.05,0.12,ya,y,y+2);n++;}}
+  b365Reserve();
   // --- recorrido de cada bordillo: motos, bancos, papeleras, semáforos, terrazas ---
   let lastBin=new Map(),lastBench=new Map(),lastMoto=new Map(),semaf=new Set();
   for(const k of KERB){const id=k.cid;
@@ -60,7 +63,8 @@ function streetFurnitureLC(){
     if(k.sw>3.6&&(!dS||Math.hypot(dS[0]-k.x,dS[1]-k.z)>(k.trav?45:60))&&occFree(k.x-k.nx*0.2,k.z-k.nz*0.2,1.2)){const x=k.x-k.nx*0.25,z=k.z-k.nz*0.25;const yaw=Math.atan2(-k.nx,-k.nz);// el banco mira hacia la acera
       addInst('banc',x,H(x,z),z,yaw);solidBox(x,z,0.95,0.3,yaw,H(x,z),H(x,z)+0.5);occAdd(x,z,1.2);lastBench.set(id,[k.x,k.z]);BENCHES.push({x:x-k.nx*0.05,z:z-k.nz*0.05,yaw,y:H(x,z)+0.45,n:2,ux:k.ux,uz:k.uz});continue;}}
   // --- terrazas delante de bares y cafeterías con acera ancha ---
-  for(const s of SHOPS){if(!/bar|cafe|caf|rest|pizz|bocad|forn|pastis|cerve|tapas|horno|bakery/i.test(s.type+' '+s.name))continue;const k=kerbNear(s.x,s.z,9);if(!k||k.sw<4.2||k.cwd<4)continue;
+  b365Extras();
+  for(const s of SHOPS){if(s.name==='365')continue;if(!/bar|cafe|caf|rest|pizz|bocad|forn|pastis|cerve|tapas|horno|bakery/i.test(s.type+' '+s.name))continue;const k=kerbNear(s.x,s.z,9);if(!k||k.sw<4.2||k.cwd<4)continue;
     const n=k.sw>6?RI(3,5):RI(2,3);for(let i=0;i<n;i++){const a=(i-(n-1)/2)*1.9;const x=k.x+k.ux*a-k.nx*(Math.min(k.sw-1.6,2.6)),z=k.z+k.uz*a-k.nz*(Math.min(k.sw-1.6,2.6));
       if(!occFree(x,z,0.9)||groundKind(x,z)!==3)continue;const y=H(x,z);addInst('terrassa',x,y,z,R(0,6.28));addBoxV(x-0.3,x+0.3,z-0.3,z+0.3,y,y+0.75);occAdd(x,z,1.0);
       const t={x,z,y,seats:[]};const ns=Math.random()<0.6?2:4;for(let c=0;c<ns;c++){const ca=Math.atan2(k.ux,k.uz)+c*(ns===2?Math.PI:Math.PI/2);t.seats.push({x:x+Math.sin(ca)*0.62,z:z+Math.cos(ca)*0.62,yaw:ca+Math.PI,y:y+0.46,used:null});}TERR.push(t);}}}

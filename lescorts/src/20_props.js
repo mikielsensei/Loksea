@@ -130,15 +130,45 @@ defInst('bicingTotem',mkG([[bx(0.5,2.1,0.2,0,1.05,0),0xd0202a],[bx(0.51,0.4,0.21
     [bx(2.3,0.035,0.34,-0.75,0.47,-0.45),0x8d9296],[tube([-1.75,0,-0.45],[-1.75,0.46,-0.45],0.028,8),ST],[tube([0.25,0,-0.45],[0.25,0.46,-0.45],0.028,8),ST],[bx(2.3,0.05,0.04,-0.75,0.44,-0.3),ST]];
   defInst('marquesina',mkG(p),paintMat,1,1,false);
   const gl=mkG([[bx(2.75,1.8,0.02,-0.68,1.27,-0.74),0xffffff]]);defInst('marquesinaGlass',gl,glassMat,1,1,false);
-  // cartel del mupi: anuncios descoloridos, algunos rotos o tapados con avisos
-  const texMupi=cTex(1024,1024,(g)=>{const W=256,Hh=512;const ads=[['#0d3b66','#faf0ca','CONCERT','PALAU SANT JORDI · 14 MARÇ'],['#e63946','#f1faee','REBAIXES','-50% EN TOT'],['#2a9d8f','#e9f5f2','BCN NETA','Recicla. Cada dia.'],['#1d1d1d','#f2c94c','ESTRENA','Al cinema aquest divendres'],
-      ['#f4a261','#264653','FESTA MAJOR','Gràcia · agost'],['#6a4c93','#ffffff','MUSEU','Exposició temporal'],['#ffffff','#c1121f','AVÍS','ZONA EVACUADA\nNO ENTREU'],['#3a5a40','#dad7cd','TMB','Servei suspès']];
-    ads.forEach(([bg,fg,t1,t2],k)=>{const x=(k%4)*W,y=Math.floor(k/4)*Hh;g.fillStyle=bg;g.fillRect(x,y,W,Hh);g.fillStyle=fg;g.textAlign='center';g.font='bold 44px Arial,sans-serif';g.fillText(t1,x+W/2,y+170);
-      g.font='18px Arial,sans-serif';t2.split('\n').forEach((l,i)=>g.fillText(l,x+W/2,y+230+i*26));g.fillRect(x+40,y+300,W-80,6);
-      for(let i=0;i<14;i++){g.fillStyle=`rgba(255,255,240,${R(0.05,0.2)})`;g.fillRect(x+R(0,W),y,R(4,30),Hh);}// descolorido
-      if(k%3===1){g.fillStyle='#d8d2c0';g.beginPath();g.moveTo(x+W*R(0.3,0.7),y+Hh);g.lineTo(x+W,y+Hh*R(0.5,0.8));g.lineTo(x+W,y+Hh);g.fill();}// roto
-      g.strokeStyle='rgba(30,30,30,.8)';g.lineWidth=4;g.strokeRect(x+2,y+2,W-4,Hh-4);});},{});
-  const mupiMat=atlasMat(texMupi,texMupi,4,2,{});mupiMat.emissiveIntensity=0.15;
+  // cartel del mupi: campañas actuales (inventadas, sin marcas reales), impresas y retroiluminadas
+  const texMupi=cTex(2048,2048,(g)=>{const W=512,Hh=1024;
+    const grad=(x,y,c0,c1,c2)=>{const q=g.createLinearGradient(x,y,x,y+Hh);q.addColorStop(0,c0);q.addColorStop(0.55,c1);q.addColorStop(1,c2||c1);g.fillStyle=q;g.fillRect(x,y,W,Hh);};
+    const txt=(t,x,y,sz,c,w='bold',al='center',f='Helvetica,Arial,sans-serif')=>{g.fillStyle=c;g.textAlign=al;g.textBaseline='alphabetic';g.font=`${w} ${sz}px ${f}`;t.split('\n').forEach((l,i)=>g.fillText(l,x,y+i*sz*1.12));};
+    const circ=(x,y,r,c)=>{g.fillStyle=c;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();};
+    const rr=(x,y,w,h,r,c)=>{g.fillStyle=c;g.beginPath();g.roundRect(x,y,w,h,r);g.fill();};
+    const cells=[
+      // 0 festa major: cartel ilustrado con formas geométricas
+      (x,y)=>{grad(x,y,'#ffcf3f','#ff7a3d','#e8384f');for(let k=0;k<26;k++){circ(x+R(0,W),y+R(80,700),R(10,70),['#1d3557','#ffffff','#2a9d8f','#e8384f'][k%4]);}
+        g.save();g.globalAlpha=0.9;rr(x+30,y+700,W-60,260,18,'#1d3557');g.restore();txt('LA MERCÈ',x+W/2,y+790,78,'#ffffff');txt('Festes de Barcelona',x+W/2,y+850,34,'#ffcf3f','normal');txt('20 — 24 setembre',x+W/2,y+910,38,'#ffffff');},
+      // 1 concierto
+      (x,y)=>{grad(x,y,'#0b0f2a','#3a0ca3','#7209b7');for(let k=0;k<9;k++){g.strokeStyle=`rgba(255,${120+k*15},220,${0.25+k*0.05})`;g.lineWidth=6;g.beginPath();g.arc(x+W/2,y+380,60+k*26,0,Math.PI*2);g.stroke();}
+        circ(x+W/2,y+380,52,'#f72585');txt('NOVA GIRA',x+W/2,y+700,40,'#f8f8ff','normal');txt('LUNA ROJA',x+W/2,y+790,86,'#ffffff');txt('Palau Sant Jordi · 13 desembre',x+W/2,y+860,30,'#f72585');txt('Entrades a la venda',x+W/2,y+930,28,'#d0d0ff','normal');},
+      // 2 campaña de residuos: los cinco colores de los contenedores de BCN
+      (x,y)=>{grad(x,y,'#f4f6f3','#e7ece6');txt('Cada residu',x+W/2,y+150,62,'#1b1b1b');txt('al seu lloc',x+W/2,y+225,62,'#1b1b1b');
+        const C=[['#6f6f6f','Rebuig'],['#f2c500','Envasos'],['#1f5fae','Paper'],['#2f8f3a','Vidre'],['#8a5a2b','Orgànica']];C.forEach(([c,n],k)=>{const bx0=x+38+k*90;rr(bx0,y+380,72,190,10,c);rr(bx0-4,y+366,80,22,6,c);txt(n,bx0+36,y+610,19,'#222','bold');});
+        txt('Separa bé.',x+W/2,y+760,46,'#2f8f3a');txt('Barcelona recicla',x+W/2,y+820,32,'#444','normal');g.fillStyle='#d6001c';g.fillRect(x+W/2-90,y+880,180,8);},
+      // 3 moda
+      (x,y)=>{grad(x,y,'#e9e2d8','#d8cbb8','#b9a88f');g.fillStyle='#2b2622';g.beginPath();g.ellipse(x+W/2,y+230,62,78,0,0,Math.PI*2);g.fill();
+        g.beginPath();g.moveTo(x+W/2-70,y+320);g.quadraticCurveTo(x+W/2-150,y+600,x+W/2-120,y+780);g.lineTo(x+W/2+120,y+780);g.quadraticCurveTo(x+W/2+150,y+600,x+W/2+70,y+320);g.fill();
+        g.fillStyle='#a33b2a';g.fillRect(x+W/2-120,y+520,240,40);txt('ATELIER NORD',x+W/2,y+880,54,'#2b2622','300');txt('Col·lecció tardor-hivern',x+W/2,y+935,28,'#4b4038','normal');},
+      // 4 estreno de cine
+      (x,y)=>{grad(x,y,'#0d1b2a','#1b263b','#415a77');for(let k=0;k<60;k++)circ(x+R(0,W),y+R(0,420),R(1,3),'rgba(255,255,255,.8)');
+        g.fillStyle='#0a1118';g.beginPath();g.moveTo(x,y+640);for(let k=0;k<=10;k++)g.lineTo(x+k*W/10,y+R(470,600));g.lineTo(x+W,y+640);g.lineTo(x+W,y+Hh);g.lineTo(x,y+Hh);g.fill();
+        txt("L'ÚLTIM",x+W/2,y+720,70,'#e0e1dd');txt('HIVERN',x+W/2,y+800,96,'#ffffff');txt('Només als cinemes · 27 novembre',x+W/2,y+875,27,'#c9d6df','normal');g.fillStyle='rgba(255,255,255,.5)';g.fillRect(x+60,y+930,W-120,2);},
+      // 5 mercado municipal
+      (x,y)=>{grad(x,y,'#fff7e6','#ffe8c2');const F=['#e63946','#f4a261','#2a9d8f','#e9c46a','#8ab17d','#d62828'];for(let k=0;k<14;k++)circ(x+70+(k%4)*125+R(-20,20),y+220+Math.floor(k/4)*110+R(-15,15),R(40,58),F[k%6]);
+        rr(x+30,y+690,W-60,240,20,'#2a9d8f');txt('Compra de temporada',x+W/2,y+770,40,'#ffffff');txt('al mercat del barri',x+W/2,y+825,36,'#fff7e6','normal');txt('Mercats de Barcelona',x+W/2,y+895,28,'#ffe8c2','bold');},
+      // 6 teléfono
+      (x,y)=>{grad(x,y,'#e8eef5','#c9d6e8','#9fb3cf');rr(x+W/2-120,y+150,240,480,36,'#16181d');rr(x+W/2-108,y+166,216,448,28,'#3b82f6');
+        const q=g.createLinearGradient(x,y+166,x+W,y+614);q.addColorStop(0,'#60a5fa');q.addColorStop(1,'#a855f7');g.fillStyle=q;g.beginPath();g.roundRect(x+W/2-108,y+166,216,448,28);g.fill();
+        txt('Nou. Més prim.',x+W/2,y+760,52,'#16181d');txt('Més llum.',x+W/2,y+820,52,'#16181d');txt('Disponible a botigues',x+W/2,y+890,28,'#33415c','normal');},
+      // 7 movilidad en bici
+      (x,y)=>{grad(x,y,'#d7263d','#c81d34');const bk=(cx,cy)=>{g.strokeStyle='#ffffff';g.lineWidth=12;g.beginPath();g.arc(cx-95,cy,70,0,Math.PI*2);g.stroke();g.beginPath();g.arc(cx+95,cy,70,0,Math.PI*2);g.stroke();
+          g.beginPath();g.moveTo(cx-95,cy);g.lineTo(cx-20,cy-110);g.lineTo(cx+70,cy-110);g.lineTo(cx+95,cy);g.moveTo(cx-20,cy-110);g.lineTo(cx,cy);g.lineTo(cx+70,cy-110);g.moveTo(cx-35,cy-140);g.lineTo(cx,cy-140);g.moveTo(cx+70,cy-110);g.lineTo(cx+60,cy-150);g.lineTo(cx+95,cy-160);g.stroke();};bk(x+W/2,y+470);
+        txt('Mou-te',x+W/2,y+700,84,'#ffffff');txt('en bici',x+W/2,y+785,84,'#ffffff');txt('+ de 200 km de carril bici',x+W/2,y+860,30,'#ffe5e8','normal');}];
+    cells.forEach((f,k)=>{const x=(k%4)*W,y=Math.floor(k/4)*Hh;g.save();g.beginPath();g.rect(x,y,W,Hh);g.clip();f(x,y);
+      const sh=g.createLinearGradient(x,y,x+W,y+Hh);sh.addColorStop(0,'rgba(255,255,255,.06)');sh.addColorStop(0.5,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(0,0,0,.06)');g.fillStyle=sh;g.fillRect(x,y,W,Hh);g.restore();});},{});
+  const mupiMat=atlasMat(texMupi,texMupi,4,2,{});mupiMat.emissiveIntensity=0.3;
   defInst('mupi',PLANE.clone().scale(1.12,1.62,1),mupiMat,4,2,false);}
 // poste de parada TMB: cabecera roja y cuadrados de color con las líneas
 const texBus=cTex(256,512,(g)=>{g.fillStyle='#f4f4f2';g.fillRect(0,0,256,512);g.fillStyle='#d8202a';g.fillRect(0,0,256,120);g.fillStyle='#fff';g.font='bold 70px Arial';g.textAlign='center';g.textBaseline='middle';g.fillText('Bus',128,64);

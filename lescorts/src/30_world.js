@@ -16,12 +16,12 @@ let WD=null,MARKS=null,KERBS=[],CUSTOM=null;const BCOL=[];
 async function loadWorldData(){setLoad('w','Descargando Les Corts (datos del AMB)…');
   const [w,hb,mk,kb,sp,shp,cus,bcol]=await Promise.all([fetch('data/world.json').then(r=>r.json()),fetch('data/hm.bin').then(r=>r.arrayBuffer()),fetch('data/lanesfinal.json').then(r=>r.json()),fetch('data/kerbs.json').then(r=>r.json()),fetch('data/spots.json').then(r=>r.json()),fetch('data/shops.json').then(r=>r.json()).catch(()=>[]),fetch('data/custom.json').then(r=>r.json()).catch(()=>({add:[],styles:[],shops:[]})),fetch('data/bcolors.json').then(r=>r.json()).catch(()=>({}))]);CUSTOM=cus;for(const k in bcol){const [x,z]=k.split(',').map(Number);BCOL.push([x,z,bcol[k]]);}SPOTS=sp;
   {const TM={mercat:'fruteria',super:'super',taller:'ferre',mobles:'electro',floristeria:'fruteria',drogueria:'farmacia',clinica:'farmacia',joieria:'optica',oficina:'immo',motos:'electro'};POIS=shp.concat(cus.shops||[]).map(q=>[q[0],q[1],TM[q[2]]||q[2],q[3]]);}
-  // edificios que faltan en el modelo del AMB (vistos en tus fotos): sustituyen a los trozos que hubiera dentro
-  {const inside=(p,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
-    for(const A of cus.add||[]){w.build=w.build.filter(b=>!inside(centroid(b.r),A.r));const c=centroid(A.r);const y0=H0(c[0],c[1]);w.build.push({r:A.r,h:[],y0,y1:y0+A.h,rc:[150,90,70],sty:A.sty,name:A.name});}}
   const hd=new DataView(hb);const x0=hd.getFloat32(0,true),z0=hd.getFloat32(4,true),res=hd.getFloat32(8,true),nx=hd.getInt32(16,true),nz=hd.getInt32(20,true);
   const u16=new Uint16Array(hb,24,nx*nz);const h=new Float32Array(nx*nz);for(let i=0;i<h.length;i++)h[i]=u16[i]/100-10;
-  HMD={x0,z0,res,nx,nz,h,k:new Uint8Array(hb,24+nx*nz*2,nx*nz)};WD=w;MARKS=mk;KERBS=kb;prepVados();
+  HMD={x0,z0,res,nx,nz,h,k:new Uint8Array(hb,24+nx*nz*2,nx*nz)};WD=w;MARKS=mk;KERBS=kb;for(const A of cus.add||[])if(A.special==='b365')b365Patch(A.r);prepVados();
+  // edificios que faltan en el modelo del AMB (vistos en tus fotos): sustituyen a los trozos que hubiera dentro
+  {const inside=(p,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
+    for(const A of cus.add||[]){w.build=w.build.filter(b=>!inside(centroid(b.r),A.r));const c=centroid(A.r);const y0=H0(c[0],c[1]);if(A.special==='b365'){w.build.push(...b365Recs(A,y0));continue;}w.build.push({r:A.r,h:[],y0,y1:y0+A.h,rc:[150,90,70],sty:A.sty,name:A.name});}}
   for(const [k,f,sc,rot] of [['papelera','papelera',1.0,0],['armari','armari',1.0,0]]){try{const g=await gl.loadAsync('models/props/'+f+'.glb');const G=propGeo(g.scene,k==='papelera'?1.05:1.55);if(G){INST[k].geo=G.geo;INST[k].mat=G.mat;}}catch(e){console.warn('prop',k,e);}}}
 // un modelo de la comunidad convertido en una geometría por instancias (alto real en metros, apoyado en el suelo)
 function propGeo(root,height){root.updateMatrixWorld(true);const parts=[],mats=[];root.traverse(o=>{if(!o.isMesh)return;let g=o.geometry.clone();for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);g.applyMatrix4(o.matrixWorld);if(g.index)g=g.toNonIndexed();parts.push(g);const m=o.material.clone();m.aoMap=null;m.lightMap=null;if(m.map)m.map.anisotropy=4;mats.push(pbr(m));});
@@ -48,7 +48,7 @@ function buildGroundLC(){const us=US('asphalt'),up=US('panot4'),ug=US('granite')
       const e1=[B[0]-A[0],B[1]-A[1],B[2]-A[2]],e2=[C[0]-A[0],C[1]-A[1],C[2]-A[2]];const ny=e1[2]*e2[0]-e1[0]*e2[2],l=Math.hypot(e1[1]*e2[2]-e1[2]*e2[1],ny,e1[0]*e2[1]-e1[1]*e2[0])||1;
       if(Math.abs(ny/l)>0.5){TINT=[0.97,0.96,0.94];for(const t of subdivNear(A,B,C))triInto('panot4',...t.map(q=>[q[0],q[1]+raiseAt(q[0],q[2]),q[2]]),true,q=>[q[0]*up,q[2]*up]);}
       else{TINT=[0.92,0.91,0.89];triInto('granite',...[A,B,C].map(q=>[q[0],q[1]+KERBH,q[2]]),false,(q,n)=>{const s=Math.abs(n[0])>Math.abs(n[2])?q[2]:q[0];return[s*ug,q[1]*ug];});}}TINT=[1,1,1];}
-  {const {V,f}=M(WD.terreny);for(let i=0;i<f.length;i+=3){const A=V(f[i]),B=V(f[i+1]),C=V(f[i+2]);const cx=(A[0]+B[0]+C[0])/3,cz=(A[2]+B[2]+C[2])/3;const k=groundKind(cx,cz);if(k===2||k===3)continue;
+  {const {V,f}=M(WD.terreny);for(let i=0;i<f.length;i+=3){const A=V(f[i]),B=V(f[i+1]),C=V(f[i+2]);const cx=(A[0]+B[0]+C[0])/3,cz=(A[2]+B[2]+C[2])/3;const k=groundKind(cx,cz);const inOld=B365.old&&insidePoly(cx,cz,B365.old);if(k===2||k===3||inOld){if(inOld&&k!==2){TINT=[0.97,0.96,0.94];for(const t of subdivNear(A,B,C))triInto('panot4',...t.map(q=>[q[0],q[1]+raiseAt(q[0],q[2]),q[2]]),true,q=>[q[0]*up,q[2]*up]);TINT=[1,1,1];}continue;}
       triInto('ortho',...[A,B,C].map(q=>[q[0],q[1]+KERBH,q[2]]),true,q=>OU(q[0],q[2]),-0.03);}}
   buildKerbs();
   // suelo lejano (fuera de la hoja): asfalto plano
@@ -109,7 +109,7 @@ function buildMarks(){TINT=hexTint(PAINTW);for(const q of MARKS.quads){const c=[
 const BLD=[];
 function isStreetSide(mx,mz,nx,nz){for(const d of [2.2,3.5]){const k=groundKind(mx+nx*d,mz+nz*d);if(k===2||k===3)return true;}return false;}
 function buildBuildingsLC(){for(const b of WD.build){let r=b.r;if(r.length<3)continue;if(polyArea(r)<0)r=r.slice().reverse();// antihorario en (x,z)
-    const y0=b.y0,y1=b.y1,hgt=y1-y0;const c=centroid(r);const rec={r,y0,y1,c,edges:[]};BLD.push(rec);
+    const y0=b.y0,y1=b.y1,hgt=y1-y0;const c=centroid(r);const rec={r,y0,y1,c,edges:[],noGF:b.noGF,lift:b.lift,unitsFor:b.unitsFor,balcFor:b.balcFor};BLD.push(rec);
     // colisión: triángulos convexos de la huella
     const tri=THREE.ShapeUtils.triangulateShape(r.map(q=>new THREE.Vector2(q[0],q[1])),[]);for(const t of tri)addPolyV(t.map(i=>r[i]),y0-1.5,y1);
     const st=lcStyle(b,hgt);rec.st=st;
@@ -117,11 +117,12 @@ function buildBuildingsLC(){for(const b of WD.build){let r=b.r;if(r.length<3)con
       const nx=ez/L,nz=-ex/L;// normal exterior (anillo antihorario visto desde arriba con z hacia el sur)
       const street=hgt>3.5&&L>2.5&&isStreetSide((a[0]+q[0])/2,(a[1]+q[1])/2,nx,nz);rec.edges.push({a,b:q,nx,nz,L,street});
       if(street)lcFacade(rec,{a,b:q,nx,nz,L});else lcPlainWall(rec,a,q,nx,nz,L);}
+    if(b.lift){const B=bufOf(c[0],c[1],'concrete_wall');TINT=[0.95,0.93,0.9];const n0=B.n.length;capPoly(B,r,y0,US('concrete_wall'),true);for(let i=n0;i<B.n.length;i+=3){B.n[i]=0.3;B.n[i+1]=0.6;B.n[i+2]=0.3;}TINT=[1,1,1];}// techo del vuelo sobre la acera
     // azotea: losa con el color medio de la ortofoto y pretil
     {const B=bufOf(c[0],c[1],'concrete_wall');TINT=b.rc?b.rc.map(v=>v/255*1.15):[0.75,0.7,0.65];capPoly(B,r,y1,US('concrete_wall'));TINT=[1,1,1];}
     if(hgt>7)for(let i=0;i<r.length;i++){const a=r[i],q=r[(i+1)%r.length];const L=Math.hypot(q[0]-a[0],q[1]-a[1]);if(L<0.5)continue;const nx=(q[1]-a[1])/L,nz=-(q[0]-a[0])/L;
       const B=bufOf(a[0],a[1],st.wall);TINT=st.tint;wall(B,a[0]-nx*0.2,a[1]-nz*0.2,q[0]-nx*0.2,q[1]-nz*0.2,y1,y1+0.9,-nx,-nz,US(st.wall));TINT=[1,1,1];}}}
-function lcPlainWall(rec,a,q,nx,nz,L){const st=rec.st;const B=bufOf((a[0]+q[0])/2,(a[1]+q[1])/2,st.side);TINT=st.sideTint;wall(B,a[0],a[1],q[0],q[1],rec.y0-1,rec.y1+(rec.y1-rec.y0>7?0.9:0),nx,nz,US(st.side));TINT=[1,1,1];
+function lcPlainWall(rec,a,q,nx,nz,L){const st=rec.st;const B=bufOf((a[0]+q[0])/2,(a[1]+q[1])/2,st.side);TINT=st.sideTint;wall(B,a[0],a[1],q[0],q[1],rec.y0-(rec.lift?0:1),rec.y1+(rec.y1-rec.y0>7?0.9:0),nx,nz,US(st.side));TINT=[1,1,1];
   // ventanas de patio de luces / fachada interior (pocas, para no gastar)
   const hgt=rec.y1-rec.y0;if(hgt<7||L<5)return;const F=Math.floor((hgt-4)/2.95);const n=Math.floor(L/4.2);const ux=(q[0]-a[0])/L,uz=(q[1]-a[1])/L;const yaw=Math.atan2(nx,nz);
   for(let f=0;f<F;f++)for(let k=0;k<n;k++){if(Math.random()<0.35)continue;const t=(k+0.5)*L/n;addInst('win',a[0]+ux*t+nx*0.02,rec.y0+4+f*2.95+0.1,a[1]+uz*t+nz*0.02,yaw,1.0,1.3,1,pick([0,1,2,8,12]),Math.random()<0.25?1:0);}}

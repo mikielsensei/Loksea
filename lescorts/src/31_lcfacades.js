@@ -25,6 +25,8 @@ const LC_WF=[7,2,1,3,2,0];
 const LC_CUST={
   granit:{w:0,wall:'plaster_cream',tints:['#e6dccb'],low:'granitPanel',lowTint:[0.52,0.53,0.55],lowF:2,slab:'#ecebe6',balc:'none',rail:1,side:'plaster_grey',gfMat:'granitPanel',gfTint:[0.85,0.85,0.86],win:'box'},
   metall:{w:0,wall:'plaster_cream',tints:['#e2c4ae'],slab:'#ecebe6',balc:'none',rail:1,side:'brick',metal:true,gfMat:'plaster_cream',gfTint:[0.86,0.76,0.68]},
+  b365base:{moldT:[0.42,0.43,0.45],w:0,wall:'granitPanel',tints:['#8a8c90'],low:'granitPanel',lowTint:[0.52,0.53,0.55],lowF:1,slab:'#ecebe6',balc:'none',rail:1,side:'plaster_grey',gfMat:'granitPanel',gfTint:[0.52,0.53,0.55],win:'box'},
+  b365up:{w:0,wall:'plaster_cream',tints:['#d9d6cc'],slab:'#ecebe6',balc:'ind',rail:1,side:'plaster_grey',gfMat:'plaster_cream',gfTint:[0.85,0.82,0.76]},
   maoBlanc:{w:0,wall:'brick',tints:['#c8846a'],slab:'#ecebe6',balc:'none',rail:1,side:'brick',blank:true,gfMat:'brick',gfTint:[0.78,0.5,0.4]}};
 function custStyle(b){if(b.sty&&LC_CUST[b.sty])return LC_CUST[b.sty];if(!CUSTOM)return null;const c=centroid(b.r);for(const s of CUSTOM.styles||[])if(Math.hypot(c[0]-s.at[0],c[1]-s.at[1])<s.r)return LC_CUST[s.sty];return null;}
 // color de fachada medido en tus fotos -> material y tinte (sobre la textura fotográfica neutra)
@@ -58,18 +60,19 @@ function focusD(x,z){let d=1e9;for(const [A,B] of LC_FOCUS)d=Math.min(d,segD(x,z
 function lcFacade(rec,seg){const{a,b,nx,nz,L}=seg;const st=rec.st;const ux=(b[0]-a[0])/L,uz=(b[1]-a[1])/L;const yaw=Math.atan2(nx,nz);
   const mx=(a[0]+b[0])/2,mz=(a[1]+b[1])/2;const yb=Math.max(rec.y0,H(mx+nx*1.6,mz+nz*1.6));// suelo de la acera delante
   const fd=focusD(mx,mz),det=fd<32?2:fd<75?1:0;// 2: todo (interiores), 1: fachada completa sin interiores, 0: lejos, lo justo
-  const hgt=rec.y1-yb;const gf=hgt<7?Math.min(3.6,hgt-0.4):4.0,fh=2.92;const F=Math.max(0,Math.floor((rec.y1-yb-gf-0.3)/fh));const top=rec.y1;
+  const hgt=rec.y1-yb;const gf=rec.noGF?0:hgt<7?Math.min(3.6,hgt-0.4):4.0,fh=2.92;const F=Math.max(0,Math.floor((rec.y1-yb-gf-0.3)/fh));const top=rec.y1;
   // planta baja: locales y portal
   const units=[];const openH=Math.min(3.25,gf-0.6);
   if(L>=3.2){const pw=R(1.9,2.3);const pu=L<9?(Math.random()<0.5?0.4:L-pw-0.4):R(0.2,0.8)*(L-pw);let t=0.35;
     const shopsIn=(from,to)=>{let x=from;while(to-x>2.6){let w=Math.min(to-x-0.3,R(3.6,7.5));if(to-x-w<2.8)w=to-x-0.3;if(w<2.4)break;const sm=pickSmall();const real=POIS.some(p=>Math.hypot(p[0]-(a[0]+ux*(x+2)),p[1]-(a[1]+uz*(x+2)))<9);
         const state=det===2?(Math.random()<0.86?'glass':'closed'):(Math.random()<(det?0.5:0.25)?'dark':'closed');units.push({u0:x,u1:x+w,y1:openH,kind:'shop',state,shop:{type:sm.t,signIdx:undefined,noSign:!real,awning:['bar','fruteria','forn','restaurant'].includes(sm.t)&&Math.random()<0.45},room:{d:R(5,9)},lc:true});x+=w+R(0.35,0.7);}};
     shopsIn(t,pu);units.push({u0:pu,u1:pu+pw,y1:Math.min(3.1,gf-0.5),kind:'portal'});shopsIn(pu+pw+0.35,L-0.3);}
+  if(rec.noGF)units.length=0;if(rec.unitsFor){const U=rec.unitsFor(seg);if(U){units.length=0;units.push(...U);}}
   const lot={yb,gf,fh,F,st:{pb:'stone_dark',up:st.wall},tint:'#ffffff',pbTint:[0.85,0.83,0.8],bk:{outer:false,i:0,j:0},facades:[],units,trimHex:'#d8d8d4',railK:st.rail};
   if(st.blank){units.length=0;}
-  const holes=units.map(u=>[u.u0,u.u1,0.25,u.y1+0.25]);wallHoles(st.gfMat||'stone_dark',a,b,nx,nz,rec.y0-1,yb+gf,holes,0.3,US(st.gfMat||'stone_dark'),st.gfTint||[0.82,0.8,0.77]);
+  const holes=units.map(u=>[u.u0,u.u1,0.25,u.y1+0.25]);if(!rec.noGF)wallHoles(st.gfMat||'stone_dark',a,b,nx,nz,rec.y0-1,yb+gf,holes,0.3,US(st.gfMat||'stone_dark'),st.gfTint||[0.82,0.8,0.77]);
   // fascia sobre los escaparates
-  moldStrip(a,b,nx,nz,yb+gf-0.05,0.3,0.12,[0.9,0.9,0.88]);
+  if(!rec.noGF)moldStrip(a,b,nx,nz,yb+gf-0.05,0.3,0.12,st.moldT||[0.9,0.9,0.88]);
   {let y=yb+gf;if(st.low){const yl=Math.min(top,yb+gf+st.lowF*fh);const B=bufOf(mx,mz,st.low);TINT=st.lowTint;wall(B,a[0],a[1],b[0],b[1],y,yl,nx,nz,US(st.low));y=yl;}
     if(st.blank&&hgt>4.5){const yl=Math.min(top,yb+4.2);const B=bufOf(mx,mz,'brick');TINT=[0.78,0.5,0.4];wall(B,a[0],a[1],b[0],b[1],yb+gf,yl,nx,nz,US('brick'));y=yl;const B2=bufOf(mx,mz,'concrete_wall');TINT=[0.95,0.95,0.94];wall(B2,a[0],a[1],b[0],b[1],y,top,nx,nz,US('concrete_wall'));TINT=[1,1,1];FACADES.push({a,b,nx,nz,L,yb,gf,F:0,fh,outer:false});return;}
     const B=bufOf(mx,mz,st.wall);TINT=st.tint;wall(B,a[0],a[1],b[0],b[1],y,top+(hgt>7?0.9:0),nx,nz,US(st.wall));TINT=[1,1,1];
@@ -87,7 +90,7 @@ function lcFacade(rec,seg){const{a,b,nx,nz,L}=seg;const st=rec.st;const ux=(b[0]
       addInst('losaCorrida',mx,fy-0.1,mz,yaw,L-0.1,1,1.15,0,0,0,slabCol);const nr=Math.max(1,Math.round((L-0.4)/1.6)),rw=(L-0.4)/nr;
       if(det)for(let r=0;r<nr;r++){const t=0.2+(r+0.5)*rw;addInst('balcRailF',a[0]+ux*t,fy+0.08,a[1]+uz*t,yaw,rw,1.0,1.12,1);}}
     for(let k=0;k<n;k++){const t=(k+0.5)*bay;const x=a[0]+ux*t+nx*0.015,z=a[1]+uz*t+nz*0.015;const ww=Math.min(bay-0.7,st.balc==='cont'?1.6:1.25),wh=st.balc==='cont'?2.3:1.45;
-      const door=st.balc!=='none'&&(st.balc==='cont'||(st.balc==='glass')||Math.random()<0.4);const wy=door?fy+0.02:fy+0.9;const cell=Math.random()<0.6?pick([0,1,2,3,8,12]):(Math.random()*16)|0;
+      const door=rec.balcFor?rec.balcFor(seg,k,n,bay):st.balc!=='none'&&(st.balc==='cont'||(st.balc==='glass')||Math.random()<0.4);const wy=door?fy+0.02:fy+0.9;const cell=Math.random()<0.6?pick([0,1,2,3,8,12]):(Math.random()*16)|0;
       addInst('win',x,wy,z,yaw,ww,door?2.3:wh,1,cell,Math.random()<0.12?1:0);if(det)addInst('winFrame',x,wy,z,yaw,ww,door?2.3:wh,1,0,0,0,0xd8dadc);if(!det&&f>0)continue;
       if(st.balc==='ind'&&door&&!last){const bw=ww+0.5,bd=R(0.55,0.75);addInst('balcSlab',x,fy-0.02,z,yaw,bw,1,bd,0,0,0,slabCol);addInst('balcRail',x,fy+0.12,z,yaw,bw,1.0,bd,st.rail);}
       if(st.balc==='glass'&&!last){const bw=ww+0.6;addInst('balcSlab',x,fy-0.02,z,yaw,bw,1,1.0,0,0,0,slabCol);addInst('railGlass',x,fy+0.12,z,yaw,bw,1.0,0.98);addInst('railTop',x,fy+0.12,z,yaw,bw,1,0.98);}
