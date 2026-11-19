@@ -157,6 +157,9 @@ function sfx(type,vol=1){if(!AC||vol<=0.01)return;try{
   else if(type==='click'){env(osc('square',1800,0,0.03),0.08,0.03);}
   else if(type==='magout'){env(osc('square',900,300,0.06),0.12,0.07);const f=filt('bandpass',2500);noiseSrc(0.1).connect(f);env(f,0.15,0.06);}
   else if(type==='magin'){env(osc('square',600,1200,0.05),0.15,0.06);const f=filt('bandpass',3000);noiseSrc(0.1).connect(f);env(f,0.25,0.05);}
+  else if(type==='rifle'){const f=filt('lowpass',1800);noiseSrc(0.9).connect(f);env(f,1.0*vol,0.7);env(osc('sine',90,30,0.3),0.8*vol,0.3);const f2=filt('highpass',3000);noiseSrc(0.08).connect(f2);env(f2,0.5*vol,0.06);}
+  else if(type==='boltback'){const f=filt('bandpass',1700,3);noiseSrc(0.12).connect(f);env(f,0.4,0.1);env(osc('square',700,250,0.05),0.08,0.05);}
+  else if(type==='boltfwd'){const f=filt('bandpass',2600,3);noiseSrc(0.1).connect(f);env(f,0.45,0.08);env(osc('square',500,900,0.04,0.06),0.1,0.04,0.06);}
   else if(type==='rack'){const f=filt('bandpass',2200,2);noiseSrc(0.1).connect(f);env(f,0.35,0.06);const f2=filt('bandpass',3200,2);noiseSrc(0.1,0.12).connect(f2);env(f2,0.35,0.06,0.12);}
   else if(type==='clink'){env(osc('sine',R(3000,4500),0,0.08),0.06*vol,0.08);}
   else if(type==='thud'){const f=filt('lowpass',500);noiseSrc(0.15).connect(f);env(f,0.3*vol,0.12);}
@@ -1754,6 +1757,7 @@ async function loadModels(){setLoad('m','Descargando personajes…');
       const len=bb.max.z-bb.min.z;geo.translate(-(bb.min.x+bb.max.x)/2,-bb.max.y+0.04,-(bb.min.z+len*0.3));const m=mm.material;const mat=new THREE.MeshStandardMaterial({map:m.map,normalMap:m.normalMap,roughnessMap:m.roughnessMap,metalnessMap:m.metalnessMap,roughness:1,metalness:1});
       RIFLE_T={geo,mat};}}}
   {const g=await loadAny(['models/weapons/deagle.glb']);if(g){fitDeagle(vrGun,g.scene);fitDeagle(vmGun,g.scene);}}
+  {const g=await loadAny(['models/weapons/awp.glb']);if(g){fitAWP(vrRifle,g.scene);fitAWP(vmRifle,g.scene);}}
   setLoad('v','Descargando coches y motos…');await loadVehicles();await loadMotos();
   for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
   modelsReady=true;enableStart();}
@@ -2320,7 +2324,7 @@ function poseHand(hr){const root=hr.root;root.updateWorldMatrix(true,true);
       if(i<names.length-1){const nb=hr.bind[names[i+1]];_v.subVectors(nb.p,bn.p).applyQuaternion(_hq);_hp.copy(_hd).add(_v);}}}}
 const hands={left:null,right:null};const gripBySide={};
 function setupHands(){for(const side of ['left','right']){let root=HANDTPL[side]?SkeletonUtils.clone(HANDTPL[side]):null;let hr=root?prepHand(root,side):null;if(!hr)hr=prepHand(buildProcHand(side),side);if(!hr){const handRoot=new THREE.Group(),wristObj=new THREE.Object3D();handRoot.add(wristObj);hr={side,handRoot,align:handRoot,root:handRoot,J:{},bind:{},chains:{},wristObj,curl:{thumb:0.2,index:0.1,middle:0.2,ring:0.2,pinky:0.2},off:new V3()};}hands[side]=hr;
-    if(side==='right')hr.handRoot.add(vrWeapon);else hr.handRoot.add(leftMag);}applyHC();}
+    if(side==='right')hr.handRoot.add(vrWeapon);else{hr.handRoot.add(leftMag);hr.handRoot.add(leftRMag);}}applyHC();}
 function applyHC(){for(const side of ['left','right']){const hr=hands[side];if(!hr)continue;const m=side==='right'?1:-1;hr.handRoot.rotation.set(HC.pitch,HC.yaw*m,HC.roll*m);hr.handRoot.position.set(HC.up*0,HC.up,HC.fwd).add(hr.off);}}
 
 // =====================================================================
@@ -2396,7 +2400,7 @@ function meleeFlat(){swingT=0.28;sfx('swish');camera.getWorldPosition(_o2);camer
     const dmg=(r.part==='head'?s*6:r.part==='body'?s*3:s*4)*moodF*(P.weapon==='manos'?0.3:1);_e2.copy(_o2).addScaledVector(_d2,r.t);
     HITKIND=P.weapon==='machete'?'cut':'blunt';if(P.weapon==='machete')_imp.multiplyScalar(0.5);hitChar(r.h,r.part,dmg,_imp,r.pi,'player',_e2,_d2);if(P.weapon==='machete')trySever(r.h,r.part,r.pi,6.5,_d2);HITKIND='';sfx(r.part==='head'?'hithead':'hit');spray(_e2,_d2,8);}}
 const tipPrev=new V3(),tipNow=new V3(),midNow=new V3(),tipVel=new V3();let tipInit=false;
-function vrMelee(dt){if(!hands.right||!hands.right.handRoot.parent||P.weapon==='pistola')return;
+function vrMelee(dt){if(!hands.right||!hands.right.handRoot.parent||P.weapon==='pistola'||P.weapon==='rifle')return;
   if(P.weapon==='bate'||P.weapon==='machete'){const w=P.weapon==='bate'?vrBat:vrMach;w.userData.tip.getWorldPosition(tipNow);w.userData.mid.getWorldPosition(midNow);}else{hands.right.wristObj.getWorldPosition(tipNow);midNow.copy(tipNow);}
   if(!tipInit){tipPrev.copy(tipNow);tipInit=true;return;}tipVel.subVectors(tipNow,tipPrev).divideScalar(Math.max(dt,0.008));tipPrev.copy(tipNow);
   const sp=Math.min(14,tipVel.length());if(sp<2.2)return;
@@ -2414,6 +2418,102 @@ function damagePlayer(n,from,bite){if(!P.alive)return;if(from==='zombi')n*=S.zSt
   if(P.sleeping){P.sleeping=false;toast('¡Te despiertan a mordiscos!');}haptic(srcL,0.8,80);haptic(srcR,0.8,80);
   if(bite&&S.infection&&!P.infected&&Math.random()<0.12){P.infected=true;P.infT=0;toast('¡Te ha mordido!',3);}
   if(P.hp<=0){P.hp=0;P.alive=false;P.deadT=0;closePanel();if(P.inCar){P.inCar.speed=0;P.inCar=null;headlight.intensity=0;}toast(`HAS MUERTO (${from}). Sobreviviste ${dayNum()} días y abatiste ${P.kills} zombis.`,6);}}
+
+// =====================================================================
+// RIFLE DE CERROJO (AWP, modelo que pasaste): todo a mano en VR
+//  · cargador extraíble (agarra el cargador con la izquierda; los de repuesto en el cinturón)
+//  · cerrojo: levanta la palanca, tira atrás (sale el casquillo o la bala), empuja adelante (mete la siguiente) y bájala
+//  · solo dispara con el cerrojo cerrado y abajo y bala en la recámara
+//  · agarrando el guardamanos con la izquierda se apunta a dos manos; mira telescópica con aumento real
+// =====================================================================
+const RF={mag:5,chamber:true,spent:false,lift:0,back:0,kick:0,stroke:0,auto:0};let RBELT=[5,5];let boltGrab=null,foreGrab=false;
+const RFMAG=5;
+// cargador del AWP (caja negra de 5 cartuchos .338)
+function makeRMag(){const g=new THREE.Group();const body=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.075,0.085),polySmooth);body.position.y=-0.0375;g.add(body);
+  const lips=new THREE.Mesh(new THREE.BoxGeometry(0.022,0.006,0.07),gunMetalMat);lips.position.y=0.003;g.add(lips);
+  const bul=new THREE.Mesh(new THREE.CylinderGeometry(0.0065,0.0065,0.06,10),brassMat);bul.rotation.x=Math.PI/2;bul.position.set(0,0.008,0);g.add(bul);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.0055,0.02,10),new THREE.MeshStandardMaterial({color:0x6a4a2a,metalness:0.9,roughness:0.35}));tip.rotation.x=-Math.PI/2;tip.position.set(0,0.008,-0.04);g.add(tip);
+  g.userData.bullet=bul;g.userData.tip=tip;g.userData.rifle=true;return g;}
+// grupo del rifle: origen en la empuñadura, cañón hacia -z. Marcas medidas sobre el modelo.
+function makeAWPGroup(){const g=new THREE.Group();const mk=(x,y,z)=>{const o=new THREE.Object3D();o.position.set(x,y,z);g.add(o);return o;};
+  const flash=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,6),new THREE.MeshBasicMaterial({color:0xffd27a,transparent:true,opacity:0}));flash.position.set(0,0.12,-1.06);g.add(flash);
+  g.userData={flash,muzzle:mk(0,0.12,-1.04),magwell:mk(0,0.0,-0.17),bolt:mk(0.06,0.077,-0.08),port:mk(0.03,0.115,-0.15),fore:mk(0,0.05,-0.42),eye:mk(0,0.181,0.03),scopeF:mk(0,0.181,-0.36)};
+  g.userData.ready=false;return g;}
+const RIFLES=[];
+function fitAWP(gun,src){const sc=SkeletonUtils.clone(src);sc.rotation.y=Math.PI;sc.position.set(0,-0.114,0.048);gun.add(sc);gun.updateMatrixWorld(true);
+  let sk=null;sc.traverse(o=>{if(o.isSkinnedMesh){sk=o;o.frustumCulled=false;const m=o.material;if(m){m.envMapIntensity=0.8;pbr(m);}}});if(!sk)return;
+  const B={};for(const b of sk.skeleton.bones){const n=b.name;if(/bolt_rail/.test(n))B.rail=b;else if(/bolt_action/.test(n))B.act=b;else if(/clip/.test(n))B.clip=b;else if(/trigger/.test(n))B.trig=b;}
+  const D={gun,sk,B,rest:{}};for(const k in B)D.rest[k]={p:B[k].position.clone(),q:B[k].quaternion.clone()};gun.userData.ready=true;RIFLES.push(D);}
+// pose de los huesos: el carril del cerrojo recorre 3,74" (9,5 cm) en su eje y; la palanca gira 0,64 rad sobre su eje y (animación original)
+function poseRifle(D,trig){const B=D.B;
+  if(B.rail)B.rail.position.y=D.rest.rail.p.y-RF.back*3.74;
+  if(B.act)B.act.quaternion.copy(D.rest.act.q).multiply(_q.setFromAxisAngle(_v.set(0,1,0),-0.64*RF.lift));
+  if(B.clip)B.clip.scale.setScalar(RF.mag>=0?1:0.0001);
+  if(B.trig)B.trig.quaternion.copy(D.rest.trig.q).multiply(_q.setFromAxisAngle(_v.set(0,0,1),-trig*0.3));}
+const vrRifle=makeAWPGroup(),vmRifle=makeAWPGroup();vrWeapon.add(vrRifle);vrRifle.rotation.x=HFIT.gr;vrRifle.position.set(0,HFIT.gy,HFIT.gz);const RF_BASEQ=vrRifle.quaternion.clone();
+viewModel.add(vmRifle);vmRifle.position.set(0.0,-0.06,0.12);vmRifle.rotation.set(0.02,0.04,0);vmRifle.visible=false;vrRifle.visible=false;
+const leftRMag=makeRMag();leftRMag.visible=false;leftRMag.rotation.x=-Math.PI/2;leftRMag.position.set(0,0,-0.04);
+const beltRMags=[];for(let i=0;i<2;i++){const m=makeRMag();m.position.set(0,0.06,i*0.06-0.03);m.rotation.y=Math.PI/2;m.scale.setScalar(0.9);beltPouch.add(m);beltRMags.push(m);m.visible=false;}
+// casquillo grande del .338
+const rcasingGeo=new THREE.CylinderGeometry(0.0068,0.0068,0.07,8);
+function ejectRound(live){const gun=inVR?vrRifle:vmRifle;gun.userData.port.getWorldPosition(_v);const m=new THREE.Mesh(rcasingGeo,brassMat);gun.getWorldQuaternion(m.quaternion);m.quaternion.multiply(_q.setFromAxisAngle(_v1.set(1,0,0),Math.PI/2));
+  _v1.set(1,0.7,0.3).applyQuaternion(gun.getWorldQuaternion(_q2)).multiplyScalar(R(1.4,2.2));dropObj(m,_v,_v1,false);if(live&&!inVR)addItem('balas',1,'gift');}
+const _q2=new Q4();
+// cerrojo: transiciones (abrir saca lo que haya en la recámara; cerrar mete la siguiente del cargador)
+function boltSet(lift,back){const pb=RF.back;if(back>0.01)lift=1;// con el cerrojo atrás la palanca va arriba
+  if(pb<0.01&&back>=0.01&&RF.lift<0.98)back=0;// no se puede tirar sin levantar la palanca
+  RF.lift=clamp(lift,0,1);RF.back=clamp(back,0,1);
+  if(pb<0.9&&RF.back>=0.9&&RF.stroke===0){RF.stroke=1;sfx('boltback');haptic(srcL,0.7,40);if(RF.chamber||RF.spent){ejectRound(RF.chamber&&!RF.spent);RF.chamber=false;RF.spent=false;}}
+  if(RF.stroke===1&&RF.back<0.05){RF.stroke=0;sfx('boltfwd');haptic(srcL,0.6,40);if(RF.mag>0&&!RF.chamber){RF.mag--;RF.chamber=true;}}}
+function rifleReady(){return RF.lift<0.02&&RF.back<0.01;}
+function fireRifle(o,d){if(!rifleReady()){sfx('click');if(!inVR)toast('Cierra el cerrojo');return;}if(!RF.chamber||RF.spent){sfx('click');haptic(srcR,0.2,15);if(!inVR){if(RF.spent||RF.mag>0)RF.auto=0.01;else toast('Sin balas: pulsa R');}return;}
+  RF.chamber=false;RF.spent=true;RF.kick=1;sfx('rifle');makeNoise(o.x,o.z,140);haptic(srcR,1,110);haptic(srcL,0.8,90);const gun=inVR?vrRifle:vmRifle;gun.userData.flash.material.opacity=1;
+  let tb=rayWorld(o,d,400);const pn=rayPanes(o,d,tb);if(pn&&pn.t<tb){breakPane(pn.p);tb=rayWorld(o,d,400);}
+  // atraviesa a la primera persona si no le da en la cabeza
+  let skip=null;for(let k=0;k<2;k++){const r=rayChars(o,d,tb,skip);if(!r.h){if(k===0){const td=dynShot(o,d,tb);_e2.copy(o).addScaledVector(d,td>=0?td:tb);impactPuff(_e2);tracer(o,_e2);}break;}
+    _e2.copy(o).addScaledVector(d,r.t);if(k===0)tracer(o,_e2);const head=r.part==='head';hitChar(r.h,r.part,head?999:160,_imp.copy(d).multiplyScalar(head?9:7),r.pi,'player',_e2,d);spray(_e2,d,head?24:14);sfx(head?'hithead':'hit',0.7);
+    if(head)break;skip=r.h;}
+  if(!inVR)RF.auto=0.45;}// en pantalla el cerrojo se acciona solo
+function reloadRifleFlat(){if(RF.mag>=RFMAG&&RF.chamber)return;if(RF.mag>0)addItem('balas',RF.mag,'gift');RF.mag=-1;const n=takeItem('balas',RFMAG);if(!n){toast('No te quedan balas');return;}RF.mag=n;sfx('magin');
+  if(!RF.chamber||RF.spent){RF.auto=0.3;}toast(`Recargas el rifle (${RF.mag}${RF.chamber&&!RF.spent?'+1':''})`);}
+function refillRBelt(){for(let i=0;i<2;i++)if(RBELT[i]===null||RBELT[i]===0){const n=takeItem('balas',RFMAG);if(n)RBELT[i]=n;else if(RBELT[i]===0)RBELT[i]=null;}}
+// mira telescópica: una cámara de campo estrecho pinta en la lente del ocular cuando acercas el ojo
+const SCOPE={rt:null,cam:new THREE.PerspectiveCamera(3.2,1,0.5,900),lens:null,on:false,t:0};
+{const g=new THREE.CircleGeometry(0.0215,24);const m=new THREE.MeshBasicMaterial({color:0x101418});SCOPE.lens=new THREE.Mesh(g,m);SCOPE.lens.position.set(0,0.181,0.0075);vrRifle.add(SCOPE.lens);
+  // retícula Mil-Dot dibujada encima de la imagen
+  const rc=cTex(256,256,(g2,w,h)=>{g2.clearRect(0,0,w,h);g2.strokeStyle='rgba(0,0,0,.95)';g2.lineWidth=2;g2.beginPath();g2.moveTo(0,h/2);g2.lineTo(w,h/2);g2.moveTo(w/2,0);g2.lineTo(w/2,h);g2.stroke();g2.lineWidth=7;g2.beginPath();g2.moveTo(0,h/2);g2.lineTo(w*0.3,h/2);g2.moveTo(w*0.7,h/2);g2.lineTo(w,h/2);g2.moveTo(w/2,h*0.7);g2.lineTo(w/2,h);g2.stroke();
+    g2.fillStyle='#000';for(let i=-4;i<=4;i++){if(!i)continue;g2.beginPath();g2.arc(w/2+i*13,h/2,2.2,0,7);g2.fill();g2.beginPath();g2.arc(w/2,h/2+i*13,2.2,0,7);g2.fill();}
+    const v=g2.createRadialGradient(w/2,h/2,w*0.36,w/2,h/2,w*0.5);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,1)');g2.fillStyle=v;g2.fillRect(0,0,w,h);},{});
+  const rm=new THREE.Mesh(new THREE.CircleGeometry(0.0215,24),new THREE.MeshBasicMaterial({map:rc,transparent:true,depthWrite:false}));rm.position.set(0,0.181,0.008);vrRifle.add(rm);SCOPE.ret=rm;}
+function scopeRender(){if(!(inVR&&P.weapon==='rifle'&&vrRifle.visible&&vrRifle.userData.ready)){SCOPE.on=false;return;}
+  vrRifle.userData.eye.getWorldPosition(_v);camera.getWorldPosition(_v1);const near=_v.distanceTo(_v1)<0.2;
+  if(!near){if(SCOPE.on){SCOPE.lens.material.map=null;SCOPE.lens.material.color.set(0x101418);SCOPE.lens.material.needsUpdate=true;SCOPE.on=false;}return;}
+  if(!SCOPE.rt)SCOPE.rt=new THREE.WebGLRenderTarget(384,384);if(!SCOPE.on){SCOPE.lens.material.map=SCOPE.rt.texture;SCOPE.lens.material.color.set(0xffffff);SCOPE.lens.material.needsUpdate=true;SCOPE.on=true;}
+  SCOPE.t^=1;if(SCOPE.t)return;// a medio ritmo para no ahogar las Quest
+  vrRifle.userData.scopeF.getWorldPosition(SCOPE.cam.position);vrRifle.getWorldQuaternion(SCOPE.cam.quaternion);SCOPE.cam.updateMatrixWorld(true);
+  const xr=renderer.xr.enabled;renderer.xr.enabled=false;const vis=vrWeapon.visible;vrWeapon.visible=false;const cur=renderer.getRenderTarget();renderer.setRenderTarget(SCOPE.rt);renderer.render(scene,SCOPE.cam);renderer.setRenderTarget(cur);vrWeapon.visible=vis;renderer.xr.enabled=xr;}
+// a dos manos: la izquierda en el guardamanos orienta el rifle (de la empuñadura hacia la mano izquierda)
+const _rf1=new V3(),_rf2=new V3(),_rq=new Q4(),_rq2=new Q4();
+function rifleTwoHand(handP){vrRifle.quaternion.copy(RF_BASEQ);vrRifle.updateMatrixWorld(true);if(!handP)return;
+  vrRifle.getWorldPosition(_rf1);const fl=vrRifle.userData.fore.getWorldPosition(_rf2);const cur=fl.sub(_rf1).normalize();const want=_v4.copy(handP).sub(_rf1);if(want.length()<0.2)return;want.normalize();
+  _rq.setFromUnitVectors(cur,want);vrRifle.getWorldQuaternion(_rq2);_rq2.premultiply(_rq);vrRifle.parent.getWorldQuaternion(_rq).invert();vrRifle.quaternion.copy(_rq.multiply(_rq2));}
+// manejo con la mano izquierda (lo llama updateWeapons): cerrojo, cargador, guardamanos
+function rifleLeft(handP,showBelt){const u=vrRifle.userData;
+  if(IN.lgDown&&!leftHold&&!boltGrab){
+    u.bolt.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.08){vrRifle.worldToLocal(_v4.copy(handP));boltGrab={p0:_v4.clone(),l0:RF.lift,b0:RF.back};haptic(srcL,0.4,25);return true;}
+    if(RF.mag>=0){u.magwell.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.09){leftHold={n:RF.mag,armed:false,rifle:true};RF.mag=-1;sfx('magout');haptic(srcL,0.6,40);return true;}}
+    if(showBelt){for(let i=0;i<2;i++){beltRMags[i].getWorldPosition(_v4);if(RBELT[i]!==null&&handP.distanceTo(_v4)<0.16){leftHold={n:RBELT[i],armed:true,rifle:true};RBELT[i]=null;sfx('click');haptic(srcL,0.5,30);return true;}}}
+    for(const d of dropped){if(d.rounds===undefined||!d.o.userData.rifle)continue;if(d.o.position.distanceTo(handP)<0.18){leftHold={n:d.rounds,armed:true,rifle:true};d.t=0;sfx('click');return true;}}
+    u.fore.getWorldPosition(_v4);vrRifle.worldToLocal(_v3.copy(handP));if(_v3.z<-0.22&&_v3.z>-0.75&&Math.abs(_v3.x)<0.09&&_v3.y>-0.08&&_v3.y<0.16){foreGrab=true;haptic(srcL,0.3,20);return true;}}
+  if(boltGrab&&IN.lgHeld){vrRifle.worldToLocal(_v4.copy(handP));const dy=_v4.y-boltGrab.p0.y,dz=_v4.z-boltGrab.p0.z;
+    const lift=boltGrab.b0>0.01?1:clamp(boltGrab.l0+dy/0.035,0,1);const back=clamp(boltGrab.b0+dz/0.095,0,1);boltSet(lift,RF.lift>=0.98||boltGrab.b0>0.01?back:0);
+    if(RF.back<0.01&&dz<0.005&&boltGrab.b0>0.01){boltGrab.b0=0;boltGrab.p0.copy(_v4);boltGrab.l0=1;}}// cerrado del todo: ahora bajar la palanca
+  if(leftHold&&leftHold.rifle&&RF.mag<0){u.magwell.getWorldPosition(_v4);const dm=handP.distanceTo(_v4);if(dm>0.14)leftHold.armed=true;if(leftHold.armed&&dm<0.07){RF.mag=leftHold.n;leftHold=null;sfx('magin');haptic(srcL,0.8,40);haptic(srcR,0.6,40);}}
+  if(!IN.lgHeld){boltGrab=null;foreGrab=false;}
+  return false;}
+// mira en pantalla (botón derecho con el ratón capturado)
+const scopeOverlay=document.createElement('div');scopeOverlay.style.cssText='position:fixed;inset:0;pointer-events:none;display:none;z-index:5;background:radial-gradient(circle at 50% 50%,rgba(0,0,0,0) 0,rgba(0,0,0,0) 38vmin,#000 39vmin);';
+scopeOverlay.innerHTML='<div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#000;transform:translateX(-1px)"></div><div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#000;transform:translateY(-1px)"></div>';document.body.appendChild(scopeOverlay);
 
 // =====================================================================
 // COCHES REALES (modelos de VW de la comunidad, reducidos): aparcados son instancias ligeras pintadas cada una de su color;
@@ -3264,30 +3364,40 @@ function updateChars(dt,p){camera.updateMatrixWorld();_pm.multiplyMatrices(camer
   blobs.instanceMatrix.needsUpdate=true;}
 function updateWeapons(dt){const vrOn=inVR&&!!gripBySide.right;
   vrBat.visible=P.weapon==='bate';vrMach.visible=P.weapon==='machete';vmMach.visible=P.weapon==='machete'&&!P.inCar&&!inVR;vrGun.visible=P.weapon==='pistola';vmBat.visible=P.weapon==='bate'&&!P.inCar&&!inVR;vmGun.visible=P.weapon==='pistola'&&!P.inCar&&!inVR;
+  const aimR=!inVR&&P.weapon==='rifle'&&!P.inCar&&rightDown&&document.pointerLockElement===cv;{const tf=aimR?7:72;if(Math.abs(camera.fov-tf)>0.05){camera.fov+=(tf-camera.fov)*Math.min(1,dt*14);camera.updateProjectionMatrix();}}scopeOverlay.style.display=aimR&&camera.fov<20?'block':'none';
+  vrRifle.visible=P.weapon==='rifle';vmRifle.visible=P.weapon==='rifle'&&!P.inCar&&!inVR&&!aimR;
+  for(const D of RIFLES)poseRifle(D,D.gun===vrRifle?(IN.attack?1:0):0);
+  for(const gun of [vrRifle,vmRifle])gun.userData.flash.material.opacity=Math.max(0,gun.userData.flash.material.opacity-dt*20);
+  if(RF.auto>0){RF.auto-=dt;if(RF.auto<=0){RF.auto=-0.0001;RF.autoT=0;}}
+  if(RF.auto<0){RF.autoT+=dt;const t=RF.autoT/0.55;// cerrojo automático en pantalla: arriba, atrás, adelante, abajo
+    if(t<0.2)boltSet(t/0.2,0);else if(t<0.5)boltSet(1,(t-0.2)/0.3);else if(RF.stroke===0&&t<0.8)boltSet(1,1);else if(t<0.8)boltSet(1,1-(t-0.5)/0.3);else if(t<1)boltSet(1-(t-0.8)/0.2,0);else{boltSet(0,0);RF.auto=0;}}
+  refillRBelt();RF.kick=Math.max(0,RF.kick-dt*4);vrRifle.position.z=HFIT.gz+RF.kick*0.035;vmRifle.position.z=0.12+RF.kick*0.07;vmRifle.rotation.x=0.02+RF.kick*0.09;
   for(const D of DEAGLE)poseDeagle(D,(G.locked?0.03:0)+G.kick+(D.gun===vrGun&&slideGrab?slideGrab.off:0),D.gun===vrGun?(IN.attack?1:0):0);
   for(const gun of [vrGun,vmGun]){const u=gun.userData;u.slide.position.z=(G.locked?0.03:0)+G.kick+(gun===vrGun&&slideGrab?slideGrab.off:0);u.mag.visible=G.mag>=0&&!u.magHidden;u.mag.userData.bullet.visible=u.mag.userData.tip.visible=G.mag>0;u.flash.material.opacity=Math.max(0,u.flash.material.opacity-dt*25);}
   G.kick=Math.max(0,G.kick-dt*0.4);
   if(swingT>0){swingT-=dt;const k=1-swingT/0.28;for(const w of [vmBat,vmMach])w.rotation.set(0.9-Math.sin(k*Math.PI)*1.6,0.25+Math.sin(k*Math.PI)*0.9,0);}else for(const w of [vmBat,vmMach])w.rotation.set(0.9,0.25,0);
   if(inVR&&!P.inCar&&P.alive)vrMelee(dt);
   refillBelt();
-  const lhr=hands.left;const showBelt=vrOn&&P.weapon==='pistola'&&!P.inCar;camera.getWorldPosition(_v);camera.getWorldDirection(_v1);_v1.y=0;_v1.normalize();const rx=-_v1.z,rz=_v1.x;
+  const lhr=hands.left;const showBelt=vrOn&&(P.weapon==='pistola'||P.weapon==='rifle')&&!P.inCar;camera.getWorldPosition(_v);camera.getWorldDirection(_v1);_v1.y=0;_v1.normalize();const rx=-_v1.z,rz=_v1.x;
   beltPouch.visible=showBelt;if(showBelt){const by=Math.max(surfY(_v.x,_v.z,_v.y-1.6)+0.6,_v.y-0.68);beltPouch.position.set(_v.x-rx*0.2+_v1.x*0.04,by,_v.z-rz*0.2+_v1.z*0.04);beltPouch.rotation.y=Math.atan2(_v1.x,_v1.z);
-    for(let i=0;i<2;i++){beltMags[i].visible=BELT[i]!==null;beltMags[i].userData.bullet.visible=beltMags[i].userData.tip.visible=(BELT[i]||0)>0;}}
-  leftMag.visible=!!leftHold;if(leftHold)leftMag.userData.bullet.visible=leftMag.userData.tip.visible=leftHold.n>0;
+    const isR=P.weapon==='rifle';for(let i=0;i<2;i++){beltMags[i].visible=!isR&&BELT[i]!==null;beltMags[i].userData.bullet.visible=beltMags[i].userData.tip.visible=(BELT[i]||0)>0;beltRMags[i].visible=isR&&RBELT[i]!==null;beltRMags[i].userData.bullet.visible=beltRMags[i].userData.tip.visible=(RBELT[i]||0)>0;}}
+  leftMag.visible=!!leftHold&&!leftHold.rifle;leftRMag.visible=!!leftHold&&!!leftHold.rifle;if(leftHold){const lm=leftHold.rifle?leftRMag:leftMag;lm.userData.bullet.visible=lm.userData.tip.visible=leftHold.n>0;}
   if(vrOn&&lhr&&lhr.handRoot.parent&&!P.inCar){lhr.wristObj.getWorldPosition(_v2);_v2.addScaledVector(_v1.set(0,0,0),0);leftMag.getWorldPosition(_v3);const handP=_v3.clone();
-    if(IN.lgDown&&!leftHold){
+    const rHandled=P.weapon==='rifle'?rifleLeft(handP,showBelt):false;
+    if(IN.lgDown&&!leftHold&&!rHandled&&!boltGrab&&!foreGrab){
       if(P.weapon==='pistola'&&G.mag>=0){vrGun.userData.magwell.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.09){leftHold={n:ejectMag(false),armed:false};haptic(srcL,0.6,40);}}
       if(!leftHold&&P.weapon==='pistola'){vrGun.userData.slideRear.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.09){vrGun.worldToLocal(_v4.copy(handP));slideGrab={z0:_v4.z,off:0,done:false};}}
       if(!leftHold&&!slideGrab&&P.weapon==='pistola'&&!G.cocked&&vrGun.userData.hammerP){vrGun.userData.hammerP.getWorldPosition(_v4);if(handP.distanceTo(_v4)<0.07){vrGun.worldToLocal(_v4.copy(handP));hammerGrab={z0:_v4.z};haptic(srcL,0.3,20);}}
-      if(!leftHold&&!slideGrab&&showBelt){for(let i=0;i<2;i++){beltMags[i].getWorldPosition(_v4);if(BELT[i]!==null&&handP.distanceTo(_v4)<0.16){leftHold={n:BELT[i],armed:true};BELT[i]=null;sfx('click');haptic(srcL,0.5,30);break;}}}
-      if(!leftHold&&!slideGrab){for(const d of dropped){if(d.rounds===undefined)continue;if(d.o.position.distanceTo(handP)<0.18){leftHold={n:d.rounds,armed:true};d.t=0;sfx('click');break;}}}
+      if(!leftHold&&!slideGrab&&showBelt&&P.weapon==='pistola'){for(let i=0;i<2;i++){beltMags[i].getWorldPosition(_v4);if(BELT[i]!==null&&handP.distanceTo(_v4)<0.16){leftHold={n:BELT[i],armed:true};BELT[i]=null;sfx('click');haptic(srcL,0.5,30);break;}}}
+      if(!leftHold&&!slideGrab){for(const d of dropped){if(d.rounds===undefined||d.o.userData.rifle)continue;if(d.o.position.distanceTo(handP)<0.18){leftHold={n:d.rounds,armed:true};d.t=0;sfx('click');break;}}}
       if(!leftHold&&!slideGrab&&!handObj.left){lhr.wristObj.getWorldPosition(_v4);const b=dynGrab(_v4);if(b){handObj.left=b;haptic(srcL,0.5,30);}}}
-    if(leftHold&&P.weapon==='pistola'&&G.mag<0){vrGun.userData.magwell.getWorldPosition(_v4);const dm=handP.distanceTo(_v4);if(dm>0.14)leftHold.armed=true;if(leftHold.armed&&dm<0.06){insertMag(leftHold.n);leftHold=null;haptic(srcL,0.8,40);}}
+    if(leftHold&&!leftHold.rifle&&P.weapon==='pistola'&&G.mag<0){vrGun.userData.magwell.getWorldPosition(_v4);const dm=handP.distanceTo(_v4);if(dm>0.14)leftHold.armed=true;if(leftHold.armed&&dm<0.06){insertMag(leftHold.n);leftHold=null;haptic(srcL,0.8,40);}}
     if(hammerGrab&&IN.lgHeld){vrGun.worldToLocal(_v4.copy(handP));if(_v4.z-hammerGrab.z0>0.018){G.cocked=true;hammerGrab=null;sfx('click');haptic(srcL,0.7,40);}}
     if(slideGrab&&IN.lgHeld){vrGun.worldToLocal(_v4.copy(handP));slideGrab.off=clamp(_v4.z-slideGrab.z0,0,0.045);if(slideGrab.off>0.032&&!slideGrab.done){slideGrab.done=true;rack();}}
-    if(!IN.lgHeld){if(leftHold){const m=makeMag();m.userData.bullet.visible=m.userData.tip.visible=leftHold.n>0;leftMag.getWorldQuaternion(m.quaternion);
+    if(!IN.lgHeld){if(leftHold){const m=leftHold.rifle?makeRMag():makeMag();m.userData.bullet.visible=m.userData.tip.visible=leftHold.n>0;(leftHold.rifle?leftRMag:leftMag).getWorldQuaternion(m.quaternion);
         const vel=lhr.vel||_v4.set(0,0,0);dropObj(m,handP,vel,true,leftHold.n);leftHold=null;}slideGrab=null;hammerGrab=null;}
     // velocidad de la mano izquierda para lanzar el cargador
+    if(P.weapon==='rifle')rifleTwoHand(foreGrab?handP:null);
     lhr.prevP=lhr.prevP||handP.clone();lhr.vel=(lhr.vel||new V3()).subVectors(handP,lhr.prevP).divideScalar(Math.max(dt,0.008));lhr.prevP.copy(handP);}
   else if(leftHold&&!IN.lgHeld){addItem('balas',leftHold.n,'gift');leftHold=null;}}
 let hammerGrab=null;
@@ -3299,8 +3409,9 @@ function updateHandObjs(dt){for(const side of ['left','right']){const hr=hands[s
     const b=handObj[side];if(!b)continue;if(!held||P.inCar){dynThrow(b,_hpv[side]);handObj[side]=null;continue;}hr.wristObj.getWorldQuaternion(_q);dynHold(b,_v4,_q,dt);}}
 function updateHands(){for(const side of ['left','right']){const hr=hands[side];if(!hr||!hr.handRoot.parent)continue;const gp=side==='left'?padL:padR;
     const bv=i=>gp&&gp.buttons[i]?gp.buttons[i].value:0,tch=i=>!!(gp&&gp.buttons[i]&&(gp.buttons[i].touched||gp.buttons[i].pressed));const c=hr.curl;const thumb=(tch(3)||tch(4)||tch(5))?0.85:0.3;
-    if(side==='right'&&P.weapon!=='manos'&&!P.inCar){c.middle=c.ring=c.pinky=1;c.thumb=P.weapon==='pistola'?1.0:0.85;c.index=P.weapon==='pistola'?(tch(0)?0.62+bv(0)*0.3:0.42):0.95;}
+    if(side==='right'&&P.weapon!=='manos'&&!P.inCar){c.middle=c.ring=c.pinky=1;c.thumb=(P.weapon==='pistola'||P.weapon==='rifle')?1.0:0.85;c.index=(P.weapon==='pistola'||P.weapon==='rifle')?(tch(0)?0.62+bv(0)*0.3:0.42):0.95;}
     else if(side==='left'&&leftHold){c.middle=c.ring=c.pinky=0.95;c.index=0.85;c.thumb=0.75;}
+    else if(side==='left'&&(foreGrab||boltGrab)){c.middle=c.ring=c.pinky=foreGrab?0.7:0.9;c.index=foreGrab?0.6:0.8;c.thumb=0.6;}
     else{const g=bv(1);c.middle=c.ring=c.pinky=0.15+g*0.85;c.index=tch(0)?0.35+bv(0)*0.65:0.05;c.thumb=thumb;}
     if(window.__CURL)Object.assign(c,window.__CURL);
     // las manos (y lo que llevan) no atraviesan lo sólido: el mando se frena donde el rayo pecho→mano toca pared, puerta, persiana o mueble
@@ -3345,15 +3456,15 @@ function handDoors(side,hp,down,held,dt){if(!doorGrab[side]&&vehHandDoors(side,h
   if(doorHandleWorld(d,_v6).distanceTo(hp)>0.8){d.held=null;doorGrab[side]=null;}}
 function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(camW);const p=camW;
   if(panel)panelInput();else if(P.alive&&!P.sleeping){if(IN.inv)openPanel('inv');else if(IN.menu)openPanel('main');else if(IN.map)openPanel('map');else if(IN.status)openPanel('status');}
-  if(!inVR&&!P.sleeping){const sens=0.0024;if(P.inCar)P.carYaw-=lookDX*sens;else P.yaw-=lookDX*sens;P.pitch=clamp(P.pitch-lookDY*sens,-1.35,1.35);}lookDX=lookDY=0;
+  if(!inVR&&!P.sleeping){const sens=0.0024*camera.fov/72;if(P.inCar)P.carYaw-=lookDX*sens;else P.yaw-=lookDX*sens;P.pitch=clamp(P.pitch-lookDY*sens,-1.35,1.35);}lookDX=lookDY=0;
   if(IN.turn&&!P.sleeping&&!panel){const a=IN.turn*dt*2.3;camera.getWorldPosition(_v);if(P.inCar)P.carYaw-=a;else P.yaw-=a;rig.rotation.y=P.inCar?P.inCar.yaw+Math.PI+P.carYaw:P.yaw;rig.updateMatrixWorld(true);camera.getWorldPosition(_v1);if(!P.inCar){rig.position.x+=_v.x-_v1.x;rig.position.z+=_v.z-_v1.z;}}
   if(IN.snap&&!P.sleeping){camera.getWorldPosition(_v);if(P.inCar)P.carYaw-=IN.snap*Math.PI/6;else P.yaw-=IN.snap*Math.PI/6;rig.rotation.y=P.inCar?P.inCar.yaw+Math.PI+P.carYaw:P.yaw;rig.updateMatrixWorld(true);camera.getWorldPosition(_v1);if(!P.inCar){rig.position.x+=_v.x-_v1.x;rig.position.z+=_v.z-_v1.z;}}
   if(P.alive&&!P.sleeping&&!panel){if(IN.use&&!(inVR&&(doorGrab.right||doorGrab.left||vGrab.right||P.inCar)))doInteract();if(IN.weapon&&P.inCar&&inVR)exitCar();
     if(IN.light&&P.inCar){IN.light=false;P.carGun=!P.carGun;toast(P.carGun?'Modo disparo: el gatillo dispara':'Modo conducción: el gatillo acelera',1.5);}
-    if(IN.weapon&&!P.inCar){P.weapon=P.weapon==='manos'?'bate':P.weapon==='bate'?'machete':P.weapon==='machete'?'pistola':'manos';toast({manos:'Manos libres',bate:'Bate',machete:'Machete',pistola:'Pistola'}[P.weapon],1.5);}
-    if(IN.eject&&P.weapon==='pistola')ejectMag(true);if(IN.reload&&P.weapon==='pistola')reloadFlat();if(IN.light){P.light=!P.light;sfx('click');}if(IN.pee)doPee();
+    if(IN.weapon&&!P.inCar){P.weapon=P.weapon==='manos'?'bate':P.weapon==='bate'?'machete':P.weapon==='machete'?'pistola':P.weapon==='pistola'?'rifle':'manos';toast({manos:'Manos libres',bate:'Bate',machete:'Machete',pistola:'Pistola',rifle:'Rifle de cerrojo (AWP)'}[P.weapon],1.5);}
+    if(IN.eject&&P.weapon==='pistola')ejectMag(true);if(IN.eject&&P.weapon==='rifle'&&RF.mag>=0){vrRifle.userData.magwell.getWorldPosition(_v);const m=makeRMag();m.userData.bullet.visible=m.userData.tip.visible=RF.mag>0;vrRifle.getWorldQuaternion(m.quaternion);dropObj(m,_v,_v1.set(0,-1.2,0),true,RF.mag);if(!inVR&&RF.mag>0)addItem('balas',RF.mag,'gift');RF.mag=-1;sfx('magout');}if(IN.reload&&P.weapon==='pistola')reloadFlat();if(IN.reload&&P.weapon==='rifle')reloadRifleFlat();if(IN.light){P.light=!P.light;sfx('click');}if(IN.pee)doPee();
     if(IN.crouch){P.crouchToggle=!P.crouchToggle;toast(P.crouchToggle?'Te agachas':'Te levantas',1.2);}if(IN.hud){hudOn=!hudOn;sfx('click');}if(IN.recenter&&!P.inCar)recenter();
-    if((!P.inCar||P.carGun)&&IN.attackP){if(P.weapon==='pistola'){if(inVR&&gripBySide.right){vrGun.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrGun.getWorldQuaternion(_q));fireGun(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireGun(_o2,_d2);}}else meleeFlat();}}
+    if((!P.inCar||P.carGun)&&IN.attackP){if(P.weapon==='rifle'){if(inVR&&gripBySide.right){vrRifle.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrRifle.getWorldQuaternion(_q));fireRifle(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireRifle(_o2,_d2);}}else if(P.weapon==='pistola'){if(inVR&&gripBySide.right){vrGun.userData.muzzle.getWorldPosition(_o2);_d2.set(0,0,-1).applyQuaternion(vrGun.getWorldQuaternion(_q));fireGun(_o2,_d2);}else{camera.getWorldPosition(_o2);camera.getWorldDirection(_d2);_o2.addScaledVector(_d2,0.3);fireGun(_o2,_d2);}}else meleeFlat();}}
   P.crouchOff+=((inVR&&P.crouchToggle&&!P.inCar?0.75:0)-P.crouchOff)*Math.min(1,dt*7);if(P.crouchOff<0.004)P.crouchOff=0;P.crouch=P.crouchToggle||(inVR&&camera.position.y<1.12);
   if(P.alive&&!P.sleeping){if(P.inCar)driveCar(P.inCar,panel?0:dt);
     else if(!panel){camera.getWorldDirection(_d2);_d2.y=0;if(_d2.lengthSq()<1e-6)_d2.set(0,0,-1);_d2.normalize();const rx=-_d2.z,rz=_d2.x;let mx=IN.mx,my=IN.my;const ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;}
@@ -3408,7 +3519,7 @@ function update(dt){frameNo++;frameDt=dt;readInput(dt);camera.getWorldPosition(c
 function loop(){if(DEBUG.has('shot')&&!window.__go)return;const now=performance.now()/1000;const dt=Math.min(0.05,now-last);last=now;clockT+=dt;
   if(started)update(dt);else{P.yaw+=dt*0.05;rig.rotation.y=P.yaw;camera.position.set(0,14,0);camera.rotation.set(-0.12,0,0);camera.getWorldPosition(camW);}
   if(window.__freeCam){const f=window.__freeCam;if(body)body.holder.visible=false;viewModel.visible=false;fxSphere.visible=false;blackT=0;rig.position.set(f.x,f.y,f.z);rig.rotation.y=f.yaw;camera.position.set(0,0,0);camera.rotation.set(f.pitch,0,0);camera.getWorldPosition(camW);}
-  updateSky();renderer.render(scene,camera);}
+  updateSky();scopeRender();renderer.render(scene,camera);}
 
 // =====================================================================
 // INICIO
@@ -3435,7 +3546,7 @@ setTimeout(async()=>{try{await loadWorldData();buildWorld();buildLootGrid();setL
 // ---- ganchos de depuración (solo con ?shot=1) ----
 if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,trySever,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
-  applyDoor,TPL,poseHand,gl,viewModel,DEAGLE,BLD,BCOL,VTPL,MOTOS,makeMoto,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
+  applyDoor,TPL,poseHand,gl,viewModel,DEAGLE,RF,RIFLES,boltSet,fireRifle,reloadRifleFlat,vrRifle,vmRifle,SCOPE,BLD,BCOL,VTPL,MOTOS,makeMoto,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}
 
 // =====================================================================

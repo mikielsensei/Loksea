@@ -224,7 +224,7 @@ function poseHand(hr){const root=hr.root;root.updateWorldMatrix(true,true);
       if(i<names.length-1){const nb=hr.bind[names[i+1]];_v.subVectors(nb.p,bn.p).applyQuaternion(_hq);_hp.copy(_hd).add(_v);}}}}
 const hands={left:null,right:null};const gripBySide={};
 function setupHands(){for(const side of ['left','right']){let root=HANDTPL[side]?SkeletonUtils.clone(HANDTPL[side]):null;let hr=root?prepHand(root,side):null;if(!hr)hr=prepHand(buildProcHand(side),side);if(!hr){const handRoot=new THREE.Group(),wristObj=new THREE.Object3D();handRoot.add(wristObj);hr={side,handRoot,align:handRoot,root:handRoot,J:{},bind:{},chains:{},wristObj,curl:{thumb:0.2,index:0.1,middle:0.2,ring:0.2,pinky:0.2},off:new V3()};}hands[side]=hr;
-    if(side==='right')hr.handRoot.add(vrWeapon);else hr.handRoot.add(leftMag);}applyHC();}
+    if(side==='right')hr.handRoot.add(vrWeapon);else{hr.handRoot.add(leftMag);hr.handRoot.add(leftRMag);}}applyHC();}
 function applyHC(){for(const side of ['left','right']){const hr=hands[side];if(!hr)continue;const m=side==='right'?1:-1;hr.handRoot.rotation.set(HC.pitch,HC.yaw*m,HC.roll*m);hr.handRoot.position.set(HC.up*0,HC.up,HC.fwd).add(hr.off);}}
 
 // =====================================================================
@@ -300,7 +300,7 @@ function meleeFlat(){swingT=0.28;sfx('swish');camera.getWorldPosition(_o2);camer
     const dmg=(r.part==='head'?s*6:r.part==='body'?s*3:s*4)*moodF*(P.weapon==='manos'?0.3:1);_e2.copy(_o2).addScaledVector(_d2,r.t);
     HITKIND=P.weapon==='machete'?'cut':'blunt';if(P.weapon==='machete')_imp.multiplyScalar(0.5);hitChar(r.h,r.part,dmg,_imp,r.pi,'player',_e2,_d2);if(P.weapon==='machete')trySever(r.h,r.part,r.pi,6.5,_d2);HITKIND='';sfx(r.part==='head'?'hithead':'hit');spray(_e2,_d2,8);}}
 const tipPrev=new V3(),tipNow=new V3(),midNow=new V3(),tipVel=new V3();let tipInit=false;
-function vrMelee(dt){if(!hands.right||!hands.right.handRoot.parent||P.weapon==='pistola')return;
+function vrMelee(dt){if(!hands.right||!hands.right.handRoot.parent||P.weapon==='pistola'||P.weapon==='rifle')return;
   if(P.weapon==='bate'||P.weapon==='machete'){const w=P.weapon==='bate'?vrBat:vrMach;w.userData.tip.getWorldPosition(tipNow);w.userData.mid.getWorldPosition(midNow);}else{hands.right.wristObj.getWorldPosition(tipNow);midNow.copy(tipNow);}
   if(!tipInit){tipPrev.copy(tipNow);tipInit=true;return;}tipVel.subVectors(tipNow,tipPrev).divideScalar(Math.max(dt,0.008));tipPrev.copy(tipNow);
   const sp=Math.min(14,tipVel.length());if(sp<2.2)return;

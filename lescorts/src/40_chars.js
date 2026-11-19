@@ -95,6 +95,7 @@ async function loadModels(){setLoad('m','Descargando personajes…');
       const len=bb.max.z-bb.min.z;geo.translate(-(bb.min.x+bb.max.x)/2,-bb.max.y+0.04,-(bb.min.z+len*0.3));const m=mm.material;const mat=new THREE.MeshStandardMaterial({map:m.map,normalMap:m.normalMap,roughnessMap:m.roughnessMap,metalnessMap:m.metalnessMap,roughness:1,metalness:1});
       RIFLE_T={geo,mat};}}}
   {const g=await loadAny(['models/weapons/deagle.glb']);if(g){fitDeagle(vrGun,g.scene);fitDeagle(vmGun,g.scene);}}
+  {const g=await loadAny(['models/weapons/awp.glb']);if(g){fitAWP(vrRifle,g.scene);fitAWP(vmRifle,g.scene);}}
   setLoad('v','Descargando coches y motos…');await loadVehicles();await loadMotos();
   for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
   modelsReady=true;enableStart();}

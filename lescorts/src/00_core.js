@@ -157,6 +157,9 @@ function sfx(type,vol=1){if(!AC||vol<=0.01)return;try{
   else if(type==='click'){env(osc('square',1800,0,0.03),0.08,0.03);}
   else if(type==='magout'){env(osc('square',900,300,0.06),0.12,0.07);const f=filt('bandpass',2500);noiseSrc(0.1).connect(f);env(f,0.15,0.06);}
   else if(type==='magin'){env(osc('square',600,1200,0.05),0.15,0.06);const f=filt('bandpass',3000);noiseSrc(0.1).connect(f);env(f,0.25,0.05);}
+  else if(type==='rifle'){const f=filt('lowpass',1800);noiseSrc(0.9).connect(f);env(f,1.0*vol,0.7);env(osc('sine',90,30,0.3),0.8*vol,0.3);const f2=filt('highpass',3000);noiseSrc(0.08).connect(f2);env(f2,0.5*vol,0.06);}
+  else if(type==='boltback'){const f=filt('bandpass',1700,3);noiseSrc(0.12).connect(f);env(f,0.4,0.1);env(osc('square',700,250,0.05),0.08,0.05);}
+  else if(type==='boltfwd'){const f=filt('bandpass',2600,3);noiseSrc(0.1).connect(f);env(f,0.45,0.08);env(osc('square',500,900,0.04,0.06),0.1,0.04,0.06);}
   else if(type==='rack'){const f=filt('bandpass',2200,2);noiseSrc(0.1).connect(f);env(f,0.35,0.06);const f2=filt('bandpass',3200,2);noiseSrc(0.1,0.12).connect(f2);env(f2,0.35,0.06,0.12);}
   else if(type==='clink'){env(osc('sine',R(3000,4500),0,0.08),0.06*vol,0.08);}
   else if(type==='thud'){const f=filt('lowpass',500);noiseSrc(0.15).connect(f);env(f,0.3*vol,0.12);}
