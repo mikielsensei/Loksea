@@ -94,7 +94,7 @@ async function loadModels(){setLoad('m','Descargando personajes…');
       // culata hacia -z, cañón hacia +z; el origen en la empuñadura (mano derecha)
       const len=bb.max.z-bb.min.z;geo.translate(-(bb.min.x+bb.max.x)/2,-bb.max.y+0.04,-(bb.min.z+len*0.3));const m=mm.material;const mat=new THREE.MeshStandardMaterial({map:m.map,normalMap:m.normalMap,roughnessMap:m.roughnessMap,metalnessMap:m.metalnessMap,roughness:1,metalness:1});
       RIFLE_T={geo,mat};}}}
-  setLoad('v','Descargando coches…');await loadVehicles();
+  setLoad('v','Descargando coches y motos…');await loadVehicles();await loadMotos();
   for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
   modelsReady=true;enableStart();}
 

@@ -13,7 +13,8 @@ const LC_SPAWN={x:-37,z:1.5,dx:0.77,dz:-0.64};// esquina Travessera de les Corts
 const PAINTW=0xf2f1ea,PAINTY=0xe8b820;
 let WD=null,MARKS=null;
 async function loadWorldData(){setLoad('w','Descargando Les Corts (datos del AMB)…');
-  const [w,hb,mk,sp]=await Promise.all([fetch('data/world.json').then(r=>r.json()),fetch('data/hm.bin').then(r=>r.arrayBuffer()),fetch('data/marks.json').then(r=>r.json()),fetch('data/spots.json').then(r=>r.json())]);SPOTS=sp;
+  const [w,hb,mk,sp,shp]=await Promise.all([fetch('data/world.json').then(r=>r.json()),fetch('data/hm.bin').then(r=>r.arrayBuffer()),fetch('data/marks.json').then(r=>r.json()),fetch('data/spots.json').then(r=>r.json()),fetch('data/shops.json').then(r=>r.json()).catch(()=>[])]);SPOTS=sp;
+  {const TM={mercat:'fruteria',super:'super',taller:'ferre',mobles:'electro',floristeria:'fruteria',drogueria:'farmacia',clinica:'farmacia',joieria:'optica',oficina:'immo',motos:'electro'};POIS=shp.map(q=>[q[0],q[1],TM[q[2]]||q[2],q[3]]);}
   const hd=new DataView(hb);const x0=hd.getFloat32(0,true),z0=hd.getFloat32(4,true),res=hd.getFloat32(8,true),nx=hd.getInt32(16,true),nz=hd.getInt32(20,true);
   const u16=new Uint16Array(hb,24,nx*nz);const h=new Float32Array(nx*nz);for(let i=0;i<h.length;i++)h[i]=u16[i]/100-10;
   HMD={x0,z0,res,nx,nz,h,k:new Uint8Array(hb,24+nx*nz*2,nx*nz)};WD=w;MARKS=mk;}

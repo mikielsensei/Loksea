@@ -679,7 +679,8 @@ const LC_SPAWN={x:-37,z:1.5,dx:0.77,dz:-0.64};// esquina Travessera de les Corts
 const PAINTW=0xf2f1ea,PAINTY=0xe8b820;
 let WD=null,MARKS=null;
 async function loadWorldData(){setLoad('w','Descargando Les Corts (datos del AMB)…');
-  const [w,hb,mk,sp]=await Promise.all([fetch('data/world.json').then(r=>r.json()),fetch('data/hm.bin').then(r=>r.arrayBuffer()),fetch('data/marks.json').then(r=>r.json()),fetch('data/spots.json').then(r=>r.json())]);SPOTS=sp;
+  const [w,hb,mk,sp,shp]=await Promise.all([fetch('data/world.json').then(r=>r.json()),fetch('data/hm.bin').then(r=>r.arrayBuffer()),fetch('data/marks.json').then(r=>r.json()),fetch('data/spots.json').then(r=>r.json()),fetch('data/shops.json').then(r=>r.json()).catch(()=>[])]);SPOTS=sp;
+  {const TM={mercat:'fruteria',super:'super',taller:'ferre',mobles:'electro',floristeria:'fruteria',drogueria:'farmacia',clinica:'farmacia',joieria:'optica',oficina:'immo',motos:'electro'};POIS=shp.map(q=>[q[0],q[1],TM[q[2]]||q[2],q[3]]);}
   const hd=new DataView(hb);const x0=hd.getFloat32(0,true),z0=hd.getFloat32(4,true),res=hd.getFloat32(8,true),nx=hd.getInt32(16,true),nz=hd.getInt32(20,true);
   const u16=new Uint16Array(hb,24,nx*nz);const h=new Float32Array(nx*nz);for(let i=0;i<h.length;i++)h[i]=u16[i]/100-10;
   HMD={x0,z0,res,nx,nz,h,k:new Uint8Array(hb,24+nx*nz*2,nx*nz)};WD=w;MARKS=mk;}
@@ -775,8 +776,10 @@ const LC_STY=[
   {w:1,wall:'stone_blocks',tints:['#e0d4c0','#d4c8b4'],slab:'#e8e2d6',balc:'ind',rail:0,side:'plaster_cream'}];
 const AWNCOL=['#3c6e46','#2f5a3c','#4b7a52','#c8b48a','#7a5a3a','#9a3a2e','#3a4e6e','#d8cdb4'];
 const hashN=(x,z)=>{const s=Math.sin(x*12.9898+z*78.233)*43758.5453;return s-Math.floor(s);};
-function lcStyle(b,hgt){const r=hashN(b.r[0][0],b.r[0][1]);let tot=0;for(const s of LC_STY)tot+=s.w;let a=r*tot,st=LC_STY[0];for(const s of LC_STY){a-=s.w;if(a<=0){st=s;break;}}
-  const old=hgt<10.5;if(old&&r<0.6)st=pick([LC_STY[1],LC_STY[4],LC_STY[5]]);
+// en Travessera y Vallespir: sobre todo bloques de ladrillo de los 60-70 y edificios grises modernos (como en las fotos)
+const LC_WF=[7,2,1,3,2,0];
+function lcStyle(b,hgt){const r=hashN(b.r[0][0],b.r[0][1]);const c=centroid(b.r);const foc=focusD(c[0],c[1])<45;const ws=LC_STY.map((s,i)=>foc?LC_WF[i]:s.w);let tot=0;for(const w of ws)tot+=w;let a=r*tot,st=LC_STY[0];for(let i=0;i<LC_STY.length;i++){a-=ws[i];if(a<=0){st=LC_STY[i];break;}}
+  const old=hgt<10.5;if(old&&r<0.6&&!foc)st=pick([LC_STY[1],LC_STY[4],LC_STY[5]]);
   const tint=hexTint(pick(st.tints));return Object.assign({},st,{tint,sideTint:tint.map(v=>v*0.93),awn:Math.random()<0.65?pick(AWNCOL):null,awnP:R(0.25,0.7),old});}
 // toldo de balcón (tela tensa inclinada con faldón), color por instancia
 defInst('toldoB',(()=>{const g=mkG([[bx(1,0.02,0.9,0,0,0.45,0.55),0xffffff],[bx(1,0.25,0.015,0,-0.27,0.83),0xffffff],[bx(1.02,0.03,0.03,0,0.02,0.02),0x9a9a9a]]);return g;})(),
@@ -943,9 +946,7 @@ function occFree(x,z,r){const i0=Math.floor((x-r)/1.2),i1=Math.floor((x+r)/1.2),
   for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const L=OCC.get(i+','+j);if(L)for(const o of L)if(Math.hypot(o[0]-x,o[1]-z)<r+o[2])return false;}return true;}
 function occAdd(x,z,r){const k=occK(x,z);let L=OCC.get(k);if(!L)OCC.set(k,L=[]);L.push([x,z,r]);}
 function placeMotoLC(x,z,yaw,o={}){const model=o.model||pick(['moto','motoT','motoT','moto','motoN','motoX','moto','motoT']);const col=o.col||pick(LC_MOTOCOL);const y=surfY(x,z);
-  const ref=addInst(model,x,y,z,yaw,1,1,1,0,0,0,col);if(model==='moto'||model==='motoT'){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=-0.09;}// en la pata de cabra
-  if(Math.random()<0.25)addInst('casco',x+Math.sin(yaw)*0.1,y+0.98,z+Math.cos(yaw)*0.1-0.0,yaw+R(-0.5,0.5),1,1,1,0,0,0,pick([0xffffff,0x1a1a1a,0xb01818,0x2a4a8a,0x8a8f94]));
-  const v=solidBox(x,z,0.32,0.95,yaw,y,y+1.1);MOTOS.push({x,y,z,yaw,model,col,ref,fallen:false,ok:true,vol:v});occAdd(x,z,0.9);}
+  const v=solidBox(x,z,0.32,0.95,yaw,y,y+1.1);MOTO_PEND.push({x,z,yaw,vol:v});occAdd(x,z,0.9);}
 function nearTree(x,z,r){for(const t of TREES){if(Math.abs(t.x-x)<r&&Math.abs(t.z-z)<r&&Math.hypot(t.x-x,t.z-z)<r)return true;}return false;}
 function nearLamp(x,z,r){for(const l of WD.lamp){if(Math.abs(l[0]-x)<r&&Math.abs(l[2]-z)<r)return true;}return false;}
 function kerbNear(x,z,maxD,f){let best=null,bd=maxD;for(const k of KERB){const d=Math.hypot(k.x-x,k.z-z);if(d<bd&&(!f||f(k))){bd=d;best=k;}}return best;}
@@ -964,6 +965,11 @@ function streetFurnitureLC(){
   {const k0=kerbNear(19,80,12,k=>!k.trav);if(k0){const ch=k0.ch;for(let s=-6;s<6;s++){const k=ch.pts[(k0.i+s+ch.pts.length)%ch.pts.length];if(!k)continue;const x=k.x+k.nx*1.5,z=k.z+k.nz*1.5;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);
       addInst('bicingDock',x,y,z,ya+Math.PI/2);if(Math.random()<0.6)addInst('bicingBike',x+k.nx*0.25,y,z+k.nz*0.25,Math.atan2(-k.nx,-k.nz)+R(-0.04,0.04));solidBox(x,z,0.12,0.9,ya,y,y+1.0);}
     const t=ch.pts[(((k0.i-8)%ch.pts.length)+ch.pts.length)%ch.pts.length];if(t)addInst('bicingTotem',t.x+t.nx*1.4,H(t.x,t.z),t.z+t.nz*1.4,Math.atan2(t.ux,t.uz));}}
+  // --- Vallespir escolar: jardineras de madera y amarillas en el carril del lado del parque, con bancos ---
+  {let last=null;for(const k of KERB){if(!inVallN(k.x,k.z)||k.nx*VALL_E[0]+k.nz*VALL_E[1]>-0.5||k.cwd<4)continue;if(last&&Math.hypot(last[0]-k.x,last[1]-k.z)<R(5.5,7.5))continue;
+    const x=k.x+k.nx*1.6,z=k.z+k.nz*1.6;if(groundKind(x,z)!==2)continue;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);last=[k.x,k.z];
+    if(Math.random()<0.72){addInst('jardiFusta',x,y,z,ya+Math.PI/2);solidBox(x,z,1.25,0.55,ya+Math.PI/2,y,y+0.75);}else{addInst('jardiGroc',x,y,z,ya+Math.PI/2);solidBox(x,z,0.85,0.5,ya+Math.PI/2,y,y+0.6);}occAdd(x,z,1.6);
+    if(Math.random()<0.45){const bx2=x+k.ux*1.9,bz2=z+k.uz*1.9,by=H(bx2,bz2),byaw=Math.atan2(-k.nx,-k.nz);addInst('banc',bx2,by,bz2,byaw);solidBox(bx2,bz2,0.95,0.3,byaw,by,by+0.5);occAdd(bx2,bz2,1);BENCHES.push({x:bx2,z:bz2,yaw:byaw,y:by+0.45,n:2});}}}
   // --- recorrido de cada bordillo: motos, bancos, papeleras, semáforos, terrazas ---
   let lastBin=new Map(),lastBench=new Map(),lastMoto=new Map(),semaf=new Set();
   for(const k of KERB){const id=k.cid;
@@ -985,15 +991,25 @@ function streetFurnitureLC(){
 // ---------- coches aparcados en su sitio real ----------
 function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
   for(const s of SPOTS.cars){const [x,z,ya,nx,nz,W]=s;
+    if(inVallN(x,z))continue;// calle escolar: nada aparcado
     // islas de contenedores cada cierto trecho (en Barcelona van en el carril de aparcamiento)
     if(conts.every(c=>Math.hypot(c[0]-x,c[1]-z)>70)&&Math.random()<0.22){conts.push([x,z]);const facing=Math.atan2(-nx,-nz);const ux=Math.sin(ya),uz=Math.cos(ya);
       CONTSET_LC.forEach((ty,i)=>{const t=(i-2.5)*2.05;const qx=x+ux*t+nx*0.15,qz=z+uz*t+nz*0.15;if(groundKind(qx,qz)!==2)return;const y=H(qx,qz);const ref=addInst('cont_'+ty,qx,y,qz,facing);const v=solidBox(qx,qz,0.95,0.82,facing,y,y+1.8);CONTS.push({x:qx-nx*1.2,z:qz-nz*1.2,cx:qx,cz:qz,ty,yaw:facing});});continue;}
     if(Math.random()<(focusD(x,z)<45?0.12:0.5))continue;if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<4.9))continue;
     const yaw=Math.atan2(nz,-nx);// el bordillo queda a la derecha del coche
     const c=Object.keys(VTPL).length?makeParked(x,z,yaw+R(-0.025,0.025)):makeCar(x,z,yaw+R(-0.025,0.025),'proc');c.fuel=R(15,90);n++;}
-  buildVInst();for(const k in VTPL)needHi(VTPL[k]);
+  buildVInst();for(const k in VTPL)needHi(VTPL[k]);buildMotosLC();
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];
+// Vallespir junto al parque: calle escolar pacificada (jardineras de madera y bancos donde antes se aparcaba)
+const VALL_N=[[-30,-9],[9,66]];const VALL_E=[0.89,-0.46];
+const inVallN=(x,z)=>segD(x,z,VALL_N[0],VALL_N[1])<9;
+// jardinera de madera de la «superilla»: caja de listones con arbustos y flores
+{const W=0x8a5e34,D=0x6e4a28,G=0x3f6a2a,G2=0x55823a;const p=[];for(let i=0;i<5;i++)p.push([bx(2.4,0.11,0.06,0,0.08+i*0.12,0.5),i%2?W:D],[bx(2.4,0.11,0.06,0,0.08+i*0.12,-0.5),i%2?D:W]);
+  p.push([bx(0.06,0.6,1.0,1.2,0.32,0),D],[bx(0.06,0.6,1.0,-1.2,0.32,0),D],[bx(2.36,0.04,0.96,0,0.58,0),0x3a2a1e]);
+  for(let i=0;i<7;i++)p.push([sp(R(0.22,0.36),R(-1,1),0.72+R(0,0.15),R(-0.3,0.3),6),Math.random()<0.5?G:G2]);p.push([sp(0.12,0.7,0.85,0.2,5),0xd8c040],[sp(0.1,-0.5,0.82,-0.2,5),0xc85a8a]);
+  defInst('jardiFusta',mkG(p),woodPropMat,1,1,false);}
+{const p=[[bx(1.6,0.45,0.9,0,0.225,0),0xe8c21e],[bx(1.5,0.04,0.8,0,0.46,0),0x3a2a1e]];for(let i=0;i<4;i++)p.push([sp(R(0.2,0.3),R(-0.6,0.6),0.6,R(-0.2,0.2),6),0x4a7a32]);defInst('jardiGroc',mkG(p),plasticMat,1,1,false);}
 
 // =====================================================================
 // EDIFICIOS: parcelas alrededor de cada manzana (fachada, planta baja con locales, medianeras, colisiones)
@@ -1018,12 +1034,15 @@ function realShop(u,cx,cz,ux,uz,nx,nz,w){if(!POIG)poiGrid();let best=null,bd=1e9
   for(let i=gx-1;i<=gx+1;i++)for(let j=gz-1;j<=gz+1;j++){const L=POIG.get(i+','+j);if(!L)continue;for(const p of L){if(POIUSED.has(p.k))continue;const dx=p.x-cx,dz=p.z-cz;const along=dx*ux+dz*uz,inw=-(dx*nx+dz*nz);
       if(Math.abs(along)>w/2+4||inw<-9||inw>24)continue;const d=Math.abs(along)*1.5+Math.abs(inw-3)*0.5;if(d<bd){bd=d;best=p;}}}
   if(!best)return;const idx=poiSign(best);if(idx===undefined)return;POIUSED.add(best.k);u.shop.type=best[2]==='super'?'fruteria':best[2];u.shop.name=best[3];u.shop.signIdx=idx;
-  u.shop.awning=['bar','restaurant','fruteria'].includes(u.shop.type)&&Math.random()<0.45;}
+  u.shop.awning=best[2]!=='super'&&['bar','restaurant','fruteria'].includes(u.shop.type)&&Math.random()<0.45;}
 // rótulo de un comercio real: marcas conocidas con sus colores; el resto con estilos variados de rótulo de barrio (caja, letras sueltas, madera, neón apagado...)
 const BRANDS=[[/caixabank|la caixa/i,'#ffffff','#007eae'],[/bbva/i,'#004481','#ffffff'],[/sabadell/i,'#ffffff','#0099cc'],[/santander/i,'#ec0000','#ffffff'],[/bankinter/i,'#ff6600','#ffffff'],[/\bing\b/i,'#ff6200','#ffffff'],[/ibercaja/i,'#003a70','#ffffff'],
   [/mercadona/i,'#ffffff','#0b8a3e','#f39200'],[/lidl/i,'#0050aa','#fff000'],[/bon ?preu/i,'#ffffff','#d50f25','#ffcc00'],[/condis/i,'#ffffff','#e3001b','#e3001b'],[/caprabo/i,'#d6001c','#ffffff'],[/consum/i,'#ffffff','#f07d00','#f07d00'],[/bon[àa]rea/i,'#ffffff','#2e8b3a','#2e8b3a'],
   [/aldi/i,'#00005f','#ffffff','#f8a71b'],[/spar/i,'#ffffff','#e2001a','#007a3d'],[/veritas/i,'#ffffff','#5c8a2b'],[/sorli/i,'#ffffff','#d3122a','#2b6cb0'],[/carrefour/i,'#ffffff','#1e4fa0','#e1001a'],[/dia\b/i,'#e3001b','#ffffff'],[/alcampo/i,'#ffffff','#e2001a','#009640'],
   [/zara\b/i,'#000000','#ffffff'],[/mango/i,'#ffffff','#000000'],[/starbucks/i,'#00704a','#ffffff'],[/mcdonald/i,'#da291c','#ffc72c'],[/burger king/i,'#502314','#ff8732'],[/telepizza/i,'#e30613','#ffffff'],[/rossmann/i,'#c3002f','#ffffff'],[/druni/i,'#1a1a1a','#e4007c'],
+  [/^aural/i,'#1d2a55','#ffffff'],[/calvet/i,'#1b3a8c','#ffffff'],[/clarel/i,'#e8732a','#ffffff'],[/kutxabank/i,'#151515','#ffffff','#e2001a'],[/vivahogar/i,'#111111','#ffffff'],[/^flex$/i,'#0a2a5a','#ffffff'],[/marmota/i,'#1f8a8a','#ffffff'],
+  [/rayo optics/i,'#2a2a2a','#ffffff','#e2001a'],[/gaes/i,'#ffffff','#e30613'],[/la sirena/i,'#003b7a','#ffffff'],[/ciurana/i,'#1a1a1a','#ffffff'],[/vivari/i,'#111111','#f2e6c8'],[/mont-rodon/i,'#7a3b28','#f6ead6'],[/first stop/i,'#e30613','#ffffff'],
+  [/asia market/i,'#d4161c','#ffffff'],[/c[àa]ncer/i,'#2e8b57','#ffffff'],[/levaduramadre/i,'#1a1a1a','#ffffff'],[/spar/i,'#ffffff','#e2001a','#007a3d'],[/plantamor/i,'#1e7a6a','#ffffff'],[/sport center/i,'#ffffff','#1a1a1a'],[/centre auditiu/i,'#ffffff','#c8102e'],
   [/farggi/i,'#5a2d1a','#f2e6c8'],[/caf[eè] de l.?ateneu/i,'#1a1a1a','#d8b86a'],[/365/,'#ffffff','#e2001a'],[/granier/i,'#4a2a17','#f2d39c'],[/fornet/i,'#7a1e1e','#ffffff']];
 const SIGNSTY=[{bg:'#1a1a1a',fg:'#f2f2f2',font:'Georgia,serif',w:''},{bg:'#f4f1e8',fg:'#1a1a1a',font:'Georgia,serif',w:'bold'},{bg:'#0f3b5f',fg:'#ffffff',font:'Arial,sans-serif',w:'bold'},{bg:'#7a1e1e',fg:'#f2e6c8',font:'Georgia,serif',w:'bold'},
   {bg:null,fg:'#f0f0ea',font:'Arial,sans-serif',w:'bold',sh:true},{bg:null,fg:'#1c1c1c',font:'Georgia,serif',w:'',sh:true},{bg:null,fg:'#d8b86a',font:'Georgia,serif',w:'bold',sh:true},{bg:'#2e4a3a',fg:'#e8dcc0',font:'"Times New Roman",serif',w:'italic bold'},
@@ -1486,7 +1505,7 @@ async function loadModels(){setLoad('m','Descargando personajes…');
       // culata hacia -z, cañón hacia +z; el origen en la empuñadura (mano derecha)
       const len=bb.max.z-bb.min.z;geo.translate(-(bb.min.x+bb.max.x)/2,-bb.max.y+0.04,-(bb.min.z+len*0.3));const m=mm.material;const mat=new THREE.MeshStandardMaterial({map:m.map,normalMap:m.normalMap,roughnessMap:m.roughnessMap,metalnessMap:m.metalnessMap,roughness:1,metalness:1});
       RIFLE_T={geo,mat};}}}
-  setLoad('v','Descargando coches…');await loadVehicles();
+  setLoad('v','Descargando coches y motos…');await loadVehicles();await loadMotos();
   for(const sd in gripBySide){const hr=hands[sd];if(hr&&!hr.handRoot.parent)gripBySide[sd].add(hr.handRoot);}
   modelsReady=true;enableStart();}
 
@@ -2246,6 +2265,47 @@ function carPush(pt,r){for(const c of cars){if(c===P.inCar)continue;const dx=pt.
     const lx=dx*co-dz*s,lz=dx*s+dz*co;const hx=c.halfW+r,hz=c.len/2+r;if(Math.abs(lx)>=hx||Math.abs(lz)>=hz)continue;
     let nx=lx,nz=lz;if(hx-Math.abs(lx)<hz-Math.abs(lz))nx=Math.sign(lx)*hx;else nz=Math.sign(lz)*hz;pt.x=c.x+nx*co+nz*s;pt.z=c.z-nx*s+nz*co;}}
 
+// =====================================================================
+// MOTOS REALES (modelos de la comunidad: Derbi DS-50 y dos Vespas): aparcadas en la acera como instancias;
+// al subirte, el manillar (la pieza HEAD del modelo cuando la tiene) gira con tus manos.
+// =====================================================================
+const MOTOM=[{k:'derbi',rot:Math.PI/2,len:1.82,head:'HEAD',w:3,tint:0},{k:'vespa',rot:-Math.PI/2,len:1.8,w:4,tint:1},{k:'vespa_s',rot:0,len:1.78,w:2,tint:1}];
+const MOTO_TPL={};const MOTO_PEND=[];
+const MOTO_TINT=[0xffffff,0xffffff,0xf2f2f2,0xd8e8f0,0xf0d8d0,0xd0e8d0,0x9aa0a6,0x404448,0xf2e6c8,0xc0d8f0];
+function prepMoto(g,m){const s=g.scene;s.rotation.y=m.rot;s.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(s);const sc=m.len/(bb.max.z-bb.min.z);
+  const cx=(bb.min.x+bb.max.x)/2,cz=(bb.min.z+bb.max.z)/2,y0=bb.min.y;const body=[],head=[],mats=[],hmats=[];
+  s.traverse(o=>{if(!o.isMesh)return;let p=o,isH=false;while(p){if(m.head&&p.name===m.head)isH=true;p=p.parent;}
+    let gg=o.geometry.clone();for(const k of Object.keys(gg.attributes))if(!['position','normal','uv'].includes(k))gg.deleteAttribute(k);if(!gg.attributes.uv){gg.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(gg.attributes.position.count*2),2));}
+    gg.applyMatrix4(o.matrixWorld);gg.translate(-cx,-y0,-cz);gg.scale(sc,sc,sc);if(gg.index)gg=gg.toNonIndexed();if(!gg.attributes.normal)gg.computeVertexNormals();
+    const mt=o.material.clone();mt.side=THREE.FrontSide;if(mt.map)mt.map.anisotropy=4;if(mt.transparent&&mt.opacity>0.6)mt.transparent=false;pbr(mt);(isH?head:body).push(gg);(isH?hmats:mats).push(mt);});
+  const geo=mergeGeometries(body,true);geo.computeBoundingBox();const T={k:m.k,geo,mats,tint:m.tint,len:m.len,allG:mergeGeometries([...body,...head],true),allM:[...mats,...hmats]};
+  if(head.length){const hg=mergeGeometries(head,true);hg.computeBoundingBox();const hb=hg.boundingBox;
+    // eje de dirección: de la rueda delantera (abajo) al centro del manillar (arriba)
+    const top=new V3((hb.min.x+hb.max.x)/2,hb.max.y-0.12,0),bot=new V3((hb.min.x+hb.max.x)/2,hb.min.y+0.25,0);
+    {const pa=hg.attributes.position;let zt=0,nt=0,zb=0,nb=0;for(let i=0;i<pa.count;i++){const y=pa.getY(i);if(y>hb.max.y-0.25){zt+=pa.getZ(i);nt++;}if(y<hb.min.y+0.3){zb+=pa.getZ(i);nb++;}}top.z=nt?zt/nt:0;bot.z=nb?zb/nb:0;}
+    T.head={geo:hg,mats:hmats,pivot:bot,ax:top.clone().sub(bot).normalize()};}
+  return T;}
+async function loadMotos(){for(const m of MOTOM){const g=await loadAny(['models/motos/'+m.k+'.glb']);if(!g)continue;try{MOTO_TPL[m.k]=prepMoto(g,m);MOTO_TPL[m.k].w=m.w;}catch(e){console.warn('moto',m.k,e);}}}
+function pickMotoTpl(){let tot=0;for(const k in MOTO_TPL)tot+=MOTO_TPL[k].w;let a=Math.random()*tot;for(const k in MOTO_TPL){a-=MOTO_TPL[k].w;if(a<=0)return MOTO_TPL[k];}return null;}
+// se colocan cuando ya están cargados los modelos (al empezar)
+function buildMotosLC(){const groups={};
+  for(const p of MOTO_PEND){const t=pickMotoTpl();if(!t){placeMotoProc(p);continue;}const col=t.tint?pick(MOTO_TINT):0xffffff;(groups[t.k]||(groups[t.k]=[])).push({p,t,col});}
+  for(const k in groups){const L=groups[k];const t=MOTO_TPL[k];const allG=t.allG,allM=t.allM;
+    const im=new THREE.InstancedMesh(allG,allM,L.length);L.forEach((q,i)=>{const {p}=q;const y=surfY(p.x,p.z);_m.compose(_p.set(p.x,y,p.z),_q.setFromEuler(_eu.set(0,p.yaw,-0.09,'YXZ')),_s.set(1,1,1));im.setMatrixAt(i,_m);im.setColorAt(i,_c.set(q.col));
+      MOTOS.push({x:p.x,y,z:p.z,yaw:p.yaw,model:'m_'+k,col:q.col,ref:['m_'+k,'live',i],fallen:false,ok:Math.random()<0.85,vol:p.vol});});
+    im.computeBoundingSphere();scene.add(im);const ch=getChunk(L[0].p.x,L[0].p.z);ch.meshes.push(im);im.userData.name='moto';INST['m_'+k]={geo:allG,mat:allM,byKey:{live:im},lists:new Map(),tpl:t};}}
+function placeMotoProc(p){const model=pick(['moto','motoT','motoN','motoX']);const y=surfY(p.x,p.z);addInstLive(model,p.x,y,p.z,p.yaw);MOTOS.push({x:p.x,y,z:p.z,yaw:p.yaw,model,col:0xffffff,ref:[model,'none',0],fallen:false,ok:true});}
+// subirse: carrocería + manillar con su pivote
+function makeMotoLC(m){const t=INST[m.model].tpl;const g=new THREE.Group();const body=new THREE.Group();g.add(body);const mats=t.mats.map(x=>{const c=x.clone();c.color.multiply(_c.set(m.col));return c;});
+  body.add(new THREE.Mesh(t.geo,mats));let head=null;
+  if(t.head){const hp=new THREE.Group();hp.position.copy(t.head.pivot);hp.quaternion.setFromUnitVectors(UP,t.head.ax);body.add(hp);head=new THREE.Group();hp.add(head);
+    const hm=new THREE.Mesh(t.head.geo,t.head.mats.map(x=>{const c=x.clone();c.color.multiply(_c.set(m.col));return c;}));hp.updateMatrixWorld(true);
+    // la geometría está en el marco de la moto: la pasamos al del pivote
+    const inv=new M4().compose(t.head.pivot,hp.quaternion,_s.set(1,1,1)).invert();hm.geometry=t.head.geo.clone().applyMatrix4(inv);head.add(hm);}
+  g.position.set(m.x,m.y,m.z);g.rotation.y=m.yaw;scene.add(g);
+  const c={g,body,sw:null,swp:null,x:m.x,z:m.z,y:m.y,yaw:m.yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:R(15,60),wheels:[],head,
+    seat:new V3(0,0,-0.25),eye:1.38,halfW:0.35,len:t.len,kind:'moto',searched:true,wreck:0,gear:1,shift:{gx:0,gz:0,held:null},wheelR:0.25,auto:true};cars.push(c);return c;}
+
 
 // =====================================================================
 // HUD, PANELES Y MENSAJES
@@ -2729,7 +2789,7 @@ function makeCarProc(x,z,yaw,kind){const g=new THREE.Group();const body=new THRE
   const car={g,body,sw:swm,swp,x,z,y,yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:R(5,60),wheels,seat:new V3(0.38,0.3,-0.22),eye:1.13,halfW:0.92,len:4.3,kind,searched:false};cars.push(car);return car;}
 const _eu2=new THREE.Euler();
 // moto como vehículo: carrocería del mismo modelo que la aparcada, se inclina en las curvas
-function makeMoto(m){const g=new THREE.Group();const body=new THREE.Group();g.add(body);const mat=(INST[m.model].mat||paintMat).clone();mat.color.set(m.col);const me=new THREE.Mesh(INST[m.model].geo,mat);body.add(me);
+function makeMoto(m){if(INST[m.model]&&INST[m.model].tpl)return makeMotoLC(m);const g=new THREE.Group();const body=new THREE.Group();g.add(body);const mat=(INST[m.model].mat||paintMat).clone();mat.color.set(m.col);const me=new THREE.Mesh(INST[m.model].geo,mat);body.add(me);
   g.position.set(m.x,m.y,m.z);g.rotation.y=m.yaw;scene.add(g);const c={g,body,sw:null,swp:null,x:m.x,z:m.z,y:m.y,yaw:m.yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:R(15,60),wheels:[],
     seat:new V3(0,0,-0.18),eye:1.42,halfW:0.35,len:1.9,kind:'moto',searched:true,wreck:0,gear:1,shift:{gx:0,gz:0,held:null},wheelR:0.27,auto:true};cars.push(c);return c;}
 function steerMoto(car){if(!inVR)return null;const gl=gripBySide.left,gr=gripBySide.right;if(!gl||!gr||!IN.lgHeld||!IN.rgHeld)return null;gl.getWorldPosition(_v);gr.getWorldPosition(_v1);
@@ -2823,7 +2883,7 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
       _imp.set(s*car.speed,0,c*car.speed).multiplyScalar(1.15);_imp.y=1+sp*0.12;_e2.copy(h.sim[LKNEE]);hitChar(h,'body',sp*5,_imp,LKNEE,player?'player':'car',_e2,_v.set(s,0,c));applyImp(h,_imp.set(s*car.speed*0.9,1+sp*0.1,c*car.speed*0.9),RKNEE);applyImp(h,_imp.set(s*car.speed*0.25,sp*0.18,c*car.speed*0.25),CHEST);h.k=0;
       if(!h.dead){h.headHp-=sp*1.5;if(h.headHp<=0)die(h,player?'player':'car');}h.lastHitT=clockT;sfx('hit',volAt(hx,hz,50));spray(h.sim[CHEST],_v.set(s,0,c),10);car.speed*=0.9;}}
   car.g.position.set(car.x,car.y,car.z);car.g.rotation.y=car.yaw;if(car.body){const bd=car.body;if(bd.userData.p0===undefined)bd.userData.p0=bd.position.clone();const hp=car.kind==='moto'?0:0.55;bd.rotation.set(-car.pitch,0,car.roll);bd.position.set(bd.userData.p0.x+hp*Math.sin(car.roll),bd.userData.p0.y+hp*(2-Math.cos(car.roll)-Math.cos(car.pitch)),bd.userData.p0.z+hp*Math.sin(car.pitch));if(car.sw)car.sw.rotation.z=car.wheelRot;}if(car.wreck)car.g.rotation.z=car.flip||0;
-  for(const w of car.wheels){w.node.rotation.x+=car.speed*dt/(car.wheelR||WR);if(w.front)w.node.rotation.y=car.steer;}}
+  for(const w of car.wheels){w.node.rotation.x+=car.speed*dt/(car.wheelR||WR);if(w.front)w.node.rotation.y=car.steer;}if(car.head)car.head.rotation.y=car.steer;}
 
 // =====================================================================
 // NECESIDADES
@@ -3065,7 +3125,7 @@ setTimeout(async()=>{try{await loadWorldData();buildWorld();buildLootGrid();setL
 // ---- ganchos de depuración (solo con ?shot=1) ----
 if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,trySever,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
-  applyDoor,TPL,poseHand,gl,viewModel,VTPL,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
+  applyDoor,TPL,poseHand,gl,viewModel,VTPL,MOTOS,makeMoto,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}
 
 // =====================================================================

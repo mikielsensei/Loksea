@@ -12,9 +12,7 @@ function occFree(x,z,r){const i0=Math.floor((x-r)/1.2),i1=Math.floor((x+r)/1.2),
   for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const L=OCC.get(i+','+j);if(L)for(const o of L)if(Math.hypot(o[0]-x,o[1]-z)<r+o[2])return false;}return true;}
 function occAdd(x,z,r){const k=occK(x,z);let L=OCC.get(k);if(!L)OCC.set(k,L=[]);L.push([x,z,r]);}
 function placeMotoLC(x,z,yaw,o={}){const model=o.model||pick(['moto','motoT','motoT','moto','motoN','motoX','moto','motoT']);const col=o.col||pick(LC_MOTOCOL);const y=surfY(x,z);
-  const ref=addInst(model,x,y,z,yaw,1,1,1,0,0,0,col);if(model==='moto'||model==='motoT'){const L=INST[model].lists.get(ref[1]);L[ref[2]][11]=-0.09;}// en la pata de cabra
-  if(Math.random()<0.25)addInst('casco',x+Math.sin(yaw)*0.1,y+0.98,z+Math.cos(yaw)*0.1-0.0,yaw+R(-0.5,0.5),1,1,1,0,0,0,pick([0xffffff,0x1a1a1a,0xb01818,0x2a4a8a,0x8a8f94]));
-  const v=solidBox(x,z,0.32,0.95,yaw,y,y+1.1);MOTOS.push({x,y,z,yaw,model,col,ref,fallen:false,ok:true,vol:v});occAdd(x,z,0.9);}
+  const v=solidBox(x,z,0.32,0.95,yaw,y,y+1.1);MOTO_PEND.push({x,z,yaw,vol:v});occAdd(x,z,0.9);}
 function nearTree(x,z,r){for(const t of TREES){if(Math.abs(t.x-x)<r&&Math.abs(t.z-z)<r&&Math.hypot(t.x-x,t.z-z)<r)return true;}return false;}
 function nearLamp(x,z,r){for(const l of WD.lamp){if(Math.abs(l[0]-x)<r&&Math.abs(l[2]-z)<r)return true;}return false;}
 function kerbNear(x,z,maxD,f){let best=null,bd=maxD;for(const k of KERB){const d=Math.hypot(k.x-x,k.z-z);if(d<bd&&(!f||f(k))){bd=d;best=k;}}return best;}
@@ -33,6 +31,11 @@ function streetFurnitureLC(){
   {const k0=kerbNear(19,80,12,k=>!k.trav);if(k0){const ch=k0.ch;for(let s=-6;s<6;s++){const k=ch.pts[(k0.i+s+ch.pts.length)%ch.pts.length];if(!k)continue;const x=k.x+k.nx*1.5,z=k.z+k.nz*1.5;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);
       addInst('bicingDock',x,y,z,ya+Math.PI/2);if(Math.random()<0.6)addInst('bicingBike',x+k.nx*0.25,y,z+k.nz*0.25,Math.atan2(-k.nx,-k.nz)+R(-0.04,0.04));solidBox(x,z,0.12,0.9,ya,y,y+1.0);}
     const t=ch.pts[(((k0.i-8)%ch.pts.length)+ch.pts.length)%ch.pts.length];if(t)addInst('bicingTotem',t.x+t.nx*1.4,H(t.x,t.z),t.z+t.nz*1.4,Math.atan2(t.ux,t.uz));}}
+  // --- Vallespir escolar: jardineras de madera y amarillas en el carril del lado del parque, con bancos ---
+  {let last=null;for(const k of KERB){if(!inVallN(k.x,k.z)||k.nx*VALL_E[0]+k.nz*VALL_E[1]>-0.5||k.cwd<4)continue;if(last&&Math.hypot(last[0]-k.x,last[1]-k.z)<R(5.5,7.5))continue;
+    const x=k.x+k.nx*1.6,z=k.z+k.nz*1.6;if(groundKind(x,z)!==2)continue;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);last=[k.x,k.z];
+    if(Math.random()<0.72){addInst('jardiFusta',x,y,z,ya+Math.PI/2);solidBox(x,z,1.25,0.55,ya+Math.PI/2,y,y+0.75);}else{addInst('jardiGroc',x,y,z,ya+Math.PI/2);solidBox(x,z,0.85,0.5,ya+Math.PI/2,y,y+0.6);}occAdd(x,z,1.6);
+    if(Math.random()<0.45){const bx2=x+k.ux*1.9,bz2=z+k.uz*1.9,by=H(bx2,bz2),byaw=Math.atan2(-k.nx,-k.nz);addInst('banc',bx2,by,bz2,byaw);solidBox(bx2,bz2,0.95,0.3,byaw,by,by+0.5);occAdd(bx2,bz2,1);BENCHES.push({x:bx2,z:bz2,yaw:byaw,y:by+0.45,n:2});}}}
   // --- recorrido de cada bordillo: motos, bancos, papeleras, semáforos, terrazas ---
   let lastBin=new Map(),lastBench=new Map(),lastMoto=new Map(),semaf=new Set();
   for(const k of KERB){const id=k.cid;
@@ -54,12 +57,22 @@ function streetFurnitureLC(){
 // ---------- coches aparcados en su sitio real ----------
 function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
   for(const s of SPOTS.cars){const [x,z,ya,nx,nz,W]=s;
+    if(inVallN(x,z))continue;// calle escolar: nada aparcado
     // islas de contenedores cada cierto trecho (en Barcelona van en el carril de aparcamiento)
     if(conts.every(c=>Math.hypot(c[0]-x,c[1]-z)>70)&&Math.random()<0.22){conts.push([x,z]);const facing=Math.atan2(-nx,-nz);const ux=Math.sin(ya),uz=Math.cos(ya);
       CONTSET_LC.forEach((ty,i)=>{const t=(i-2.5)*2.05;const qx=x+ux*t+nx*0.15,qz=z+uz*t+nz*0.15;if(groundKind(qx,qz)!==2)return;const y=H(qx,qz);const ref=addInst('cont_'+ty,qx,y,qz,facing);const v=solidBox(qx,qz,0.95,0.82,facing,y,y+1.8);CONTS.push({x:qx-nx*1.2,z:qz-nz*1.2,cx:qx,cz:qz,ty,yaw:facing});});continue;}
     if(Math.random()<(focusD(x,z)<45?0.12:0.5))continue;if(cars.some(c=>Math.hypot(c.x-x,c.z-z)<4.9))continue;
     const yaw=Math.atan2(nz,-nx);// el bordillo queda a la derecha del coche
     const c=Object.keys(VTPL).length?makeParked(x,z,yaw+R(-0.025,0.025)):makeCar(x,z,yaw+R(-0.025,0.025),'proc');c.fuel=R(15,90);n++;}
-  buildVInst();for(const k in VTPL)needHi(VTPL[k]);
+  buildVInst();for(const k in VTPL)needHi(VTPL[k]);buildMotosLC();
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];
+// Vallespir junto al parque: calle escolar pacificada (jardineras de madera y bancos donde antes se aparcaba)
+const VALL_N=[[-30,-9],[9,66]];const VALL_E=[0.89,-0.46];
+const inVallN=(x,z)=>segD(x,z,VALL_N[0],VALL_N[1])<9;
+// jardinera de madera de la «superilla»: caja de listones con arbustos y flores
+{const W=0x8a5e34,D=0x6e4a28,G=0x3f6a2a,G2=0x55823a;const p=[];for(let i=0;i<5;i++)p.push([bx(2.4,0.11,0.06,0,0.08+i*0.12,0.5),i%2?W:D],[bx(2.4,0.11,0.06,0,0.08+i*0.12,-0.5),i%2?D:W]);
+  p.push([bx(0.06,0.6,1.0,1.2,0.32,0),D],[bx(0.06,0.6,1.0,-1.2,0.32,0),D],[bx(2.36,0.04,0.96,0,0.58,0),0x3a2a1e]);
+  for(let i=0;i<7;i++)p.push([sp(R(0.22,0.36),R(-1,1),0.72+R(0,0.15),R(-0.3,0.3),6),Math.random()<0.5?G:G2]);p.push([sp(0.12,0.7,0.85,0.2,5),0xd8c040],[sp(0.1,-0.5,0.82,-0.2,5),0xc85a8a]);
+  defInst('jardiFusta',mkG(p),woodPropMat,1,1,false);}
+{const p=[[bx(1.6,0.45,0.9,0,0.225,0),0xe8c21e],[bx(1.5,0.04,0.8,0,0.46,0),0x3a2a1e]];for(let i=0;i<4;i++)p.push([sp(R(0.2,0.3),R(-0.6,0.6),0.6,R(-0.2,0.2),6),0x4a7a32]);defInst('jardiGroc',mkG(p),plasticMat,1,1,false);}

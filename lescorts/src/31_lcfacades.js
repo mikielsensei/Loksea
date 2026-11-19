@@ -12,8 +12,10 @@ const LC_STY=[
   {w:1,wall:'stone_blocks',tints:['#e0d4c0','#d4c8b4'],slab:'#e8e2d6',balc:'ind',rail:0,side:'plaster_cream'}];
 const AWNCOL=['#3c6e46','#2f5a3c','#4b7a52','#c8b48a','#7a5a3a','#9a3a2e','#3a4e6e','#d8cdb4'];
 const hashN=(x,z)=>{const s=Math.sin(x*12.9898+z*78.233)*43758.5453;return s-Math.floor(s);};
-function lcStyle(b,hgt){const r=hashN(b.r[0][0],b.r[0][1]);let tot=0;for(const s of LC_STY)tot+=s.w;let a=r*tot,st=LC_STY[0];for(const s of LC_STY){a-=s.w;if(a<=0){st=s;break;}}
-  const old=hgt<10.5;if(old&&r<0.6)st=pick([LC_STY[1],LC_STY[4],LC_STY[5]]);
+// en Travessera y Vallespir: sobre todo bloques de ladrillo de los 60-70 y edificios grises modernos (como en las fotos)
+const LC_WF=[7,2,1,3,2,0];
+function lcStyle(b,hgt){const r=hashN(b.r[0][0],b.r[0][1]);const c=centroid(b.r);const foc=focusD(c[0],c[1])<45;const ws=LC_STY.map((s,i)=>foc?LC_WF[i]:s.w);let tot=0;for(const w of ws)tot+=w;let a=r*tot,st=LC_STY[0];for(let i=0;i<LC_STY.length;i++){a-=ws[i];if(a<=0){st=LC_STY[i];break;}}
+  const old=hgt<10.5;if(old&&r<0.6&&!foc)st=pick([LC_STY[1],LC_STY[4],LC_STY[5]]);
   const tint=hexTint(pick(st.tints));return Object.assign({},st,{tint,sideTint:tint.map(v=>v*0.93),awn:Math.random()<0.65?pick(AWNCOL):null,awnP:R(0.25,0.7),old});}
 // toldo de balcón (tela tensa inclinada con faldón), color por instancia
 defInst('toldoB',(()=>{const g=mkG([[bx(1,0.02,0.9,0,0,0.45,0.55),0xffffff],[bx(1,0.25,0.015,0,-0.27,0.83),0xffffff],[bx(1.02,0.03,0.03,0,0.02,0.02),0x9a9a9a]]);return g;})(),
