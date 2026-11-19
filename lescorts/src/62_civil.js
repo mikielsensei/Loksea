@@ -23,13 +23,42 @@ const _cpt={x:0,z:0};
 function civPrep(){for(const k of KERB)k.feat=null;const add=(x,z,f)=>{let best=null,bd=6;for(const c of CHAINS)for(const k of c.pts){const d=Math.hypot(k.x-x,k.z-z);if(d<bd){bd=d;best=k;}}if(best)(best.feat||(best.feat=[])).push(f);};
   for(const b of BENCHES)for(let s=0;s<b.n;s++){const a=(s-(b.n-1)/2)*0.62;const ux=Math.cos(b.yaw),uz=-Math.sin(b.yaw);const fx=-Math.sin(b.yaw)*0.1,fz=-Math.cos(b.yaw)*0.1;b.seats=b.seats||[];b.seats.push({x:b.x+ux*a+fx,z:b.z+uz*a+fz,yaw:b.yaw+Math.PI,y:b.y,used:null});}// el banco mira hacia su -z (el respaldo está en +z)
   for(const b of BENCHES)add(b.x,b.z,{t:'bench',o:b});for(const s of SHOPS)add(s.x,s.z,{t:'shop',o:s});for(const c of CONTS)add(c.x,c.z,{t:'cont',o:c});for(const t of TERR)add(t.x,t.z,{t:'terr',o:t});}
+// ---------- grafo de aceras: puntos del bordillo enlazados a lo largo y cruzando por los pasos ----------
+let GNODES=null;
+function buildWalkGraph(){GNODES=[];for(const c of CHAINS)for(const k of c.pts){k.id=GNODES.length;k.adj=[];GNODES.push(k);}
+  for(const c of CHAINS){const n=c.pts.length;for(let i=0;i<n;i++){const a=c.pts[i];const j=i+1<n?i+1:(c.loop?0:-1);if(j<0)continue;const b=c.pts[j];const d=Math.hypot(a.x-b.x,a.z-b.z);a.adj.push({to:b.id,c:d});b.adj.push({to:a.id,c:d});}}
+  // extremos de cadena (esquinas, vados): se unen a la acera más cercana a menos de 7 m
+  for(const c of CHAINS){if(c.loop)continue;for(const k of [c.pts[0],c.pts[c.pts.length-1]]){let best=null,bd=7;for(const o of GNODES){if(o.ch===c)continue;const d=Math.hypot(o.x-k.x,o.z-k.z);if(d<bd){bd=d;best=o;}}
+      if(best){k.adj.push({to:best.id,c:bd+1,x:bd>2.5?1:0});best.adj.push({to:k.id,c:bd+1,x:bd>2.5?1:0});}}}
+  // pasos de peatones: del bordillo de un lado al de enfrente
+  for(const k of GNODES){if(k.cwd>2.2||!(k.W>0))continue;const px=k.x+k.nx*(k.W+0.7),pz=k.z+k.nz*(k.W+0.7);const o=kerbNear(px,pz,3.5,q=>q.ch!==k.ch&&q.id!==undefined);
+    if(o&&!k.adj.some(e=>e.to===o.id)){const d=Math.hypot(o.x-k.x,o.z-k.z);k.adj.push({to:o.id,c:d+6,x:1});o.adj.push({to:k.id,c:d+6,x:1});}}}
+function reachable(s){const seen=new Uint8Array(GNODES.length);const st=[s];seen[s]=1;while(st.length){const u=st.pop();for(const e of GNODES[u].adj)if(!seen[e.to]){seen[e.to]=1;st.push(e.to);}}return seen;}
+function aStar(s,g){if(s===g)return[s];const N=GNODES.length;const G=new Float32Array(N).fill(1e9),F=new Int32Array(N).fill(-1),closed=new Uint8Array(N);const gx=GNODES[g].x,gz=GNODES[g].z;
+  const heap=[[Math.hypot(GNODES[s].x-gx,GNODES[s].z-gz),s]];G[s]=0;let it=0;
+  const push=e=>{heap.push(e);let i=heap.length-1;while(i>0){const p=(i-1)>>1;if(heap[p][0]<=heap[i][0])break;[heap[p],heap[i]]=[heap[i],heap[p]];i=p;}};
+  const pop=()=>{const top=heap[0];const last=heap.pop();if(heap.length){heap[0]=last;let i=0;for(;;){const l=2*i+1,r=l+1;let m=i;if(l<heap.length&&heap[l][0]<heap[m][0])m=l;if(r<heap.length&&heap[r][0]<heap[m][0])m=r;if(m===i)break;[heap[m],heap[i]]=[heap[i],heap[m]];i=m;}}return top;};
+  while(heap.length&&it++<20000){const [,u]=pop();if(closed[u])continue;closed[u]=1;if(u===g)break;for(const e of GNODES[u].adj){const ng=G[u]+e.c;if(ng<G[e.to]){G[e.to]=ng;F[e.to]=u;const n=GNODES[e.to];push([ng+Math.hypot(n.x-gx,n.z-gz),e.to]);}}}
+  if(F[g]<0)return null;const path=[g];let u=g;while(u!==s){u=F[u];path.push(u);}return path.reverse();}
+function nearNode(x,z){return kerbNear(x,z,30,q=>q.id!==undefined);}
+// destino según la rutina de cada uno
+function civPlan(h){const c=h.civ;const hr=hourF();const here=nearNode(h.x,h.z);if(!here)return false;let tgt=null,goal=null;const RE=reachable(here.id);
+  const far=(L,mn,mx)=>L.filter(o=>{const d=Math.hypot(o.x-h.x,o.z-h.z);if(d<=mn||d>=mx)return false;const n=nearNode(o.x,o.z);return n&&RE[n.id];});
+  if(c.r==='basura'&&CONTS.length){const L=far(CONTS,3,90);if(L.length){const o=L.reduce((a,b)=>Math.hypot(a.x-h.x,a.z-h.z)<Math.hypot(b.x-h.x,b.z-h.z)?a:b);tgt=o;goal={t:'cont',o};}}
+  if(!tgt){const r=Math.random();
+    if(r<0.35&&hr>8.5&&hr<21){const L=far(SHOPS.filter(s=>!s.dark),8,110);if(L.length){const o=pick(L);tgt=o;goal={t:'shop',o};}}
+    else if(r<0.5){const L=far(BENCHES.filter(b=>b.seats&&b.seats.some(q=>!q.used)),8,100);if(L.length){const b=pick(L);const q=b.seats.find(q=>!q.used);tgt=b;goal={t:b.shelter?'bus':'bench',seat:q,o:b};}}
+    else if(r<0.62&&hr>9&&hr<23.5){const L=far(TERR.filter(t=>t.seats.some(q=>!q.used)),8,110);if(L.length){const t=pick(L);const q=t.seats.find(q=>!q.used);tgt=t;goal={t:'terr',seat:q,o:t};}}}
+  if(!tgt){// a casa / al trabajo: un punto de acera lejano; al llegar se va (desaparece si no lo ves)
+    const L=GNODES.filter((k,i)=>i%5===0&&RE[i]&&Math.hypot(k.x-h.x,k.z-h.z)>45&&Math.hypot(k.x-h.x,k.z-h.z)<130);if(!L.length)return false;tgt=pick(L);goal={t:'home'};}
+  const gn=nearNode(tgt.x,tgt.z);if(!gn)return false;const path=aStar(here.id,gn.id);if(!path)return false;c.path=path;c.pi=0;c.goal=goal;c.gobj=tgt;c.st='route';c.t=0;return true;}
 function hourDensity(){const h=hourF();const pts=[[0,0.25],[2,0.12],[5,0.06],[7,0.45],[9,0.9],[12,1],[14,0.8],[16,0.75],[18,1],[20.5,0.95],[22,0.6],[24,0.25]];for(let i=1;i<pts.length;i++)if(h<=pts[i][0]){const a=pts[i-1],b=pts[i];return lerp(a[1],b[1],(h-a[0])/(b[0]-a[0]));}return 0.25;}
 const CIV_MAX=34;
-function populateCivilians(){civPrep();CIV.ready=true;}
+function populateCivilians(){civPrep();buildWalkGraph();CIV.ready=true;}
 function civTpl(kind){const L=TPL_X[kind];if(!L||!L.length)return null;return pick(L);}
 function civSpawnAt(k,o={}){if(!o.tpl){const hr=hourF(),r=Math.random();const kind=o.kind||(hr>7.5&&hr<20&&r<0.14?'office':r<0.17?'medic':r<0.2&&hr>9&&hr<22?'delivery':null);const t=kind&&civTpl(kind);if(t){o.tpl=t;o.female=t.female;}}delete o.kind;
   const h=spawnChar('civil',k.x-k.nx*1.2,k.z-k.nz*1.2,Object.assign({armed:false,variant:RI(0,11)},o));if(!h)return null;
-  h.civ={r:'paseo',st:'walk',ch:k.ch,i:k.i,dir:Math.random()<0.5?1:-1,lane:R(1.0,2.2),spd:R(1.05,1.45),t:0,cool:R(5,25)};h.soc=null;h.inside=0;h.hostile=false;h.angry=false;h.name=h.female?pick(NAMES_CIV_F):pick(NAMES_CIV_M);civItem(h,null);return h;}
+  h.civ={r:'paseo',st:'walk',ch:k.ch,i:k.i,dir:Math.random()<0.5?1:-1,lane:R(1.3,2.6),spd:R(1.1,1.45),t:0,cool:R(5,25)};h.soc=null;h.inside=0;h.hostile=false;h.angry=false;h.name=h.female?pick(NAMES_CIV_F):pick(NAMES_CIV_M);civItem(h,null);return h;}
 const NAMES_CIV_M=['Jordi','Pau','Marc','Albert','Carles','Xavi','Toni','Miguel','Joan','Sergi','Iván','Rubén','Karim','Wei','Andrés','Oriol'],NAMES_CIV_F=['Laia','Marta','Núria','Montse','Anna','Carmen','Laura','Sílvia','Fàtima','Lucía','Mei','Rosa','Aina','Elena','Paula','Mireia'];
 function civSpawnNear(p,minR,maxR,first){// elige un punto de acera a la distancia pedida, mejor fuera de la vista
   const cand=[];for(let i=0;i<KERB.length;i+=3){const k=KERB[i];if(!k.ch||!CHAINS.includes(k.ch))continue;const d=Math.hypot(k.x-p.x,k.z-p.z);if(d>=minR&&d<=maxR)cand.push(k);}if(!cand.length)return 0;
@@ -44,7 +73,7 @@ function civSpawnNear(p,minR,maxR,first){// elige un punto de acera a la distanc
         for(let j=0;j<n;j++){const s=t.seats[j];const kk=kerbNear(t.x,t.z,10);if(!kk)break;const h=civSpawnAt(kk);if(!h)break;civSit(h,s,'terr');h.civ.t=R(120,900);civItem(h,pick(['cup','beer','beer','cup',null]));c++;}if(c)return c;}}
     // sentado en un banco (leyendo el móvil, descansando)
     if(r>=0.3&&r<0.38){const fb=BENCHES.filter(b=>b.seats&&b.seats.some(q=>!q.used)&&Math.hypot(b.x-p.x,b.z-p.z)>minR*0.6&&Math.hypot(b.x-p.x,b.z-p.z)<maxR);if(fb.length){const b=pick(fb);const q=b.seats.find(q=>!q.used);const kk=kerbNear(b.x,b.z,10);if(kk){const h=civSpawnAt(kk,{});if(h){civSit(h,q,'bench');if(Math.random()<0.5)civItem(h,'phone');return 1;}}}}
-    const jog=r>=0.36&&r<0.42&&!night;const h=civSpawnAt(k,jog&&Math.random()<0.75?{kind:'sport'}:{});if(!h)return 0;const c=h.civ;
+    const jog=r>=0.36&&r<0.42&&!night;const h=civSpawnAt(k,{});if(!h)return 0;const c=h.civ;
     if(jog){c.r='correr';c.spd=R(2.5,3.2);c.lane=R(0.9,1.6);}
     else if(r<0.5){c.r='basura';civItem(h,'trash');}
     else if(r<0.62&&!night){civItem(h,'bag');}
@@ -53,7 +82,7 @@ function civSpawnNear(p,minR,maxR,first){// elige un punto de acera a la distanc
     return 1;}
   return 0;}
 function civSit(h,s,kind){s.used=h;h.civ.st='sit';h.civ.seat=s;h.civ.sk=kind;h.x=s.x;h.z=s.z;h.yaw=s.yaw;h.act='seat';h.seatH=s.y-H(s.x,s.z);h.speed=0;h.vx=h.vz=0;}
-function civStand(h){const c=h.civ;if(c.seat){c.seat.used=null;c.seat=null;}h.act='stand';h.soc=null;c.st='walk';const k=kerbNear(h.x,h.z,12);if(k){c.ch=k.ch;c.i=k.i;}c.t=0;c.cool=R(20,60);}
+function civStand(h){const c=h.civ;if(c.seat){c.seat.used=null;c.seat=null;}h.act='stand';h.soc=null;c.st='walk';c.planT=-1;if(c.bus){c.bus=false;if(!h.holder.visible){civItem(h,null);despawn(h);return;}}const k=kerbNear(h.x,h.z,12);if(k){c.ch=k.ch;c.i=k.i;}c.t=0;c.cool=R(20,60);}
 function managePopLC(p,first){if(!CIV.ready)return;CIV.popT-=frameDt;if(CIV.popT>0&&!first)return;CIV.popT=first?0:1.5;let n=0;
   for(const h of H_){if(!h.active||h.type!=='civil')continue;const d=Math.hypot(h.x-p.x,h.z-p.z);
     if((d>125&&!h.holder.visible)||d>170){if(h.civ&&h.civ.seat)h.civ.seat.used=null;civItem(h,null);despawn(h);continue;}n++;}
@@ -62,7 +91,7 @@ function managePopLC(p,first){if(!CIV.ready)return;CIV.popT-=frameDt;if(CIV.popT
 // ---------- IA de cada vecino ----------
 function civilAI(h,dt,p){const c=h.civ;if(!c)return;c.t+=dt;
   if(h.mode==='phys'&&(h.k<0.6||h.down>0||h.act==='getup')){h.speed*=0.85;return;}
-  if(h.inside>0){h.inside-=dt;h.holder.visible=false;if(h.inside<=0){h.holder.visible=true;h.x=c.door.x;h.z=c.door.z;h.yaw=Math.atan2(c.door.nx,c.door.nz);if(Math.random()<0.7)civItem(h,'bag');c.st='walk';c.cool=R(30,90);}return;}
+  if(h.inside>0){h.inside-=dt;h.holder.visible=false;if(h.inside<=0){h.holder.visible=true;h.x=c.door.x;h.z=c.door.z;h.yaw=Math.atan2(c.door.nx,c.door.nz);if(Math.random()<0.7)civItem(h,'bag');c.st='walk';c.planT=-1;c.cool=R(30,90);}return;}
   // si le pegas o le apuntas, huye
   if(h.angry||h.scared>0){if(h.civ.seat)civStand(h);h.scared=Math.max(h.scared||0,h.angry?8:0)-dt;h.angry=false;h.act='stand';h.soc=null;moveH(h,h.x-p.x,h.z-p.z,4.2,dt);if(h.scared<=0){h.scared=0;civStand(h);}return;}
   if(c.st==='sit'){h.speed=0;h.vx=h.vz=0;h.x=c.seat.x;h.z=c.seat.z;h.yaw=c.seat.yaw;h.act='seat';
@@ -71,8 +100,8 @@ function civilAI(h,dt,p){const c=h.civ;if(!c)return;c.t+=dt;
     if(c.t>(c.sk==='terr'?c.t0||(c.t0=R(240,1200)):c.t0||(c.t0=R(60,400)))){c.t0=0;civStand(h);}return;}
   if(c.st==='chat'){h.speed*=0.8;h.vx=h.vz=0;h.act='stand';faceTo(h,c.cx,c.cz,dt);c.socT=(c.socT||0)-dt;
     if(c.socT<=0){c.socT=R(2.5,7);const r=Math.random();h.soc=r<0.45?'talk':r<0.62?'laugh':r<0.8?'cross':(h.itemK==='cup'?'drink':null);}
-    c.t-=dt;if(c.t<=0){for(const o of (c.grp||[h])){if(o.civ&&o.civ.st==='chat'){o.civ.st='walk';o.soc=null;o.civ.dir=Math.random()<0.5?1:-1;}}}return;}
-  if(c.st==='act'){h.speed*=0.7;h.vx=h.vz=0;h.act='stand';faceTo(h,c.fx,c.fz,dt);c.t2-=dt;if(c.t2<=0){if(c.soc==='throw'){civItem(h,null);c.r='paseo';}h.soc=null;c.st='walk';c.cool=R(15,40);}return;}
+    c.t-=dt;if(c.t<=0){for(const o of (c.grp||[h])){if(o.civ&&o.civ.st==='chat'){o.civ.st='walk';o.civ.planT=0;o.soc=null;o.civ.dir=Math.random()<0.5?1:-1;}}}return;}
+  if(c.st==='act'){h.speed*=0.7;h.vx=h.vz=0;h.act='stand';faceTo(h,c.fx,c.fz,dt);c.t2-=dt;if(c.t2<=0){if(c.soc==='throw'){civItem(h,null);c.r='paseo';}h.soc=null;c.st='walk';c.planT=-1;c.cool=R(15,40);}return;}
   if(civCrossAI(h,dt))return;
   if(c.st==='go'){const dx=c.gx-h.x,dz=c.gz-h.z,d=Math.hypot(dx,dz);if(d>0.45){h.act='stand';moveH(h,dx,dz,c.spd*0.9,dt);if(c.t>40){c.st='walk';}return;}
     const f=c.goal;c.goal=null;c.t=0;
@@ -81,6 +110,20 @@ function civilAI(h,dt,p){const c=h.civ;if(!c)return;c.t+=dt;
     if(f.t==='cont'){c.st='act';c.soc='throw';h.soc='throw';h.socT0=clockT;c.t2=1.6;c.fx=f.o.cx;c.fz=f.o.cz;sfx('click',volAt(h.x,h.z,10)*0.4);return;}
     if(f.t==='window'){c.st='act';c.soc='look';h.soc=Math.random()<0.5?'cross':null;c.t2=R(3,9);c.fx=f.fx;c.fz=f.fz;return;}
     c.st='walk';return;}
+  if(c.st==='walk'){c.planT=(c.planT||0)-dt;if(c.planT<=0){c.planT=R(3,6);if(civPlan(h))return;}}
+  if(c.st==='route'){const run=c.r==='correr';h.soc=(h.itemK==='phone'&&!run&&Math.sin(clockT*0.13+h.slot)>0.3)?'phone':null;
+    if(c.pi>=c.path.length){// llegada
+      const g=c.goal;c.path=null;
+      if(g.t==='home'){if(!h.holder.visible||Math.random()<0.5){civItem(h,null);despawn(h);return;}c.planT=-1;c.st='walk';return;}
+      if(g.t==='bus'){civSit(h,g.seat,'bench');c.t0=R(30,120);c.bus=true;return;}
+      if(g.t==='shop'){c.gx=g.o.x;c.gz=g.o.z;}else if(g.t==='cont'){c.gx=g.o.x;c.gz=g.o.z;}else if(g.seat){c.gx=g.seat.x+Math.sin(g.seat.yaw)*0.45;c.gz=g.seat.z+Math.cos(g.seat.yaw)*0.45;}
+      c.st='go';c.t=0;return;}
+    const k=GNODES[c.path[c.pi]],nx=c.pi+1<c.path.length?GNODES[c.path[c.pi+1]]:null;
+    // tramo de paso de peatones: esperar en el bordillo y cruzar recto
+    if(nx&&k.adj.some(e=>e.to===nx.id&&e.x)){const dx=k.x-h.x,dz=k.z-h.z;if(Math.hypot(dx,dz)>0.9){h.act='stand';moveH(h,dx,dz,c.spd,dt);return;}c.cross=nx;c.st='wait';c.t2=k.trav?R(3,14):R(0.4,3);c.pi++;return;}
+    const lane=Math.min(c.lane,Math.max(0.4,k.sw-0.9));const tx=k.x-k.nx*lane,tz=k.z-k.nz*lane;const dx=tx-h.x,dz=tz-h.z,d=Math.hypot(dx,dz);
+    if(d<(run?1.5:1.1)){c.pi++;return;}if(c.t>240){c.planT=-1;c.st='walk';return;}
+    h.act='stand';moveH(h,dx,dz,c.spd,dt);return;}
   // caminar por la acera
   const run=c.r==='correr';h.soc=(h.itemK==='phone'&&!run&&Math.sin(clockT*0.13+h.slot)>0.3)?'phone':null;
   const k=chainPt(c.ch,c.i,c.lane,_cpt);const dx=_cpt.x-h.x,dz=_cpt.z-h.z,d=Math.hypot(dx,dz);
@@ -100,7 +143,7 @@ function civilAI(h,dt,p){const c=h.civ;if(!c)return;c.t+=dt;
   h.act='stand';moveH(h,dx,dz,c.spd,dt);}
 // esperar al semáforo y cruzar
 function civCrossAI(h,dt){const c=h.civ;if(c.st==='wait'){h.speed*=0.8;h.vx=h.vz=0;h.act='stand';faceTo(h,c.cross.x,c.cross.z,dt);c.t2-=dt;if(c.t2<=0)c.st='crossing';return true;}
-  if(c.st==='crossing'){const o=c.cross;const dx=o.x-o.nx*0.6-h.x,dz=o.z-o.nz*0.6-h.z,d=Math.hypot(dx,dz);if(d<0.8||c.t>40){c.ch=o.ch;c.i=o.i;c.dir=Math.random()<0.5?1:-1;c.st='walk';c.cross=null;c.t=0;return true;}
+  if(c.st==='crossing'){const o=c.cross;const dx=o.x-o.nx*0.6-h.x,dz=o.z-o.nz*0.6-h.z,d=Math.hypot(dx,dz);if(d<0.8||c.t>40){c.ch=o.ch;c.i=o.i;c.dir=Math.random()<0.5?1:-1;c.st=c.path?'route':'walk';c.cross=null;c.t=0;return true;}
     h.act='stand';moveH(h,dx,dz,c.spd*(c.r==='correr'?1:1.12),dt);return true;}
   return false;}
 function civTalk(h){h.soc='talk';h.civ.socT=3;if(h.civ.st==='walk'){h.civ.st='act';h.civ.t2=3;h.civ.fx=camW.x;h.civ.fz=camW.z;h.civ.soc='talk';}toast(`${h.name}: «${pick(CIV_LINES)}»`,4);}

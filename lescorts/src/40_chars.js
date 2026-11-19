@@ -77,7 +77,7 @@ function prepFerrari(g){if(!g)return null;const root=g.scene;const wn=['wheel_fl
 let modelsReady=false;
 const TPL_M=[],TPL_F=[],TPL_X={};
 async function loadModels(){setLoad('m','Descargando personajes…');
-  const list=['p_m1','p_m2','p_m3','p_m4','p_m5','p_f1','p_f2','p_f3','p_f4','p_m6','p_m7','p_m8','p_m9','p_m10','p_f5','p_f6','p_f7','p_f8','p_f9','p_f10','p_bm1','p_bf1','p_sm1','p_sf1','p_mf1','p_dm1'];let done=0;
+  const list=['p_m1','p_m2','p_m3','p_m4','p_m5','p_f1','p_f2','p_f3','p_f4','p_m6','p_m7','p_m8','p_m9','p_m10','p_f5','p_f6','p_f7','p_f8','p_f9','p_f10','p_bm1','p_bf1','p_mf1','p_dm1'];let done=0;
   const FEM=k=>/^p_(f|bf|sf|mf)/.test(k);const KIND=k=>/^p_s/.test(k)?'sport':/^p_b/.test(k)?'office':/^p_mf/.test(k)?'medic':/^p_dm/.test(k)?'delivery':'casual';
   await Promise.all(list.map(async key=>{const n=+(key.match(/\d+/)||[0])[0];const base=(/^p_[mf]\d/.test(key)&&n<=(key[2]==='m'?5:4))?TJS:['models/'];const g=await loadAny(base.map(b=>b+key+'.glb'));const t=prepTpl(g,key);
     if(t){TPL[key]=t;t.female=FEM(key);t.kind=KIND(key);if(t.kind==='casual')(t.female?TPL_F:TPL_M).push(t);else (TPL_X[t.kind]||(TPL_X[t.kind]=[])).push(t);
@@ -127,7 +127,7 @@ function charMat(base,type,variant,tpl,h){const key=base.uuid+type+variant+(h?'_
   if(F&&(zom||h)){const gore=S.gore;const isHead=/head/i.test(base.name)?1:0;m.onBeforeCompile=sh=>{
     Object.assign(sh.uniforms,{uFU:{value:F.fu},uSeed:{value:variant*3.7+1.3},uGore:{value:gore/2},uEL:{value:F.eyeL},uER:{value:F.eyeR},uMo:{value:F.mouth},uHL:{value:F.hl},uHR:{value:F.hr},uUp:{value:F.up},uFw:{value:F.fwd},uSd:{value:F.side},
       uHead:{value:isHead},uHue:{value:h&&h.hue!==undefined?h.hue:0},uSat:{value:h&&h.hue!==undefined?(Math.random()<0.2?R(0.15,0.4):R(0.7,1.15)):1},uMK:{value:[1,0.55,1,0.2][variant%4]},uHK:{value:[1,0.2,0.7,1][variant%4]},uW:{value:h?h.woundU:WOUND0},uWT:{value:h?h.woundT:WOUNDT0},uWD:{value:h?h.woundD:WOUNDD0},uTime:WTIME});
-    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform vec4 uW[8];uniform float uFU;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w==0.0)continue;float r=abs(W.w);float d=length((position-W.xyz)*uFU);transformed-=objectNormal*(W.w<0.0?smoothstep(r*1.2,0.0,d)*r*0.5:smoothstep(r*0.45,0.0,d)*r*0.35)/uFU;}');
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform vec4 uW[8];uniform float uFU;').replace('#include <begin_vertex>','#include <begin_vertex>\nvZP=position;for(int i=0;i<8;i++){vec4 W=uW[i];if(W.w==0.0)continue;float r=abs(W.w);float d=length((position-W.xyz)*uFU);transformed-=objectNormal*min(0.004,(W.w<0.0?smoothstep(r*1.2,0.0,d)*r*0.05:smoothstep(r*0.45,0.0,d)*r*0.04)/uFU);}');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vZP;uniform float uFU,uSeed,uGore,uHead,uMK,uHK,uHue,uSat;uniform vec3 uEL,uER,uMo,uHL,uHR,uUp,uFw,uSd;uniform vec4 uW[8];uniform float uWT[8];uniform vec3 uWD[8];uniform float uTime;\n'+NOISE_GLSL)
       .replace('#include <map_fragment>','#include <map_fragment>\n        vec3 c0=diffuseColor.rgb;vec3 zp=vZP*uFU*1.75+uSeed;float l=dot(c0,vec3(0.3,0.59,0.11));vec3 zc=c0;\n'+(zom?ZOMBIE_GLSL:(type==='civil'?CIVIL_GLSL:''))+WOUND_GLSL+'\n        diffuseColor.rgb=zc;');};
     m.customProgramCacheKey=()=>(zom?'zomb7_':type==='civil'?'civ1_':'wnd7_')+gore;}
@@ -224,7 +224,7 @@ function armTarget(pr,side,mode,ph,amp,sh,out,h){const s=side>0?1:-1;const al=(p
   else if(mode==='hang'){out.set(sh.x+s*0.08,sh.y-al*0.97,sh.z+0.08+Math.sin(ph+side)*0.05);}
   else if(mode==='reach'){out.set(sh.x*0.6,sh.y+0.08,sh.z+al*0.96);}
   else if(mode==='aim'){out.set(s>0?0.05:-0.12,sh.y-0.12,sh.z+(s>0?0.55:0.3));}
-  else{const sw=-Math.sin(ph+(side>0?Math.PI:0))*0.45*amp;out.set(sh.x+s*0.05,sh.y-al*0.95*Math.cos(sw),sh.z+al*0.95*Math.sin(sw));}
+  else{const z_=h&&h.type==='zombie';const sw=-Math.sin(ph+(side>0?Math.PI:0))*(z_?0.45:0.3)*amp;const r=al*(z_?0.95:0.9);out.set(sh.x+s*0.06,sh.y-r*Math.cos(sw),sh.z+0.04+r*Math.sin(sw));}
   return out;}
 const _soc={lean:0,headP:0,headR:0,headY:0};
 // gestos de la vida diaria: hablar con las manos, reír, beber, mirar el móvil, llamar, cruzarse de brazos, tirar la bolsa
@@ -240,7 +240,7 @@ function socialPose(h,pr,o,shL,shR,st){const t=clockT+h.slot*1.73,s=h.soc,al=pr.
   else if(s==='cross'){o.lh.set(-0.1,shL.y-0.27,shL.z+0.19);o.rh.set(0.1,shR.y-0.29,shR.z+0.21);}
   else if(s==='throw'){const u=clamp((clockT-(h.socT0||0))/1.4,0,1);const a=Math.sin(u*Math.PI);o.rh.set(shR.x+0.02,shR.y-al*0.9+a*0.75,shR.z+0.15+a*0.35);st.lean+=0.1*a;}}
 function poseTargets(h,dt){const pr=h.pr,g=h.gp,o=_o;const v=h.speed;const amp=clamp(v/1.3,0,1.5);const z=h.type==='zombie';
-  if(v>0.03)h.phase+=dt*v/pr.stride*Math.PI*(z?1.15:1);else h.phase+=dt*0.6;const ph=h.phase;h.actT+=dt;
+  if(v>0.03)h.phase+=z?dt*v/pr.stride*Math.PI*1.15:dt*v/(pr.stride*0.84*Math.min(1.25,Math.sqrt(clamp(v/1.3,0,1.5)))*2)*2*Math.PI;else h.phase+=dt*0.6;const ph=h.phase;h.actT+=dt;
   const act=h.act;let lean=g.lean,headP=g.droop,headR=g.tilt+(z?Math.sin(clockT*0.7*g.twitch+h.slot)*0.1*g.twitch:0),headY=z?Math.sin(clockT*0.4+h.slot)*0.2:Math.sin(clockT*0.3+h.slot)*0.5*(v<0.1?1:0.2);
   if(act==='lie'||act==='sleep'){// tumbado boca arriba
     o.pel.set(0,0.14,0);bodyLocal(pr,Object.assign(o,{pitch:-Math.PI/2,roll:0,twist:0,headPitch:-0.2,headRoll:0,headYaw:0,pelPitch:-Math.PI/2}));
@@ -259,11 +259,15 @@ function poseTargets(h,dt){const pr=h.pr,g=h.gp,o=_o;const v=h.speed;const amp=c
     o.lh.set(0.25,0.06,0.45+Math.sin(t)*0.25);o.rh.set(-0.25,0.06,0.45-Math.sin(t)*0.25);bodyLocal(pr,Object.assign(o,{pitch:Math.PI/2-0.25,roll:Math.sin(t)*0.12,twist:0,headPitch:-1.0,headRoll:0,headYaw:Math.sin(t*0.5)*0.3,pelPitch:Math.PI/2,
       kpL:_pole.set(0,-1,0),kpR:_tmpB.set(0,-1,0),epL:_v3.set(0.5,-0.5,0),epR:_v4.set(-0.5,-0.5,0)}));}
   else{// de pie / caminando (gait)
-    const bob=Math.abs(Math.cos(ph))*0.035*amp,sway=Math.sin(ph)*0.025*amp*g.sway;let pelY=pr.pelH-0.025-0.03*amp-bob;if(h.crouchK){pelY-=pr.pelH*h.crouchK;lean+=h.crouchK*0.5;}
+    const civ=!z;// gente normal: marcha humana (apoyo 60 %, balanceo 40 %, piernas casi rectas)
+    const bob=civ?(Math.cos(ph*2)*0.018*amp):Math.abs(Math.cos(ph))*0.035*amp,sway=Math.sin(ph)*(civ?0.018:0.025)*amp*g.sway;let pelY=civ?pr.pelH-0.035-0.01*amp+bob:pr.pelH-0.025-0.03*amp-bob;if(h.crouchK){pelY-=pr.pelH*h.crouchK;lean+=h.crouchK*0.5;}
     if(h.atkAnim>0){lean+=0.25;headP-=0.2;}if(act==='aim')lean=0.08;
     o.pel.set(sway,pelY,0);
-    for(const side of [1,-1]){const lp=ph+(side>0?0:Math.PI);const limp=g.limp*side>0?Math.abs(g.limp):0;const st=pr.stride*0.5*amp*(1-limp*0.6);
-      const lift=Math.max(0,Math.cos(lp))*0.12*amp*(1-limp*0.85)*(z?0.75:1);const f=side>0?o.lf:o.rf;f.set(side*(pr.hipOff.x+0.02)+(z?side*0.04:0),pr.footH+lift,Math.sin(lp)*st);
+    for(const side of [1,-1]){const lp=ph+(side>0?0:Math.PI);const limp=g.limp*side>0?Math.abs(g.limp):0;const st=pr.stride*0.5*amp*(1-limp*0.6);const f=side>0?o.lf:o.rf;
+      if(civ){let u=((lp/(2*Math.PI))%1+1)%1;const a=pr.stride*0.42*Math.min(1.25,Math.sqrt(amp));let fz,fy;// u<0.6 apoyo: el pie va hacia atrás pegado al suelo; luego balanceo
+        if(u<0.6){fz=a-2*a*(u/0.6);fy=0;}else{const t=(u-0.6)/0.4;const e=t*t*(3-2*t);fz=-a+2*a*e;fy=Math.sin(t*Math.PI)*0.09*Math.min(1,amp*1.2);}
+        f.set(side*(pr.hipOff.x+0.01),pr.footH+fy,fz);}
+      else{const lift=Math.max(0,Math.cos(lp))*0.12*amp*(1-limp*0.85)*(z?0.75:1);f.set(side*(pr.hipOff.x+0.02)+(z?side*0.04:0),pr.footH+lift,Math.sin(lp)*st);}
       if(limp>0&&Math.cos(lp)>0)pelY-=0.04*limp;}
     o.pel.y=pelY;
     const shL=_tmpA.set(pr.shOff.x,pr.shOff.y+pelY,pr.shOff.z),shR=_tmpB.set(-pr.shOff.x,pr.shOff.y+pelY,pr.shOff.z);

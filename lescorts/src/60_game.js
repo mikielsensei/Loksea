@@ -193,7 +193,7 @@ function doInteract(){const it=findInteract();if(!it)return;
   else if(it.type==='trunk'){it.obj.searched=true;lootRoll('trunk');}
   else if(it.type==='talk')talkTo(it.obj);
   else if(it.type==='moto'){const m=it.obj;if(m.fallen){m.fallen=false;const L=INST[m.model].lists.get(m.ref[1]);const t=L[m.ref[2]];t[11]=0;t[1]=m.y;const im=INST[m.model].byKey[m.ref[1]];if(im){_m.compose(_p.set(t[0],t[1],t[2]),_q.setFromEuler(_eu2.set(0,t[3],0,'YXZ')),_s.set(1,1,1));im.setMatrixAt(m.ref[2],_m);im.instanceMatrix.needsUpdate=true;}sfx('thud');toast(m.ok?'Levantas la moto. Parece que arranca.':'Levantas la moto. No arranca.');return;}
-    if(!m.ok){sfx('click');toast('No arranca: sin batería');return;}hideInst(m.ref);m.taken=true;const c=makeMoto(m);P.inCar=c;P.carYaw=0;P.carGun=false;toast(inVR?'Subes a la moto · agarra el manillar con los dos grips · gatillo: gas':'Subes a la moto');}
+    if(!m.ok){sfx('click');toast('No arranca: sin batería');return;}hideInst(m.ref);m.taken=true;if(m.vol){m.vol.y0=-999;m.vol.y1=-998;}const c=makeMoto(m);P.inCar=c;P.carYaw=0;P.carGun=false;toast(inVR?'Subes a la moto · agarra el manillar con los dos grips · gatillo: gas':'Subes a la moto');}
   else if(it.type==='vdoor'){vToggleDoor(it.obj.c,it.obj.k);}
   else if(it.type==='car'){if(it.obj.flip){toast('Está volcado');return;}if(it.obj.kind==='vw'){P.inCar=it.obj;P.carYaw=0;P.carGun=false;toast(inVR?'Al volante · agarra el volante con los grips · selector P R N D en la consola · cierra la puerta con la mano':'Al volante');return;}P.inCar=it.obj;P.carYaw=0;P.carGun=false;carInterior(it.obj);toast(inVR?'Subes al coche · palanca con el grip derecho · B: modo disparo':'Subes al coche');}
   else if(it.type==='exit')exitCar();}
@@ -484,7 +484,13 @@ const _eu2=new THREE.Euler();
 function makeMoto(m){if(INST[m.model]&&INST[m.model].tpl)return makeMotoLC(m);const g=new THREE.Group();const body=new THREE.Group();g.add(body);const mat=(INST[m.model].mat||paintMat).clone();mat.color.set(m.col);const me=new THREE.Mesh(INST[m.model].geo,mat);body.add(me);
   g.position.set(m.x,m.y,m.z);g.rotation.y=m.yaw;scene.add(g);const c={g,body,sw:null,swp:null,x:m.x,z:m.z,y:m.y,yaw:m.yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:R(15,60),wheels:[],
     seat:new V3(0,0,-0.18),eye:1.42,halfW:0.35,len:1.9,kind:'moto',searched:true,wreck:0,gear:1,shift:{gx:0,gz:0,held:null},wheelR:0.27,auto:true};cars.push(c);return c;}
-function steerMoto(car){if(!inVR)return null;const gl=gripBySide.left,gr=gripBySide.right;if(!gl||!gr||!IN.lgHeld||!IN.rgHeld)return null;gl.getWorldPosition(_v);gr.getWorldPosition(_v1);
+// manillar: cada mano agarra su puño (grip cerca del puño) y se queda pegada; el giro sale de la posición de las dos manos
+const mGrab={left:false,right:false};
+function motoGripW(car,side,out){const t=car.head;if(!t)return null;t.updateMatrixWorld(true);out.set(side==='left'?0.34:-0.34,car.hbY||0,car.hbZ||0);return t.localToWorld(out);}
+function steerMoto(car){if(!inVR)return null;for(const side of ['left','right']){const g=gripBySide[side];const held=side==='left'?IN.lgHeld:IN.rgHeld;if(!g||!held){mGrab[side]=false;continue;}
+    if(!mGrab[side]&&car.head){g.getWorldPosition(_v);const p=motoGripW(car,side,_v1);if(p&&p.distanceTo(_v)<0.28){mGrab[side]=true;haptic(side==='left'?srcL:srcR,0.4,30);}}}
+  if(car.head){for(const side of ['left','right'])if(mGrab[side]){const p=motoGripW(car,side,_v1);snapHandTo(side,p.clone());}}
+  const gl=gripBySide.left,gr=gripBySide.right;if(!gl||!gr||!(mGrab.left||IN.lgHeld)||!(mGrab.right||IN.rgHeld))return null;gl.getWorldPosition(_v);gr.getWorldPosition(_v1);
   const dx=_v1.x-_v.x,dz=_v1.z-_v.z;const a=Math.atan2(dz,dx);const rel=Math.atan2(Math.sin(a+car.yaw),Math.cos(a+car.yaw));return clamp(-rel*3.2,-2.4,2.4);}
 function placeCars(){const spots=CARSPOTS.slice();for(let i=spots.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[spots[i],spots[j]]=[spots[j],spots[i]];}
   spots.sort((a,b)=>(b.crash?1:0)-(a.crash?1:0));let n=0;for(const s of spots){if(n>=70)break;if(cars.some(c=>Math.hypot(c.x-s.x,c.z-s.z)<5.2))continue;const c=makeCar(s.x,s.z,s.yaw,'proc');if(s.crash){c.crashed=true;c.fuel=0;}n++;}
@@ -549,7 +555,8 @@ function driveCar(car,dt){if(car.kind==='vw'&&car.lod!=='hi'){needHi(car.vt);if(
   if(brk>0.05){if(Math.abs(car.speed)>0.3)car.speed-=Math.sign(car.speed)*brk*16*dt;else if(!inVR&&car.gear===6)car.speed-=brk*3.5*dt;else car.speed=0;}
   car.speed-=car.speed*0.06*dt;if(thr<0.05&&brk<0.05)car.speed-=Math.sign(car.speed)*Math.min(Math.abs(car.speed),0.8*dt);car.speed=clamp(car.speed,-7,50);
   const LOCK=2.4;const hw=car.kind==='moto'?steerMoto(car):steerByHands(car);if(hw!==null)car.wheelRot=clamp(hw,-LOCK,LOCK);else car.wheelRot+=(-IN.steer*LOCK-car.wheelRot)*Math.min(1,dt*6);
-  car.steer=-car.wheelRot/LOCK*0.58;moveCar(car,dt,true);handsOnControls(car);car.fuel=Math.max(0,car.fuel-Math.abs(car.speed)*dt*0.012);
+  if(car.kind==='moto'&&thr>0.05&&!car.started){car.started=true;sfx('click');toast('La moto arranca',1.2);}
+  car.steer=-car.wheelRot/LOCK*(car.kind==='moto'?0.45:0.58);moveCar(car,dt,true);handsOnControls(car);car.fuel=Math.max(0,car.fuel-Math.abs(car.speed)*dt*0.012);
   if(engine){const rpm=car.gear&&car.gear!==6?clamp(Math.abs(car.speed)/GEARS[car.gear].v,0.15,1.1):clamp(thr,0.12,1);engine.o.frequency.value=34+rpm*95;engine.g.gain.value=0.05+Math.min(0.06,thr*0.06);}
   if(nightF>0.3){const s=Math.sin(car.yaw),c=Math.cos(car.yaw);headlight.position.set(car.x+s*2.3,car.y+0.9,car.z+c*2.3);hlT.position.set(car.x+s*20,car.y,car.z+c*20);headlight.intensity=45;}else headlight.intensity=0;}
 // física: modelo de bicicleta con agarre limitado (si te pasas de velocidad en una curva cerrada, derrapa) y carrocería con balanceo y cabeceo sobre muelles
@@ -565,7 +572,7 @@ function moveCar(car,dt,player){const vs=car.speed;const grip=9;const yl=grip*1.
   const rT=moto?clamp(latA*0.09,-0.75,0.75):clamp(-car.latS*0.0055,-0.055,0.055);const kR=moto?55:38,cR=moto?7:2*Math.sqrt(38)*0.95;car.rollV+=((rT-car.roll)*kR-car.rollV*cR)*dt;car.roll+=car.rollV*dt;if(!moto)car.roll=clamp(car.roll,-0.07,0.07);
   car.pitchV+=((clamp(car.lonS*0.0035,-0.035,0.035)-car.pitch)*42-car.pitchV*12.5)*dt;car.pitch+=car.pitchV*dt;car.pitch=clamp(car.pitch,-0.05,0.05);
   car.yaw+=car.yr*dt;const s=Math.sin(car.yaw),c=Math.cos(car.yaw);const vx=s*car.speed+c*car.vLat,vz=c*car.speed-s*car.vLat;const nx=car.x+vx*dt,nz=car.z+vz*dt;let blocked=false;
-  for(const off of [-1.5,0,1.5]){const pt={x:nx+s*off,z:nz+c*off};if(collide(pt,car.halfW+0.05,car.y+0.4,car.y+1.3)){blocked=true;break;}}
+  {const hl=Math.max(0,car.len/2-car.halfW-0.1);for(const off of [-hl,0,hl]){const pt={x:nx+s*off,z:nz+c*off};if(collide(pt,car.halfW+0.05,car.y+0.4,car.y+1.3)){blocked=true;break;}}}
   if(blocked&&Math.abs(vs)>1.5&&dynCarBlock(car,nx,nz))blocked=false;// era un contenedor o algo suelto: sale despedido
   for(const o of cars){if(o===car)continue;const dn=Math.hypot(o.x-nx,o.z-nz);if(dn<3.4&&dn<Math.hypot(o.x-car.x,o.z-car.z)){blocked=true;o.speed+=vs*0.35;o.vLat+=car.vLat*0.3;}}
   if(blocked){const hit=Math.hypot(vs,car.vLat);if(hit>7&&player){sfx('crash',clamp(hit/20,0.3,1));damagePlayer(hit*0.8,'accidente');toast('¡Choque!');}car.speed=-vs*0.25;car.vLat*=-0.2;car.yr*=0.3;car.rollV+=clamp(car.vLat*0.04,-0.15,0.15);car.pitchV-=clamp(vs*0.012,-0.25,0.25);}else{car.x=nx;car.z=nz;}
@@ -705,11 +712,18 @@ function updateHands(){for(const side of ['left','right']){const hr=hands[side];
     hr.off.set(0,0,0);applyHC();poseHand(hr);
     // puertas: agarrar la manilla con el grip; con la mano libre se empujan
     const hp=hr.handRoot.parent.getWorldPosition(_v5);const free=side==='left'?!leftHold:(P.weapon==='manos');
-    if(free||doorGrab[side])handDoors(side,hp,side==='left'?IN.lgDown:IN.use,side==='left'?IN.lgHeld:IN.rgHeld,frameDt);
+    if(free||doorGrab[side]||P.inCar||vGrab[side])handDoors(side,hp,side==='left'?IN.lgDown:IN.use,side==='left'?IN.lgHeld:IN.rgHeld,frameDt);
     hr.pv=hr.pv||hp.clone();const vx=(hp.x-hr.pv.x)/Math.max(frameDt,0.008),vz=(hp.z-hr.pv.z)/Math.max(frameDt,0.008);hr.pv.copy(hp);
     if(!doorGrab[side])pushDoorsAt(hr.real.x,hr.real.z,hr.real.y,0.09,vx,vz,0.5);
+    // agarrar a alguien: grip con la mano libre cerca de su cuerpo; se le arrastra del punto agarrado (ragdoll) y al soltar se recompone
+    {const G=npcGrab[side];const down=side==='left'?IN.lgDown:IN.use,held=side==='left'?IN.lgHeld:IN.rgHeld;
+      if(!G&&down&&free&&!P.inCar&&!vGrab[side]&&!doorGrab[side]){let best=null,bd=0.17;for(const h of H_){if(!h.active)continue;const c=h.sim[CHEST];if(Math.abs(c.x-hp.x)>1.2||Math.abs(c.z-hp.z)>1.2)continue;
+          for(let i=0;i<NP;i++){const d=h.sim[i].distanceTo(hp)-PR[i];if(d<bd){bd=d;best={h,i};}}}
+        if(best){npcGrab[side]=best;const h=best.h;if(h.mode!=='phys')enterPhys(h);h.down=0.6;h.k=0;h.sleep=0;haptic(side==='left'?srcL:srcR,0.6,40);if(h.type==='civil'&&!h.dead){if(h.civ&&h.civ.seat)civStand(h);toast(`${h.name}: «¡Eh! ¡Suéltame!»`,2);}}}
+      if(npcGrab[side]){const g=npcGrab[side],h=g.h;if(!held||!h.active){npcGrab[side]=null;if(h.active&&h.type==='civil'&&!h.dead){h.scared=7;h.down=R(0.4,1.0);}}
+        else{h.down=Math.max(h.down,0.5);h.sleep=0;const q=h.sim[g.i],pv=h.prev[g.i];pv.copy(q);q.copy(hp);}}}
     // tocar a alguien: la mano es sólida, desplaza el punto del cuerpo que toca (vivo o muerto) y el resto del cuerpo reacciona
-    for(const h of H_){if(!h.active)continue;const c=h.sim[CHEST];if(Math.abs(c.x-hp.x)>1.1||Math.abs(c.z-hp.z)>1.1||Math.abs(c.y-hp.y)>1.6)continue;let hit=-1;
+    for(const h of H_){if(!h.active||(npcGrab[side]&&npcGrab[side].h===h))continue;const c=h.sim[CHEST];if(Math.abs(c.x-hp.x)>1.1||Math.abs(c.z-hp.z)>1.1||Math.abs(c.y-hp.y)>1.6)continue;let hit=-1;
       for(let i=0;i<NP;i++){const q=h.sim[i];const rr=PR[i]+0.065;const dx=q.x-hp.x,dy=q.y-hp.y,dz=q.z-hp.z;const d2=dx*dx+dy*dy+dz*dz;if(d2>=rr*rr||d2<1e-7)continue;const d=Math.sqrt(d2),push=rr-d;
         if(hit<0){hit=i;if(!h.dead&&h.mode!=='phys'){enterPhys(h);}h.sleep=0;}q.x+=dx/d*push;q.y+=dy/d*push*0.4;q.z+=dz/d*push;}
       if(hit>=0){const sp=Math.hypot(vx,vz);if(sp>0.25&&sp<3)applyImp(h,_imp.set(vx*0.3,0.05,vz*0.3),hit);if(!h.dead)for(let k=0;k<NP;k++)h.kl[k]=Math.min(h.kl[k],0.6+0.4*(k!==hit));
@@ -717,7 +731,7 @@ function updateHands(){for(const side of ['left','right']){const hr=hands[side];
 function placeHud(){const g=gripBySide.left;const on=inVR&&hudOn&&g&&!panel&&P.alive;wrist.visible=!!on;if(!on)return;g.getWorldPosition(_v);camera.getWorldPosition(_v1);
   // panel flotante encima de la mano izquierda, siempre mirando a la cara; se enciende y apaga pulsando el joystick izquierdo
   _v2.subVectors(_v1,_v);_v2.y=0;const l=_v2.length()||1;wrist.position.set(_v.x+_v2.x/l*0.03,_v.y+0.17,_v.z+_v2.z/l*0.03);wrist.lookAt(_v1);}
-const doorGrab={left:null,right:null};const _v5=new V3(),_v6=new V3();let frameDt=0.016;
+const doorGrab={left:null,right:null};const npcGrab={left:null,right:null};const _v5=new V3(),_v6=new V3();let frameDt=0.016;
 function handAng(d,hp){if(d.slide)return (hp.x-d.sx)*d.ux+(hp.z-d.sz)*d.uz;const th=Math.atan2(-(hp.z-d.hz),hp.x-d.hx);let a=(th-d.base)*d.sign;return Math.atan2(Math.sin(a),Math.cos(a));}
 function handDoors(side,hp,down,held,dt){if(!doorGrab[side]&&vehHandDoors(side,hp,down,held))return;let g=doorGrab[side];const src=side==='left'?srcL:srcR;
   if(down&&!g){for(const d of DOORS){const dx=d.hx-hp.x,dz=d.hz-hp.z;if(dx*dx+dz*dz>6)continue;doorHandleWorld(d,_v6);if(_v6.distanceTo(hp)>0.3)continue;

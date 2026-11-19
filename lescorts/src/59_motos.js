@@ -25,7 +25,7 @@ function buildMotosLC(){const groups={};
   for(const p of MOTO_PEND){const t=pickMotoTpl();if(!t){placeMotoProc(p);continue;}const col=t.tint?pick(MOTO_TINT):0xffffff;(groups[t.k]||(groups[t.k]=[])).push({p,t,col});}
   for(const k in groups){const L=groups[k];const t=MOTO_TPL[k];const allG=t.allG,allM=t.allM;
     const im=new THREE.InstancedMesh(allG,allM,L.length);L.forEach((q,i)=>{const {p}=q;const y=surfY(p.x,p.z);_m.compose(_p.set(p.x,y,p.z),_q.setFromEuler(_eu.set(0,p.yaw,-0.09,'YXZ')),_s.set(1,1,1));im.setMatrixAt(i,_m);im.setColorAt(i,_c.set(q.col));
-      MOTOS.push({x:p.x,y,z:p.z,yaw:p.yaw,model:'m_'+k,col:q.col,ref:['m_'+k,'live',i],fallen:false,ok:Math.random()<0.85,vol:p.vol});});
+      MOTOS.push({x:p.x,y,z:p.z,yaw:p.yaw,model:'m_'+k,col:q.col,ref:['m_'+k,'live',i],fallen:false,ok:true,vol:p.vol});});
     im.computeBoundingSphere();scene.add(im);const ch=getChunk(L[0].p.x,L[0].p.z);ch.meshes.push(im);im.userData.name='moto';INST['m_'+k]={geo:allG,mat:allM,byKey:{live:im},lists:new Map(),tpl:t};}}
 function placeMotoProc(p){const model=pick(['moto','motoT','motoN','motoX']);const y=surfY(p.x,p.z);addInstLive(model,p.x,y,p.z,p.yaw);MOTOS.push({x:p.x,y,z:p.z,yaw:p.yaw,model,col:0xffffff,ref:[model,'none',0],fallen:false,ok:true});}
 // subirse: carrocería + manillar con su pivote
@@ -37,4 +37,4 @@ function makeMotoLC(m){const t=INST[m.model].tpl;const g=new THREE.Group();const
     const inv=new M4().compose(t.head.pivot,hp.quaternion,_s.set(1,1,1)).invert();hm.geometry=t.head.geo.clone().applyMatrix4(inv);head.add(hm);}
   g.position.set(m.x,m.y,m.z);g.rotation.y=m.yaw;scene.add(g);
   const c={g,body,sw:null,swp:null,x:m.x,z:m.z,y:m.y,yaw:m.yaw,speed:0,vLat:0,yr:0,steer:0,wheelRot:0,roll:0,rollV:0,pitch:0,pitchV:0,fuel:R(15,60),wheels:[],head,
-    seat:new V3(0,0,-0.25),eye:1.38,halfW:0.35,len:t.len,kind:'moto',searched:true,wreck:0,gear:1,shift:{gx:0,gz:0,held:null},wheelR:0.25,auto:true};cars.push(c);return c;}
+    hbY:t.head?(t.head.geo.boundingBox.max.y-t.head.pivot.y-0.05):0,hbZ:0,seat:new V3(0,0,-0.25),eye:1.38,halfW:0.35,len:t.len,kind:'moto',searched:true,wreck:0,gear:1,shift:{gx:0,gz:0,held:null},wheelR:0.25,auto:true};cars.push(c);return c;}

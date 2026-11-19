@@ -29,7 +29,9 @@ function prepHi(g){const s=g.scene;s.rotation.y=Math.PI;s.updateMatrixWorld(true
   for(const k of ['FL','FR','RL','RR']){const e=N['EXT_DOOR_'+k],i=N['INT_DOOR_'+k];if(!e)continue;const b=bbW(e);const front=k[0]==='F';const left=k[1]==='L';
     const hx=left?b.max.x-0.03:b.min.x+0.03;const hz=front?b.min.z+0.14:b.min.z+0.12;const hy=Math.min(b.max.y-0.12,0.98);// maneta: borde de atrás, a 1 m
     const hw=new V3(hx,hy,hz);const hl=e.worldToLocal(hw.clone());const hin=new V3(hx-(left?0.13:-0.13),hy-0.05,hz+0.12);const hil=e.worldToLocal(hin.clone());
-    T.doors[k]={ext:e.name,int:i&&i.name,q0e:e.quaternion.clone(),q1e:clip(e.name)||e.quaternion.clone(),q0i:i?i.quaternion.clone():null,q1i:i?(clip(i.name)||i.quaternion.clone()):null,hl,hil,left,front};}
+    // puntos de agarre por dentro: tirador, borde trasero del marco de la ventanilla y centro del panel
+    const inw=left?-1:1;const bc=b.getCenter(new V3());const ins=[hil,e.worldToLocal(new V3(hx+inw*0.12,Math.min(b.max.y-0.08,1.12),hz+0.05)),e.worldToLocal(new V3(bc.x+inw*0.14,0.88,bc.z)),e.worldToLocal(new V3(hx+inw*0.13,0.75,hz+0.25))];
+    T.doors[k]={ext:e.name,int:i&&i.name,q0e:e.quaternion.clone(),q1e:clip(e.name)||e.quaternion.clone(),q0i:i?i.quaternion.clone():null,q1i:i?(clip(i.name)||i.quaternion.clone()):null,hl,hil,ins,left,front};}
   {const e=N.EXT_TRUNK_LID,i=N.INT_TRUNK_LID;if(e){const b=bbW(e);const hw=new V3(0,b.min.y+0.06,b.min.z+0.02);T.trunk={ext:e.name,int:i&&i.name,q0e:e.quaternion.clone(),q1e:clip(e.name)||e.quaternion.clone(),q0i:i?i.quaternion.clone():null,q1i:i?(clip(i.name)||i.quaternion.clone()):null,hl:e.worldToLocal(hw.clone())};}}
   for(const k of ['FL','FR','RL','RR']){const w=N['WHEEL_'+k];if(!w)continue;const b=bbW(w);const c=b.getCenter(new V3());T.wheels.push({name:w.name,c,front:k[0]==='F',r:(b.max.y-b.min.y)/2});}
   // volante: centro y eje (componente principal más pequeña de los vértices del aro), apuntando hacia el salpicadero
@@ -86,7 +88,7 @@ function deactivateCar(c){if(c.lod!=='hi')return;scene.remove(c.g);c.g=new THREE
 function vDoorApply(c,k){const D=c.T&&c.T.doors[k];if(!D||!c.N)return;const t=c.doorT[k];const e=c.N[D.ext];if(e)e.quaternion.slerpQuaternions(D.q0e,D.q1e,t);const i=D.int&&c.N[D.int];if(i&&D.q0i)i.quaternion.slerpQuaternions(D.q0i,D.q1i,t);}
 function vTrunkApply(c){const D=c.T&&c.T.trunk;if(!D||!c.N)return;const e=c.N[D.ext];if(e)e.quaternion.slerpQuaternions(D.q0e,D.q1e,c.trunkT);const i=D.int&&c.N[D.int];if(i&&D.q0i)i.quaternion.slerpQuaternions(D.q0i,D.q1i,c.trunkT);}
 // punto de agarre (maneta) en el mundo para una apertura t
-function vHandle(c,k,t,inside,out){const D=k==='T'?c.T.trunk:c.T.doors[k];const e=c.N[D.ext];const save=e.quaternion.clone();e.quaternion.slerpQuaternions(D.q0e,D.q1e,t);e.updateMatrixWorld(true);out.copy(inside&&D.hil?D.hil:D.hl);e.localToWorld(out);e.quaternion.copy(save);e.updateMatrixWorld(true);return out;}
+function vHandle(c,k,t,inside,out,pi){const D=k==='T'?c.T.trunk:c.T.doors[k];const e=c.N[D.ext];const save=e.quaternion.clone();e.quaternion.slerpQuaternions(D.q0e,D.q1e,t);e.updateMatrixWorld(true);out.copy(inside&&D.ins?D.ins[pi||0]:D.hl);e.localToWorld(out);e.quaternion.copy(save);e.updateMatrixWorld(true);return out;}
 // selector DSG: fuelle de cuero y pomo con la botonera
 const DSG_GEO=mkG([[cy(0.016,0.02,0.07,0,0.035,0,10),0x1a1a1b],[ell(0.03,0.045,0.05,0,0.1,0.005,12),0x141415],[bx(0.036,0.012,0.04,0,0.142,-0.004),0x2a2b2d],[bx(0.012,0.006,0.012,-0.012,0.149,0.008),0xb8bcc0]]);
 const DSG_BOOT=mkG([[cy(0.03,0.055,0.035,0,0.012,0,12),0x0e0e0f],[bx(0.11,0.006,0.15,0,0.0,0),0x232426]]);
@@ -101,11 +103,11 @@ function stepVehicles(dt,p){vT-=dt;if(vT>0)return;vT=0.3;
 const vGrab={left:null,right:null};const _vh=new V3(),_vh2=new V3();
 function vehHandDoors(side,hp,down,held){let G=vGrab[side];const src=side==='left'?srcL:srcR;
   if(down&&!G){let best=null,bd=0.22;for(const c of VACTIVE){if(Math.abs(c.x-hp.x)>4||Math.abs(c.z-hp.z)>4)continue;const inside=P.inCar===c;
-      for(const k of [...Object.keys(c.T.doors),...(c.T.trunk&&!inside?['T']:[])]){const t=k==='T'?c.trunkT:c.doorT[k];vHandle(c,k,t,inside&&k!=='T',_vh);const d=_vh.distanceTo(hp);if(d<bd){bd=d;best={c,k,inside};}}}
+      for(const k of [...Object.keys(c.T.doors),...(c.T.trunk&&!inside?['T']:[])]){const t=k==='T'?c.trunkT:c.doorT[k];const np=inside&&k!=='T'?4:1;for(let pi=0;pi<np;pi++){vHandle(c,k,t,inside&&k!=='T',_vh,pi);const d=_vh.distanceTo(hp);if(d<(inside?0.32:bd)&&d<bd+0.1){bd=d;best={c,k,inside,pi};}}}}
     if(best){G=vGrab[side]=best;haptic(src,0.45,35);sfx('click',0.5);if(best.k!=='T'&&best.c.doorT[best.k]<0.02)sfx('thud',0.25);}}
   if(!G)return false;if(!held){vGrab[side]=null;return true;}
   const c=G.c,k=G.k;const cur=k==='T'?c.trunkT:c.doorT[k];let bt=cur,bd=1e9;// apertura que deja la maneta más cerca de la mano
-  for(let s=-6;s<=6;s++){const t=clamp(cur+s*0.03,0,1);vHandle(c,k,t,G.inside&&k!=='T',_vh2);const d=_vh2.distanceTo(hp);if(d<bd){bd=d;bt=t;}}
+  for(let s=-6;s<=6;s++){const t=clamp(cur+s*0.03,0,1);vHandle(c,k,t,G.inside&&k!=='T',_vh2,G.pi);const d=_vh2.distanceTo(hp);if(d<bd){bd=d;bt=t;}}
   if(bd>0.6){vGrab[side]=null;return true;}
   if(cur>0.02&&bt<=0.02){sfx('thud',0.6);haptic(src,0.8,60);}// portazo
   if(k==='T'){c.trunkT=bt;vTrunkApply(c);}else{c.doorT[k]=bt;vDoorApply(c,k);}return true;}
