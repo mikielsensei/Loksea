@@ -18,7 +18,7 @@ function prepLo(scene){scene.rotation.y=Math.PI;scene.updateMatrixWorld(true);co
     const ca=new Float32Array(n*3),pa=new Float32Array(n);for(let i=0;i<n;i++){ca[i*3]=col[0];ca[i*3+1]=col[1];ca[i*3+2]=col[2];pa[i]=paint;}
     g.setAttribute('color',new THREE.BufferAttribute(ca,3));g.setAttribute('aPaint',new THREE.BufferAttribute(pa,1));parts.push(g);});
   const geo=mergeGeometries(parts);geo.computeBoundingBox();geo.computeBoundingSphere();return geo;}
-const vLoMat=pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.42,metalness:0.35,envMapIntensity:1.1}));
+const vLoMat=pbr(new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.5,metalness:0.2,envMapIntensity:0.8}));
 vLoMat.onBeforeCompile=sh=>{sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float aPaint;')
   .replace('#include <color_vertex>','vColor=vec3(1.0);\n#ifdef USE_COLOR\nvColor*=color;\n#endif\n#ifdef USE_INSTANCING_COLOR\nvColor=mix(vColor,vColor*instanceColor,aPaint);\n#endif');};
 vLoMat.customProgramCacheKey=()=>'vlo1';
