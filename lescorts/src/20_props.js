@@ -91,14 +91,19 @@ const texGrate=cTex(256,256,(g,w,h)=>{g.fillStyle='#3a332b';g.fillRect(0,0,w,h);
 defInst('alcorque',(()=>{const g=new THREE.PlaneGeometry(1.25,1.25);g.rotateX(-Math.PI/2);g.translate(0,0.006,0);return g;})(),new THREE.MeshLambertMaterial({map:texGrate,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),1,1,false);
 // contenedores de Barcelona (carga lateral): cuerpo gris troncocónico, tapa abombada y franja del color de la fracción
 const CONT=[['resta',0x5d6164],['organica',0x7c4a22],['envasos',0xf0c000],['paper',0x1b63b5],['vidre',0x2c8a3a]];
-{const BODY=0x9a9d9c,LID=0x7e8283,DK=0x1b1c1d;const dome=[];for(let k=0;k<=10;k++){const a=k/10*Math.PI;dome.push([Math.cos(a)*0.69,1.14+Math.pow(Math.sin(a),0.75)*0.4]);}dome.push([-0.69,1.08],[0.69,1.08]);
-  for(const [k,col] of CONT){const p=[[prof([[-0.5,0.13],[0.5,0.13],[0.6,0.5],[0.66,1.1],[-0.66,1.1],[-0.6,0.5]],1.82),BODY],[prof(dome,1.9),LID],
-      [bx(1.9,0.085,0.03,0,1.125,0.695),col],[bx(1.3,0.2,0.03,0,1.36,0.555,-0.95),col],[bx(1.1,0.11,0.02,0,1.36,0.575,-0.95),DK],
-      [bx(0.56,0.34,0.012,0,0.78,0.632,-0.15),0xf1f1ec],[bx(0.5,0.1,0.014,0,0.86,0.624,-0.15),col],
-      [tube([-0.78,0.1,0.64],[0.78,0.1,0.64],0.02,8),DK],[tube([-0.78,0.1,0.64],[-0.78,0.2,0.5],0.02,6),DK],[tube([0.78,0.1,0.64],[0.78,0.2,0.5],0.02,6),DK],
-      [bx(1.7,0.13,0.9,0,0.065,0),DK]];
-    for(const x of [-0.925,0.925])p.push([bx(0.03,0.42,0.5,x,0.82,0),0x6c7071],[cy(0.045,0.045,0.09,x*1.03,1.0,0,10,0,Math.PI/2),DK]);
-    if(k==='vidre')p.push([cy(0.11,0.11,0.05,-0.45,1.4,0.5,12,0.62),DK],[cy(0.11,0.11,0.05,0.45,1.4,0.5,12,0.62),DK]);
+// modelo nuevo (2023-): cuerpo gris casi recto con cantos redondeados, tapa plana gris oscuro con canto y franja del color de la fracción,
+// panel de pegatinas, pedal y base negra; el de vidrio con las dos bocas redondas
+{const BODY=0x9c9fa0,LID=0x6f7375,DK=0x1b1c1d;const rr=(w,h,y0,r,n=3)=>{const P=[];const c=[[w/2-r,y0+h-r,0],[-w/2+r,y0+h-r,Math.PI/2]];
+    for(const [cx,cy,a0] of c)for(let k=0;k<=n;k++){const a=a0+k/n*Math.PI/2;P.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);}P.push([-w/2+0.04,y0],[w/2-0.04,y0]);return P.map(q=>q).reverse();};
+  for(const [k,col] of CONT){const p=[[prof([[-0.56,0.12],[0.56,0.12],[0.63,0.32],[0.65,1.24],[0.6,1.3],[-0.6,1.3],[-0.65,1.24],[-0.63,0.32]],1.86),BODY],
+      [prof([[-0.68,1.29],[0.68,1.29],[0.68,1.35],[0.63,1.42],[-0.63,1.42],[-0.68,1.35]],1.96),LID],
+      [bx(1.97,0.07,0.025,0,1.325,0.685),col],[bx(1.86,0.012,0.22,0,1.425,0.42),col],
+      [bx(0.62,0.4,0.012,0,0.86,0.648,-0.03),0xf1f1ec],[bx(0.56,0.11,0.014,0,0.99,0.646,-0.03),col],[bx(0.3,0.16,0.014,-0.12,0.78,0.646,-0.03),0x9aa0a4],
+      [bx(0.5,0.05,0.16,0,0.16,0.7),DK],[bx(0.06,0.18,0.06,-0.2,0.13,0.64),DK],[bx(0.06,0.18,0.06,0.2,0.13,0.64),DK],
+      [bx(1.76,0.12,1.0,0,0.06,0),DK]];
+    for(const x of [-0.94,0.94])p.push([bx(0.03,0.5,0.6,x,0.85,0),0x7c8081],[cy(0.05,0.05,0.09,x*1.03,1.05,0,10,0,Math.PI/2),DK]);
+    if(k==='vidre')p.push([cy(0.12,0.12,0.03,-0.45,1.43,0.25,14),DK],[cy(0.12,0.12,0.03,0.45,1.43,0.25,14),DK]);
+    if(k==='paper')p.push([bx(0.9,0.02,0.08,0,1.43,0.3),DK]);
     defInst('cont_'+k,mkG(p),plasticMat,1,1,false);}}
 // Bicing: anclaje y bicicleta roja con guardabarros trasero blanco
 defInst('bicingDock',mkG([[cy(0.065,0.075,0.74,0,0.37,0,14),0x73787c],[cy(0.08,0.08,0.13,0,0.8,0,14),0xd0202a],[sp(0.079,0,0.865,0,10),0xd0202a],[bx(0.05,0.1,0.1,0,0.72,0.07),0x1b1c1d],[bx(0.34,0.035,0.2,0,0.018,0),0x55595c]]),paintMat,1,1,false);

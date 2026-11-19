@@ -4,7 +4,12 @@
 const BP=133.3,NXS=7,NZS=5,SX0=0,SZ0=0;// (restos del Eixample que aún usa algún módulo)
 const XMIN=-347,XMAX=347,ZMIN=-231,ZMAX=231;
 let HMD=null;// rejilla de alturas: {x0,z0,res,nx,nz,h:Float32Array,k:Uint8Array}
-function H(x,z){const d=HMD;if(!d)return 0;let fx=(x-d.x0)/d.res,fz=(z-d.z0)/d.res;fx=fx<0?0:fx>d.nx-1.001?d.nx-1.001:fx;fz=fz<0?0:fz>d.nz-1.001?d.nz-1.001:fz;
+// las aceras y plazas quedan un bordillo (14 cm) por encima de la calzada, salvo en los vados de los pasos de peatones
+const KERBH=0.14;let VADOG=null;
+function vadoD(x,z){if(!VADOG)return 9;const i=Math.floor(x/4),j=Math.floor(z/4);let d=9;for(let a=i-1;a<=i+1;a++)for(let b=j-1;b<=j+1;b++){const L=VADOG.get(a*10007+b);if(L)for(const p of L){const e=Math.hypot(p[0]-x,p[1]-z);if(e<d)d=e;}}return d;}
+function raiseAt(x,z){const d=vadoD(x,z);return KERBH*Math.min(1,Math.max(0,(d-1.0)/1.3));}
+function H(x,z){const b=H0(x,z);return groundKind(x,z)===2?b:b+raiseAt(x,z);}
+function H0(x,z){const d=HMD;if(!d)return 0;let fx=(x-d.x0)/d.res,fz=(z-d.z0)/d.res;fx=fx<0?0:fx>d.nx-1.001?d.nx-1.001:fx;fz=fz<0?0:fz>d.nz-1.001?d.nz-1.001:fz;
   const i=fx|0,j=fz|0,tx=fx-i,tz=fz-j,o=j*d.nx+i,h=d.h;return (h[o]*(1-tx)+h[o+1]*tx)*(1-tz)+(h[o+d.nx]*(1-tx)+h[o+d.nx+1]*tx)*tz;}
 function groundKind(x,z){const d=HMD;if(!d)return 0;const i=Math.round((x-d.x0)/d.res),j=Math.round((z-d.z0)/d.res);if(i<0||j<0||i>=d.nx||j>=d.nz)return 0;return d.k[j*d.nx+i];}// 1 terreno, 2 calzada, 3 acera
 // =====================================================================

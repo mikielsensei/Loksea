@@ -22,6 +22,12 @@ function streetFurnitureLC(){
   {let cur=null,last=null;for(const k of KERB){if(!last||k.cid!==last.cid||Math.hypot(k.x-last.x,k.z-last.z)>2.6){if(cur&&cur.pts.length>6)CHAINS.push(cur);cur={pts:[],id:CHAINS.length};}k.ch=cur;k.i=cur.pts.length;cur.pts.push(k);last=k;}
     if(cur&&cur.pts.length>6)CHAINS.push(cur);
     for(const c of CHAINS){c.id=CHAINS.indexOf(c);const a=c.pts[0],b=c.pts[c.pts.length-1];c.loop=Math.hypot(a.x-b.x,a.z-b.z)<2.6;}}
+  // alcorques: el árbol del AMB queda en el centro de un hueco orientado como el bordillo
+  for(const t of TREES){const k=kerbNear(t.x,t.z,4);if(groundKind(t.x,t.z)!==3)continue;const ya=k?Math.atan2(k.ux,k.uz):0;const y=surfY(t.x,t.z);addInst('alcorqueQ',t.x,y,t.z,ya);if(hashN(t.x,t.z)<0.35)addInst('reixaQ',t.x,y-0.005,t.z,ya);}
+  // embornales cada ~22 m en la rigola y junto a los pasos
+  {let last=null;for(const k of KERB){if(last&&last.cid===k.cid&&Math.hypot(last.x-k.x,last.z-k.z)<(k.cwd<5?6:22))continue;if(focusD(k.x,k.z)>140)continue;const x=k.x+k.nx*(0.7+0.17),z=k.z+k.nz*(0.7+0.17);if(groundKind(x,z)!==2)continue;addInst('embornal',x,H(x,z)+0.03,z,Math.atan2(k.ux,k.uz));last=k;}}
+  // armarios eléctricos («pirulís») cerca de algunas esquinas
+  {let n=0;for(const k of KERB){if(k.cwd>2.5||k.cwd<1.6||focusD(k.x,k.z)>60||hashN(k.x*3,k.z*3)>0.12)continue;const x=k.x-k.nx*0.3,z=k.z-k.nz*0.3;if(!occFree(x,z,0.8))continue;addInst('armari',x,H(x,z),z,Math.atan2(-k.nx,-k.nz));addBoxV(x-0.25,x+0.25,z-0.25,z+0.25,H(x,z),H(x,z)+1.6);occAdd(x,z,0.8);n++;}}
   for(const t of TREES)occAdd(t.x,t.z,0.9);for(const l of WD.lamp)occAdd(l[0],l[2],0.5);
   // --- marquesinas de bus en Travessera (posiciones de las fotos) ---
   for(const [px,pz] of [[-57,16],[-26,-20],[52,-74],[96,-108]]){const k=kerbNear(px,pz,14,k=>k.trav&&k.sw>3.2);if(!k)continue;
@@ -71,6 +77,13 @@ function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
   buildVInst();for(const k in VTPL)needHi(VTPL[k]);buildMotosLC();
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];
+// alcorque de Les Corts: hueco cuadrado con marco de granito, tierra y a veces reja de fundición
+{const G=0xb8b3aa,S=0x4a3a2a;defInst('alcorqueQ',mkG([[bx(1.3,0.06,0.1,0,0.0,0.6),G],[bx(1.3,0.06,0.1,0,0.0,-0.6),G],[bx(0.1,0.06,1.1,0.6,0.0,0),G],[bx(0.1,0.06,1.1,-0.6,0.0,0),G],[bx(1.12,0.02,1.12,0,-0.06,0),S]]),paintMat,1,1,false);}
+{const tg=cTex(128,128,(g,w,h)=>{g.clearRect(0,0,w,h);g.strokeStyle='#2c2d2e';g.lineWidth=5;for(let i=6;i<w;i+=13){g.beginPath();g.moveTo(i,4);g.lineTo(i,h-4);g.stroke();}g.lineWidth=7;g.strokeRect(4,4,w-8,h-8);g.beginPath();g.arc(64,64,24,0,7);g.fillStyle='rgba(0,0,0,0)';g.clearRect(40,40,48,48);g.stroke();},{});
+  defInst('reixaQ',(()=>{const g=new THREE.PlaneGeometry(1.12,1.12);g.rotateX(-Math.PI/2);return g;})(),new THREE.MeshLambertMaterial({map:tg,transparent:true,alphaTest:0.4,side:THREE.DoubleSide}),1,1,false);}
+// embornal: reja de fundición en la rigola
+{const te=cTex(128,64,(g,w,h)=>{g.fillStyle='#2a2b2c';g.fillRect(0,0,w,h);g.fillStyle='#070707';for(let x=8;x<w-6;x+=10)g.fillRect(x,8,5,h-16);g.strokeStyle='#4a4b4c';g.lineWidth=4;g.strokeRect(2,2,w-4,h-4);},{});
+  defInst('embornal',(()=>{const g=new THREE.PlaneGeometry(0.85,0.38);g.rotateX(-Math.PI/2);return g;})(),new THREE.MeshLambertMaterial({map:te,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-6}),1,1,false);}
 {const B=0x9a4a32,G=0x2e4a36;const p=[[bx(2.04,0.5,0.24,0,0.25,0),B],[bx(2.08,0.05,0.28,0,0.52,0),0xb8b0a4],[bx(2.04,0.04,0.04,0,0.62,0),G],[bx(2.04,0.04,0.04,0,1.95,0),G]];for(let i=0;i<14;i++)p.push([bx(0.022,1.4,0.022,-0.95+i*0.146,1.27,0),G]);defInst('vallaPark',mkG(p),paintMat,1,1,false);}
 defInst('pilarObra',mkG([[bx(0.42,2.2,0.42,0,1.1,0),0x9a4a32],[bx(0.5,0.08,0.5,0,2.24,0),0xb8b0a4]]),paintMat,1,1,false);
 // Vallespir junto al parque: calle escolar pacificada (jardineras de madera y bancos donde antes se aparcaba)

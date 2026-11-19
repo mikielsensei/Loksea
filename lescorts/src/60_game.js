@@ -817,5 +817,5 @@ setTimeout(async()=>{try{await loadWorldData();buildWorld();buildLootGrid();setL
 // ---- ganchos de depuración (solo con ?shot=1) ----
 if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,trySever,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
-  applyDoor,TPL,poseHand,gl,viewModel,VTPL,MOTOS,makeMoto,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
+  applyDoor,TPL,poseHand,gl,viewModel,BLD,BCOL,VTPL,MOTOS,makeMoto,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}

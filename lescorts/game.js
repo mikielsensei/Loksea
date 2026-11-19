@@ -210,7 +210,12 @@ const texShadow=cTex(64,64,(g)=>{const gr=g.createRadialGradient(32,32,2,32,32,3
 const BP=133.3,NXS=7,NZS=5,SX0=0,SZ0=0;// (restos del Eixample que aún usa algún módulo)
 const XMIN=-347,XMAX=347,ZMIN=-231,ZMAX=231;
 let HMD=null;// rejilla de alturas: {x0,z0,res,nx,nz,h:Float32Array,k:Uint8Array}
-function H(x,z){const d=HMD;if(!d)return 0;let fx=(x-d.x0)/d.res,fz=(z-d.z0)/d.res;fx=fx<0?0:fx>d.nx-1.001?d.nx-1.001:fx;fz=fz<0?0:fz>d.nz-1.001?d.nz-1.001:fz;
+// las aceras y plazas quedan un bordillo (14 cm) por encima de la calzada, salvo en los vados de los pasos de peatones
+const KERBH=0.14;let VADOG=null;
+function vadoD(x,z){if(!VADOG)return 9;const i=Math.floor(x/4),j=Math.floor(z/4);let d=9;for(let a=i-1;a<=i+1;a++)for(let b=j-1;b<=j+1;b++){const L=VADOG.get(a*10007+b);if(L)for(const p of L){const e=Math.hypot(p[0]-x,p[1]-z);if(e<d)d=e;}}return d;}
+function raiseAt(x,z){const d=vadoD(x,z);return KERBH*Math.min(1,Math.max(0,(d-1.0)/1.3));}
+function H(x,z){const b=H0(x,z);return groundKind(x,z)===2?b:b+raiseAt(x,z);}
+function H0(x,z){const d=HMD;if(!d)return 0;let fx=(x-d.x0)/d.res,fz=(z-d.z0)/d.res;fx=fx<0?0:fx>d.nx-1.001?d.nx-1.001:fx;fz=fz<0?0:fz>d.nz-1.001?d.nz-1.001:fz;
   const i=fx|0,j=fz|0,tx=fx-i,tz=fz-j,o=j*d.nx+i,h=d.h;return (h[o]*(1-tx)+h[o+1]*tx)*(1-tz)+(h[o+d.nx]*(1-tx)+h[o+d.nx+1]*tx)*tz;}
 function groundKind(x,z){const d=HMD;if(!d)return 0;const i=Math.round((x-d.x0)/d.res),j=Math.round((z-d.z0)/d.res);if(i<0||j<0||i>=d.nx||j>=d.nz)return 0;return d.k[j*d.nx+i];}// 1 terreno, 2 calzada, 3 acera
 // =====================================================================
@@ -413,14 +418,19 @@ const texGrate=cTex(256,256,(g,w,h)=>{g.fillStyle='#3a332b';g.fillRect(0,0,w,h);
 defInst('alcorque',(()=>{const g=new THREE.PlaneGeometry(1.25,1.25);g.rotateX(-Math.PI/2);g.translate(0,0.006,0);return g;})(),new THREE.MeshLambertMaterial({map:texGrate,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}),1,1,false);
 // contenedores de Barcelona (carga lateral): cuerpo gris troncocónico, tapa abombada y franja del color de la fracción
 const CONT=[['resta',0x5d6164],['organica',0x7c4a22],['envasos',0xf0c000],['paper',0x1b63b5],['vidre',0x2c8a3a]];
-{const BODY=0x9a9d9c,LID=0x7e8283,DK=0x1b1c1d;const dome=[];for(let k=0;k<=10;k++){const a=k/10*Math.PI;dome.push([Math.cos(a)*0.69,1.14+Math.pow(Math.sin(a),0.75)*0.4]);}dome.push([-0.69,1.08],[0.69,1.08]);
-  for(const [k,col] of CONT){const p=[[prof([[-0.5,0.13],[0.5,0.13],[0.6,0.5],[0.66,1.1],[-0.66,1.1],[-0.6,0.5]],1.82),BODY],[prof(dome,1.9),LID],
-      [bx(1.9,0.085,0.03,0,1.125,0.695),col],[bx(1.3,0.2,0.03,0,1.36,0.555,-0.95),col],[bx(1.1,0.11,0.02,0,1.36,0.575,-0.95),DK],
-      [bx(0.56,0.34,0.012,0,0.78,0.632,-0.15),0xf1f1ec],[bx(0.5,0.1,0.014,0,0.86,0.624,-0.15),col],
-      [tube([-0.78,0.1,0.64],[0.78,0.1,0.64],0.02,8),DK],[tube([-0.78,0.1,0.64],[-0.78,0.2,0.5],0.02,6),DK],[tube([0.78,0.1,0.64],[0.78,0.2,0.5],0.02,6),DK],
-      [bx(1.7,0.13,0.9,0,0.065,0),DK]];
-    for(const x of [-0.925,0.925])p.push([bx(0.03,0.42,0.5,x,0.82,0),0x6c7071],[cy(0.045,0.045,0.09,x*1.03,1.0,0,10,0,Math.PI/2),DK]);
-    if(k==='vidre')p.push([cy(0.11,0.11,0.05,-0.45,1.4,0.5,12,0.62),DK],[cy(0.11,0.11,0.05,0.45,1.4,0.5,12,0.62),DK]);
+// modelo nuevo (2023-): cuerpo gris casi recto con cantos redondeados, tapa plana gris oscuro con canto y franja del color de la fracción,
+// panel de pegatinas, pedal y base negra; el de vidrio con las dos bocas redondas
+{const BODY=0x9c9fa0,LID=0x6f7375,DK=0x1b1c1d;const rr=(w,h,y0,r,n=3)=>{const P=[];const c=[[w/2-r,y0+h-r,0],[-w/2+r,y0+h-r,Math.PI/2]];
+    for(const [cx,cy,a0] of c)for(let k=0;k<=n;k++){const a=a0+k/n*Math.PI/2;P.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);}P.push([-w/2+0.04,y0],[w/2-0.04,y0]);return P.map(q=>q).reverse();};
+  for(const [k,col] of CONT){const p=[[prof([[-0.56,0.12],[0.56,0.12],[0.63,0.32],[0.65,1.24],[0.6,1.3],[-0.6,1.3],[-0.65,1.24],[-0.63,0.32]],1.86),BODY],
+      [prof([[-0.68,1.29],[0.68,1.29],[0.68,1.35],[0.63,1.42],[-0.63,1.42],[-0.68,1.35]],1.96),LID],
+      [bx(1.97,0.07,0.025,0,1.325,0.685),col],[bx(1.86,0.012,0.22,0,1.425,0.42),col],
+      [bx(0.62,0.4,0.012,0,0.86,0.648,-0.03),0xf1f1ec],[bx(0.56,0.11,0.014,0,0.99,0.646,-0.03),col],[bx(0.3,0.16,0.014,-0.12,0.78,0.646,-0.03),0x9aa0a4],
+      [bx(0.5,0.05,0.16,0,0.16,0.7),DK],[bx(0.06,0.18,0.06,-0.2,0.13,0.64),DK],[bx(0.06,0.18,0.06,0.2,0.13,0.64),DK],
+      [bx(1.76,0.12,1.0,0,0.06,0),DK]];
+    for(const x of [-0.94,0.94])p.push([bx(0.03,0.5,0.6,x,0.85,0),0x7c8081],[cy(0.05,0.05,0.09,x*1.03,1.05,0,10,0,Math.PI/2),DK]);
+    if(k==='vidre')p.push([cy(0.12,0.12,0.03,-0.45,1.43,0.25,14),DK],[cy(0.12,0.12,0.03,0.45,1.43,0.25,14),DK]);
+    if(k==='paper')p.push([bx(0.9,0.02,0.08,0,1.43,0.3),DK]);
     defInst('cont_'+k,mkG(p),plasticMat,1,1,false);}}
 // Bicing: anclaje y bicicleta roja con guardabarros trasero blanco
 defInst('bicingDock',mkG([[cy(0.065,0.075,0.74,0,0.37,0,14),0x73787c],[cy(0.08,0.08,0.13,0,0.8,0,14),0xd0202a],[sp(0.079,0,0.865,0,10),0xd0202a],[bx(0.05,0.1,0.1,0,0.72,0.07),0x1b1c1d],[bx(0.34,0.035,0.2,0,0.018,0),0x55595c]]),paintMat,1,1,false);
@@ -675,20 +685,28 @@ const solidBox=(x,z,hw,hd,yaw,y0,y1)=>addOBB(x,z,hw,hd,yaw,y0,y1);
 function centroid(P){let x=0,z=0;for(const p of P){x+=p[0];z+=p[1];}return[x/P.length,z/P.length];}
 function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
 function setupSmoke(){}function stepSmoke(){}
+defInst('armari',new THREE.BoxGeometry(0.5,1.55,0.4).translate(0,0.775,0),paintMat,1,1,false);
 const LC_SPAWN={x:-37,z:1.5,dx:0.77,dz:-0.64};// esquina Travessera de les Corts / Vallespir, mirando hacia Numància
 const PAINTW=0xf2f1ea,PAINTY=0xe8b820;
-let WD=null,MARKS=null;
+let WD=null,MARKS=null,KERBS=[],CUSTOM=null;const BCOL=[];
 async function loadWorldData(){setLoad('w','Descargando Les Corts (datos del AMB)…');
-  const [w,hb,mk,sp,shp]=await Promise.all([fetch('data/world.json').then(r=>r.json()),fetch('data/hm.bin').then(r=>r.arrayBuffer()),fetch('data/marks.json').then(r=>r.json()),fetch('data/spots.json').then(r=>r.json()),fetch('data/shops.json').then(r=>r.json()).catch(()=>[])]);SPOTS=sp;
-  {const TM={mercat:'fruteria',super:'super',taller:'ferre',mobles:'electro',floristeria:'fruteria',drogueria:'farmacia',clinica:'farmacia',joieria:'optica',oficina:'immo',motos:'electro'};POIS=shp.map(q=>[q[0],q[1],TM[q[2]]||q[2],q[3]]);}
+  const [w,hb,mk,kb,sp,shp,cus,bcol]=await Promise.all([fetch('data/world.json').then(r=>r.json()),fetch('data/hm.bin').then(r=>r.arrayBuffer()),fetch('data/lanesfinal.json').then(r=>r.json()),fetch('data/kerbs.json').then(r=>r.json()),fetch('data/spots.json').then(r=>r.json()),fetch('data/shops.json').then(r=>r.json()).catch(()=>[]),fetch('data/custom.json').then(r=>r.json()).catch(()=>({add:[],styles:[],shops:[]})),fetch('data/bcolors.json').then(r=>r.json()).catch(()=>({}))]);CUSTOM=cus;for(const k in bcol){const [x,z]=k.split(',').map(Number);BCOL.push([x,z,bcol[k]]);}SPOTS=sp;
+  {const TM={mercat:'fruteria',super:'super',taller:'ferre',mobles:'electro',floristeria:'fruteria',drogueria:'farmacia',clinica:'farmacia',joieria:'optica',oficina:'immo',motos:'electro'};POIS=shp.concat(cus.shops||[]).map(q=>[q[0],q[1],TM[q[2]]||q[2],q[3]]);}
+  // edificios que faltan en el modelo del AMB (vistos en tus fotos): sustituyen a los trozos que hubiera dentro
+  {const inside=(p,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
+    for(const A of cus.add||[]){w.build=w.build.filter(b=>!inside(centroid(b.r),A.r));const c=centroid(A.r);const y0=H0(c[0],c[1]);w.build.push({r:A.r,h:[],y0,y1:y0+A.h,rc:[150,90,70],sty:A.sty,name:A.name});}}
   const hd=new DataView(hb);const x0=hd.getFloat32(0,true),z0=hd.getFloat32(4,true),res=hd.getFloat32(8,true),nx=hd.getInt32(16,true),nz=hd.getInt32(20,true);
   const u16=new Uint16Array(hb,24,nx*nz);const h=new Float32Array(nx*nz);for(let i=0;i<h.length;i++)h[i]=u16[i]/100-10;
-  HMD={x0,z0,res,nx,nz,h,k:new Uint8Array(hb,24+nx*nz*2,nx*nz)};WD=w;MARKS=mk;}
+  HMD={x0,z0,res,nx,nz,h,k:new Uint8Array(hb,24+nx*nz*2,nx*nz)};WD=w;MARKS=mk;KERBS=kb;prepVados();
+  for(const [k,f,sc,rot] of [['papelera','papelera',1.0,0],['armari','armari',1.0,0]]){try{const g=await gl.loadAsync('models/props/'+f+'.glb');const G=propGeo(g.scene,k==='papelera'?1.05:1.55);if(G){INST[k].geo=G.geo;INST[k].mat=G.mat;}}catch(e){console.warn('prop',k,e);}}}
+// un modelo de la comunidad convertido en una geometría por instancias (alto real en metros, apoyado en el suelo)
+function propGeo(root,height){root.updateMatrixWorld(true);const parts=[],mats=[];root.traverse(o=>{if(!o.isMesh)return;let g=o.geometry.clone();for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);g.applyMatrix4(o.matrixWorld);if(g.index)g=g.toNonIndexed();parts.push(g);const m=o.material.clone();if(m.map)m.map.anisotropy=4;mats.push(pbr(m));});
+  if(!parts.length)return null;const geo=mergeGeometries(parts,true);geo.computeBoundingBox();const b=geo.boundingBox;const s=height/(b.max.y-b.min.y);geo.translate(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);geo.scale(s,s,s);geo.computeBoundingSphere();return{geo,mat:mats.length>1?mats:mats[0]};}
 // ---------- materiales propios ----------
 const texPaint=cTex(256,256,(g,w,h)=>{g.fillStyle='#ecebe4';g.fillRect(0,0,w,h);const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=Math.random();const v=n<0.06?-60:n<0.2?-22:0;d.data[i]+=v;d.data[i+1]+=v;d.data[i+2]+=v;}g.putImageData(d,0,0);});
 MATS.asphalt=photoMat('asphalt',{ns:0.6,color:0x5c5c5c,roughness:0.92});MATS.asphaltc=photoMat('asphalt_cracked',{ns:0.6,color:0x666666});
 MATS.panot4=photoMat('panot4',{ns:1.0,color:0xc4c2be});MATS.panotflor=photoMat('panotflor',{ns:1.0,color:0xc8c8c8});MATS.panotbotons=photoMat('panotbotons',{ns:1.2});
-MATS.granite=photoMat('granite',{ns:0.6,roughness:0.75});MATS.llambordes=photoMat('llambordes',{ns:1.0});MATS.rust=photoMat('rust',{ns:0.9,roughness:0.75,metalness:0.35});
+MATS.granite=photoMat('granite',{ns:0.6,roughness:0.75});MATS.concrete=MATS.concrete||photoMat('concrete',{ns:0.5});MATS.llambordes=photoMat('llambordes',{ns:1.0});MATS.rust=photoMat('rust',{ns:0.9,roughness:0.75,metalness:0.35});
 MATS.darkglass=pbr(new THREE.MeshStandardMaterial({color:0x2a3036,roughness:0.06,metalness:0.55,vertexColors:true,envMapIntensity:1.2}));
 MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
 const orthoTex=texLoader.load('data/ortho.jpg');orthoTex.colorSpace=THREE.SRGBColorSpace;orthoTex.anisotropy=4;
@@ -704,18 +722,65 @@ function buildGroundLC(){const us=US('asphalt'),up=US('panot4'),ug=US('granite')
   {const {V,f}=M(WD.calzada);TINT=[1,1,1];for(let i=0;i<f.length;i+=3)triInto('asphalt',V(f[i]),V(f[i+1]),V(f[i+2]),true,q=>[q[0]*us,q[2]*us]);}
   {const {V,f}=M(WD.vorera);for(let i=0;i<f.length;i+=3){const A=V(f[i]),B=V(f[i+1]),C=V(f[i+2]);
       const e1=[B[0]-A[0],B[1]-A[1],B[2]-A[2]],e2=[C[0]-A[0],C[1]-A[1],C[2]-A[2]];const ny=e1[2]*e2[0]-e1[0]*e2[2],l=Math.hypot(e1[1]*e2[2]-e1[2]*e2[1],ny,e1[0]*e2[1]-e1[1]*e2[0])||1;
-      if(Math.abs(ny/l)>0.5){TINT=[0.97,0.96,0.94];triInto('panot4',A,B,C,true,q=>[q[0]*up,q[2]*up]);}
-      else{TINT=[0.9,0.9,0.88];triInto('granite',A,B,C,false,(q,n)=>{const s=Math.abs(n[0])>Math.abs(n[2])?q[2]:q[0];return[s*ug,q[1]*ug];});}}TINT=[1,1,1];}
+      if(Math.abs(ny/l)>0.5){TINT=[0.97,0.96,0.94];for(const t of subdivNear(A,B,C))triInto('panot4',...t.map(q=>[q[0],q[1]+raiseAt(q[0],q[2]),q[2]]),true,q=>[q[0]*up,q[2]*up]);}
+      else{TINT=[0.92,0.91,0.89];triInto('granite',...[A,B,C].map(q=>[q[0],q[1]+KERBH,q[2]]),false,(q,n)=>{const s=Math.abs(n[0])>Math.abs(n[2])?q[2]:q[0];return[s*ug,q[1]*ug];});}}TINT=[1,1,1];}
   {const {V,f}=M(WD.terreny);for(let i=0;i<f.length;i+=3){const A=V(f[i]),B=V(f[i+1]),C=V(f[i+2]);const cx=(A[0]+B[0]+C[0])/3,cz=(A[2]+B[2]+C[2])/3;const k=groundKind(cx,cz);if(k===2||k===3)continue;
-      triInto('ortho',A,B,C,true,q=>OU(q[0],q[2]),-0.03);}}
+      triInto('ortho',...[A,B,C].map(q=>[q[0],q[1]+KERBH,q[2]]),true,q=>OU(q[0],q[2]),-0.03);}}
+  buildKerbs();
   // suelo lejano (fuera de la hoja): asfalto plano
   {const g=new THREE.PlaneGeometry(2400,2400);g.rotateX(-Math.PI/2);const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x4a4a48}));m.position.y=-4;scene.add(m);}}
+// vados: donde un paso de peatones (cuadros o cebra) toca el bordillo
+function prepVados(){VADOG=new Map();const cr=[];for(const q of MARKS.quads){const e1=Math.hypot(q[1][0]-q[0][0],q[1][1]-q[0][1]),e2=Math.hypot(q[2][0]-q[1][0],q[2][1]-q[1][1]);const mn=Math.min(e1,e2),mx=Math.max(e1,e2);
+    if((mn>0.3&&mn<0.65&&mx<0.75)||(mn>0.4&&mn<0.65&&mx>1.8&&mx<6.5))cr.push([(q[0][0]+q[2][0])/2,(q[0][1]+q[2][1])/2]);}
+  const G=new Map();for(const c of cr){const k=Math.floor(c[0]/3)*10007+Math.floor(c[1]/3);let L=G.get(k);if(!L)G.set(k,L=[]);L.push(c);}
+  const near=(x,z,r)=>{const i=Math.floor(x/3),j=Math.floor(z/3);for(let a=i-1;a<=i+1;a++)for(let b=j-1;b<=j+1;b++){const L=G.get(a*10007+b);if(L)for(const c of L)if(Math.hypot(c[0]-x,c[1]-z)<r)return true;}return false;};
+  for(const K of KERBS){for(let i=0;i<K.p.length-1;i++){const a=K.p[i],b=K.p[i+1];const L=Math.hypot(b[0]-a[0],b[2]-a[2]);for(let t=0;t<=L;t+=0.5){const x=a[0]+(b[0]-a[0])*t/L,z=a[2]+(b[2]-a[2])*t/L;
+        if(near(x,z,2.2)){const k=Math.floor(x/4)*10007+Math.floor(z/4);let Q=VADOG.get(k);if(!Q)VADOG.set(k,Q=[]);Q.push([x,z]);}}}}}
+// triángulos de acera cerca de un vado: se trocean para que la rampa se vea
+function subdivNear(A,B,C){const cx=(A[0]+B[0]+C[0])/3,cz=(A[2]+B[2]+C[2])/3;const r=Math.max(Math.hypot(A[0]-cx,A[2]-cz),Math.hypot(B[0]-cx,B[2]-cz),Math.hypot(C[0]-cx,C[2]-cz));
+  if(vadoD(cx,cz)>r+2.5)return[[A,B,C]];const out=[];const rec=(a,b,c,d)=>{const l=Math.max(Math.hypot(a[0]-b[0],a[2]-b[2]),Math.hypot(b[0]-c[0],b[2]-c[2]),Math.hypot(c[0]-a[0],c[2]-a[2]));
+    if(l<0.7||d>7){out.push([a,b,c]);return;}const m=(p,q)=>[(p[0]+q[0])/2,(p[1]+q[1])/2,(p[2]+q[2])/2];const ab=m(a,b),bc=m(b,c),ca=m(c,a);rec(a,ab,ca,d+1);rec(ab,b,bc,d+1);rec(ca,bc,c,d+1);rec(ab,bc,ca,d+1);};rec(A,B,C,0);return out;}
+// bordillo de granito (cara vista + canto achaflanado), rigola de hormigón en la calzada y, en los vados, panot de botones
+function buildKerbs(){const ug=US('granite'),uc=US('concrete'),ub=US('panotbotons');
+  const quad=(mat,P,uvf,n)=>{const b=bufOf((P[0][0]+P[2][0])/2,(P[0][2]+P[2][2])/2,mat);for(const t of [[0,1,2],[0,2,3]]){let T=t.map(i=>P[i]);
+      const e1=[T[1][0]-T[0][0],T[1][1]-T[0][1],T[1][2]-T[0][2]],e2=[T[2][0]-T[0][0],T[2][1]-T[0][1],T[2][2]-T[0][2]];let nn=[e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]];
+      if(nn[0]*n[0]+nn[1]*n[1]+nn[2]*n[2]<0){T=[T[0],T[2],T[1]];}const l=Math.hypot(...nn)||1;for(const v of T){const uv=uvf(v);pushV(b,v[0],v[1],v[2],n[0],n[1],n[2],uv[0],uv[1]);}}};
+  for(const K of KERBS){const P=K.p;for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1];const dx=b[0]-a[0],dz=b[2]-a[2],L=Math.hypot(dx,dz);if(L<0.03)continue;
+      // troceo a 0,5 m para que la altura siga el vado
+      const nseg=Math.max(1,Math.ceil(L/0.5));const nx=dz/L*K.s,nz=-dx/L*K.s;
+      for(let s=0;s<nseg;s++){const t0=s/nseg,t1=(s+1)/nseg;const p0=[a[0]+dx*t0,0,a[2]+dz*t0],p1=[a[0]+dx*t1,0,a[2]+dz*t1];
+        const r0=K.ry[i]+(K.ry[i+1]-K.ry[i])*t0,r1=K.ry[i]+(K.ry[i+1]-K.ry[i])*t1;const g0=a[1]+(b[1]-a[1])*t0,g1=a[1]+(b[1]-a[1])*t1;
+        const h0=raiseAt(p0[0],p0[2]),h1=raiseAt(p1[0],p1[2]);const vado=h0<KERBH*0.6||h1<KERBH*0.6;
+        TINT=[0.86,0.85,0.82];// cara vista
+        quad('granite',[[p0[0],r0-0.02,p0[2]],[p1[0],r1-0.02,p1[2]],[p1[0],g1+h1,p1[2]],[p0[0],g0+h0,p0[2]]],v=>[(v[0]*nz-v[2]*nx)*ug,v[1]*ug],[nx,0,nz]);
+        // canto (20 cm) o panot de botones (1,2 m) en el vado
+        const w=vado?1.2:0.2;const col=vado?[0.75,0.62,0.58]:[0.9,0.89,0.86];TINT=col;
+        const q0=[p0[0]-nx*w,0,p0[2]-nz*w],q1=[p1[0]-nx*w,0,p1[2]-nz*w];
+        quad(vado?'panotbotons':'granite',[[p0[0],g0+h0+0.006,p0[2]],[p1[0],g1+h1+0.006,p1[2]],[q1[0],H0(q1[0],q1[2])+raiseAt(q1[0],q1[2])+0.006,q1[2]],[q0[0],H0(q0[0],q0[2])+raiseAt(q0[0],q0[2])+0.006,q0[2]]],v=>[v[0]*(vado?ub:ug),v[2]*(vado?ub:ug)],[0,1,0]);
+        // rigola
+        TINT=[0.82,0.81,0.78];const e0=[p0[0]+nx*0.3,0,p0[2]+nz*0.3],e1=[p1[0]+nx*0.3,0,p1[2]+nz*0.3];
+        quad('concrete',[[p0[0],r0+0.004,p0[2]],[p1[0],r1+0.004,p1[2]],[e1[0],r1+0.012,e1[2]],[e0[0],r0+0.012,e0[2]]],v=>[v[0]*uc,v[2]*uc],[0,1,0]);}}}
+  TINT=[1,1,1];}
+// ---------- transición acera-calzada: canto del bordillo de granito (arriba) y rigola de hormigón (abajo, en la calzada) ----------
+function kerbFace(A,B,C,n){const hl=Math.hypot(n[0],n[2]);if(hl<0.5)return;let nx=n[0]/hl,nz=n[2]/hl;const V=[A,B,C].sort((p,q)=>p[1]-q[1]);
+  const mx=(A[0]+B[0]+C[0])/3,mz=(A[2]+B[2]+C[2])/3;if(groundKind(mx+nx*0.6,mz+nz*0.6)!==2){if(groundKind(mx-nx*0.6,mz-nz*0.6)!==2)return;nx=-nx;nz=-nz;}
+  const lo=Math.abs(V[0][1]-V[1][1])<0.05,hi=Math.abs(V[1][1]-V[2][1])<0.05;
+  if(lo){const p=V[0],q=V[1];if(Math.hypot(p[0]-q[0],p[2]-q[2])<0.05)return;// rigola: franja de 30 cm de hormigón claro con caída hacia el bordillo
+    const b=bufOf(mx,mz,'concrete');TINT=[0.86,0.85,0.82];const w=0.3,us=US('concrete');const P=[[p[0],p[1]+0.008,p[2]],[q[0],q[1]+0.008,q[2]],[q[0]+nx*w,H(q[0]+nx*w,q[2]+nz*w)+0.012,q[2]+nz*w],[p[0]+nx*w,H(p[0]+nx*w,p[2]+nz*w)+0.012,p[2]+nz*w]];
+    for(const t of [[0,1,2],[0,2,3]]){let T=t.map(i=>P[i]);const cr=(T[1][0]-T[0][0])*(T[2][2]-T[0][2])-(T[1][2]-T[0][2])*(T[2][0]-T[0][0]);if(cr>0)T=[T[0],T[2],T[1]];for(const v of T)pushV(b,v[0],v[1],v[2],0,1,0,v[0]*us,v[2]*us);}}
+  if(hi){const p=V[1],q=V[2];if(Math.hypot(p[0]-q[0],p[2]-q[2])<0.05)return;// canto superior del bordillo (20 cm de granito, achaflanado)
+    const b=bufOf(mx,mz,'granite');TINT=[0.88,0.87,0.84];const w=0.2,ug=US('granite');const P=[[p[0]+nx*0.012,p[1]-0.01,p[2]+nz*0.012],[q[0]+nx*0.012,q[1]-0.01,q[2]+nz*0.012],[q[0]-nx*w,q[1]+0.006,q[2]-nz*w],[p[0]-nx*w,p[1]+0.006,p[2]-nz*w]];
+    for(const t of [[0,1,2],[0,2,3]]){let T=t.map(i=>P[i]);const cr=(T[1][0]-T[0][0])*(T[2][2]-T[0][2])-(T[1][2]-T[0][2])*(T[2][0]-T[0][0]);if(cr>0)T=[T[0],T[2],T[1]];for(const v of T)pushV(b,v[0],v[1],v[2],0,1,0,v[0]*ug,v[2]*ug);}}
+  TINT=[0.92,0.91,0.89];}
 // ---------- marcas viales sacadas de la ortofoto ----------
-function buildMarks(){for(const [key,col] of [['w',PAINTW],['y',PAINTY]]){TINT=hexTint(col);for(const p of MARKS[key]){
-    const ring=p.r.map(q=>new THREE.Vector2(q[0],q[1]));const holes=(p.h||[]).map(h=>h.map(q=>new THREE.Vector2(q[0],q[1])));
-    let tri;try{tri=THREE.ShapeUtils.triangulateShape(ring,holes);}catch(e){continue;}const all=ring.concat(...holes);const c=centroid(p.r);const b=bufOf(c[0],c[1],'paint');
-    for(const t of tri){let P=t.map(i=>all[i]);const cr=(P[1].x-P[0].x)*(P[2].y-P[0].y)-(P[1].y-P[0].y)*(P[2].x-P[0].x);if(cr>0)P=[P[0],P[2],P[1]];
-      for(const q of P)pushV(b,q.x,H(q.x,q.y)+0.018,q.y,0,1,0,q.x*0.25,q.y*0.25);}}}TINT=[1,1,1];}
+// pintura vial limpia: cada marca es un cuadrilátero (líneas de punta a punta, discontinuas con su ritmo, pasos, cebreados)
+const tex30=cTex(256,256,(g,w,h)=>{g.clearRect(0,0,w,h);g.strokeStyle='#f2f1ea';g.lineWidth=18;g.beginPath();g.arc(128,128,112,0,7);g.stroke();g.fillStyle='#f2f1ea';g.font='bold 120px Arial';g.textAlign='center';g.textBaseline='middle';g.fillText('30',128,136);},{});
+const mat30=new THREE.MeshLambertMaterial({map:tex30,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6});
+function buildMarks(){TINT=hexTint(PAINTW);for(const q of MARKS.quads){const c=[(q[0][0]+q[2][0])/2,(q[0][1]+q[2][1])/2];const b=bufOf(c[0],c[1],'paint');
+    let P=q;const cr=(P[1][0]-P[0][0])*(P[2][1]-P[0][1])-(P[1][1]-P[0][1])*(P[2][0]-P[0][0]);if(cr>0)P=[P[0],P[3],P[2],P[1]];
+    for(const t of [[0,1,2],[0,2,3]])for(const k of t){const x=P[k][0],z=P[k][1];pushV(b,x,H(x,z)+0.02,z,0,1,0,x*0.25,z*0.25);}}
+  TINT=[1,1,1];
+  for(const c of MARKS.circ){const g=new THREE.PlaneGeometry(c[2]*2.2,c[2]*2.2);g.rotateX(-Math.PI/2);if(c[3]!==null&&c[3]!==undefined)g.rotateY(c[3]-Math.PI/2);const m=new THREE.Mesh(g,mat30);m.position.set(c[0],H(c[0],c[1])+0.025,c[1]);scene.add(m);}}
 // ---------- edificios: huella real + altura; fachadas detalladas donde dan a la calle ----------
 const BLD=[];
 function isStreetSide(mx,mz,nx,nz){for(const d of [2.2,3.5]){const k=groundKind(mx+nx*d,mz+nz*d);if(k===2||k===3)return true;}return false;}
@@ -777,8 +842,33 @@ const LC_STY=[
 const AWNCOL=['#3c6e46','#2f5a3c','#4b7a52','#c8b48a','#7a5a3a','#9a3a2e','#3a4e6e','#d8cdb4'];
 const hashN=(x,z)=>{const s=Math.sin(x*12.9898+z*78.233)*43758.5453;return s-Math.floor(s);};
 // en Travessera y Vallespir: sobre todo bloques de ladrillo de los 60-70 y edificios grises modernos (como en las fotos)
+const MET=[];
+// aplacado de granito gris pulido en losas de 120x60 con juntas finas (edificio de la esquina del 365)
+const texGranit=cTex(512,512,(g,w,h)=>{g.fillStyle='#808080';g.fillRect(0,0,w,h);const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-0.5)*34+(Math.random()<0.02?40:0);d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}g.putImageData(d,0,0);
+  for(let r=0;r<4;r++)for(let c=0;c<2;c++){const k=Math.random()<0.5?0:255;g.fillStyle=`rgba(${k},${k},${k},0.05)`;g.fillRect(c*256,r*128,256,128);}g.strokeStyle='#4a4c4e';g.lineWidth=3;for(let y=0;y<=h;y+=128){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}for(let r=0;r<4;r++)for(let x=(r%2)*128;x<=w;x+=256){g.beginPath();g.moveTo(x,r*128);g.lineTo(x,r*128+128);g.stroke();}},{});
+MATS.granitPanel=pbr(new THREE.MeshStandardMaterial({map:texGranit,vertexColors:true,roughness:0.35,metalness:0.05}));TEXM.granitPanel=2.4;
+const texMetal=cTex(64,256,(g,w,h)=>{for(let y=0;y<h;y++){const v=170+Math.sin(y/h*Math.PI*24)*45;g.fillStyle=`rgb(${v},${v+2},${v+5})`;g.fillRect(0,y,w,1);}},{});texMetal.wrapS=texMetal.wrapT=THREE.RepeatWrapping;
+MATS.metalPanel=pbr(new THREE.MeshStandardMaterial({map:texMetal,vertexColors:true,metalness:0.6,roughness:0.35,side:THREE.DoubleSide}));
 const LC_WF=[7,2,1,3,2,0];
-function lcStyle(b,hgt){const r=hashN(b.r[0][0],b.r[0][1]);const c=centroid(b.r);const foc=focusD(c[0],c[1])<45;const ws=LC_STY.map((s,i)=>foc?LC_WF[i]:s.w);let tot=0;for(const w of ws)tot+=w;let a=r*tot,st=LC_STY[0];for(let i=0;i<LC_STY.length;i++){a-=ws[i];if(a<=0){st=LC_STY[i];break;}}
+// estilos propios de edificios concretos (sacados de las fotos)
+const LC_CUST={
+  granit:{w:0,wall:'plaster_cream',tints:['#e6dccb'],low:'granitPanel',lowTint:[0.52,0.53,0.55],lowF:2,slab:'#ecebe6',balc:'none',rail:1,side:'plaster_grey',gfMat:'granitPanel',gfTint:[0.85,0.85,0.86],win:'box'},
+  metall:{w:0,wall:'plaster_cream',tints:['#e2c4ae'],slab:'#ecebe6',balc:'none',rail:1,side:'brick',metal:true,gfMat:'plaster_cream',gfTint:[0.86,0.76,0.68]},
+  maoBlanc:{w:0,wall:'brick',tints:['#c8846a'],slab:'#ecebe6',balc:'none',rail:1,side:'brick',blank:true,gfMat:'brick',gfTint:[0.78,0.5,0.4]}};
+function custStyle(b){if(b.sty&&LC_CUST[b.sty])return LC_CUST[b.sty];if(!CUSTOM)return null;const c=centroid(b.r);for(const s of CUSTOM.styles||[])if(Math.hypot(c[0]-s.at[0],c[1]-s.at[1])<s.r)return LC_CUST[s.sty];return null;}
+// color de fachada medido en tus fotos -> material y tinte (sobre la textura fotográfica neutra)
+const TEXMEAN={brick:[110,89,67],plaster_cream:[187,177,163],plaster_grey:[171,163,160],plaster_ochre:[139,120,77],stone_dark:[86,83,75],concrete_wall:[92,81,69]};
+const lin=v=>Math.pow(v/255,2.2);
+function photoStyle(b){const c=centroid(b.r);let best=null;for(const q of BCOL){if(Math.abs(q[0]-c[0])<0.6&&Math.abs(q[1]-c[1])<0.6){best=q[2];break;}}
+  // sin muestra propia: el color del edificio con foto más cercano (el mismo inmueble suele estar partido en trozos en el modelo)
+  if(!best&&focusD(c[0],c[1])<45){let bd=16;for(const q of BCOL){const d=Math.hypot(q[0]-c[0],q[1]-c[1]);if(d<bd){bd=d;best=q[2];}}}
+  if(!best)return null;
+  const [r,g,bl]=best.c;const col=new THREE.Color(r/255,g/255,bl/255);const hsl={};col.getHSL(hsl);const mx=Math.max(r,g,bl),mn=Math.min(r,g,bl),sat=mx?(mx-mn)/mx:0,v=mx/255,h=hsl.h;
+  let wall;if((h<0.075||h>0.95)&&sat>0.26&&v<0.75)wall='brick';else if(sat<0.12)wall=v<0.5?'stone_dark':'plaster_grey';else if(h<0.17&&sat>0.42)wall='plaster_ochre';else wall='plaster_cream';
+  const tm=TEXMEAN[wall];const tint=[0,1,2].map(i=>clamp(lin(best.c[i])/lin(tm[i])*1.12,0.25,2.4));
+  const gt=[0.4,0.41,0.43];// planta baja: granito oscuro pulido (lo habitual en Travessera); la muestra de la foto está tapada por coches y gente
+  const st={w:0,wall,tints:['#ffffff'],slab:'#ecebe6',balc:(best.c[0]*7+best.c[1]*3+best.c[2])%3<1.2?'cont':'ind',rail:1,side:wall,gfMat:'granitPanel',gfTint:gt};return {st,tint,gf:best.gf};}
+function lcStyle(b,hgt){const cs=custStyle(b);if(cs){const tint=hexTint(cs.tints[0]);return Object.assign({},cs,{tint,sideTint:tint.map(v=>v*0.93),awn:null,awnP:0,old:false,cust:true});}{const ps=photoStyle(b);if(ps){const r0=hashN(b.r[0][0],b.r[0][1]);return Object.assign({},ps.st,{tint:ps.tint,sideTint:ps.tint.map(v=>v*0.93),awn:null,awnP:0,old:hgt<10.5,photo:true});}}const r=hashN(b.r[0][0],b.r[0][1]);const c=centroid(b.r);const foc=focusD(c[0],c[1])<45;const ws=LC_STY.map((s,i)=>foc?LC_WF[i]:s.w);let tot=0;for(const w of ws)tot+=w;let a=r*tot,st=LC_STY[0];for(let i=0;i<LC_STY.length;i++){a-=ws[i];if(a<=0){st=LC_STY[i];break;}}
   const old=hgt<10.5;if(old&&r<0.6&&!foc)st=pick([LC_STY[1],LC_STY[4],LC_STY[5]]);
   const tint=hexTint(pick(st.tints));return Object.assign({},st,{tint,sideTint:tint.map(v=>v*0.93),awn:Math.random()<0.65?pick(AWNCOL):null,awnP:R(0.25,0.7),old});}
 // toldo de balcón (tela tensa inclinada con faldón), color por instancia
@@ -801,14 +891,24 @@ function lcFacade(rec,seg){const{a,b,nx,nz,L}=seg;const st=rec.st;const ux=(b[0]
   // planta baja: locales y portal
   const units=[];const openH=Math.min(3.25,gf-0.6);
   if(L>=3.2){const pw=R(1.9,2.3);const pu=L<9?(Math.random()<0.5?0.4:L-pw-0.4):R(0.2,0.8)*(L-pw);let t=0.35;
-    const shopsIn=(from,to)=>{let x=from;while(to-x>2.6){let w=Math.min(to-x-0.3,R(3.6,7.5));if(to-x-w<2.8)w=to-x-0.3;if(w<2.4)break;const sm=pickSmall();
-        const state=det===2?(Math.random()<0.86?'glass':'closed'):(Math.random()<(det?0.5:0.25)?'dark':'closed');units.push({u0:x,u1:x+w,y1:openH,kind:'shop',state,shop:{type:sm.t,signIdx:sm.sign(),awning:['bar','fruteria','forn','restaurant'].includes(sm.t)&&Math.random()<0.45},room:{d:R(5,9)},lc:true});x+=w+R(0.35,0.7);}};
+    const shopsIn=(from,to)=>{let x=from;while(to-x>2.6){let w=Math.min(to-x-0.3,R(3.6,7.5));if(to-x-w<2.8)w=to-x-0.3;if(w<2.4)break;const sm=pickSmall();const real=POIS.some(p=>Math.hypot(p[0]-(a[0]+ux*(x+2)),p[1]-(a[1]+uz*(x+2)))<9);
+        const state=det===2?(Math.random()<0.86?'glass':'closed'):(Math.random()<(det?0.5:0.25)?'dark':'closed');units.push({u0:x,u1:x+w,y1:openH,kind:'shop',state,shop:{type:sm.t,signIdx:undefined,noSign:!real,awning:['bar','fruteria','forn','restaurant'].includes(sm.t)&&Math.random()<0.45},room:{d:R(5,9)},lc:true});x+=w+R(0.35,0.7);}};
     shopsIn(t,pu);units.push({u0:pu,u1:pu+pw,y1:Math.min(3.1,gf-0.5),kind:'portal'});shopsIn(pu+pw+0.35,L-0.3);}
   const lot={yb,gf,fh,F,st:{pb:'stone_dark',up:st.wall},tint:'#ffffff',pbTint:[0.85,0.83,0.8],bk:{outer:false,i:0,j:0},facades:[],units,trimHex:'#d8d8d4',railK:st.rail};
-  const holes=units.map(u=>[u.u0,u.u1,0.25,u.y1+0.25]);wallHoles('stone_dark',a,b,nx,nz,rec.y0-1,yb+gf,holes,0.3,US('stone_dark'),[0.82,0.8,0.77]);
+  if(st.blank){units.length=0;}
+  const holes=units.map(u=>[u.u0,u.u1,0.25,u.y1+0.25]);wallHoles(st.gfMat||'stone_dark',a,b,nx,nz,rec.y0-1,yb+gf,holes,0.3,US(st.gfMat||'stone_dark'),st.gfTint||[0.82,0.8,0.77]);
   // fascia sobre los escaparates
   moldStrip(a,b,nx,nz,yb+gf-0.05,0.3,0.12,[0.9,0.9,0.88]);
-  {const B=bufOf(mx,mz,st.wall);TINT=st.tint;wall(B,a[0],a[1],b[0],b[1],yb+gf,top+(hgt>7?0.9:0),nx,nz,US(st.wall));TINT=[1,1,1];}
+  {let y=yb+gf;if(st.low){const yl=Math.min(top,yb+gf+st.lowF*fh);const B=bufOf(mx,mz,st.low);TINT=st.lowTint;wall(B,a[0],a[1],b[0],b[1],y,yl,nx,nz,US(st.low));y=yl;}
+    if(st.blank&&hgt>4.5){const yl=Math.min(top,yb+4.2);const B=bufOf(mx,mz,'brick');TINT=[0.78,0.5,0.4];wall(B,a[0],a[1],b[0],b[1],yb+gf,yl,nx,nz,US('brick'));y=yl;const B2=bufOf(mx,mz,'concrete_wall');TINT=[0.95,0.95,0.94];wall(B2,a[0],a[1],b[0],b[1],y,top,nx,nz,US('concrete_wall'));TINT=[1,1,1];FACADES.push({a,b,nx,nz,L,yb,gf,F:0,fh,outer:false});return;}
+    const B=bufOf(mx,mz,st.wall);TINT=st.tint;wall(B,a[0],a[1],b[0],b[1],y,top+(hgt>7?0.9:0),nx,nz,US(st.wall));TINT=[1,1,1];
+    if(st.metal&&L>5&&F>1){const m0=L*0.25,m1=Math.min(L,L*0.25+7);const B2=bufOf(mx,mz,'metalPanel');const s0=[a[0]+ux*m0,a[1]+uz*m0],s1=[a[0]+ux*m1,a[1]+uz*m1];
+      // panel ondulado que sale en curva hacia la calle en la parte alta
+      const yA=yb+gf+fh*0.3,yB=top-0.2;const N=6;for(let k=0;k<N;k++){const t0=k/N,t1=(k+1)/N;const o0=Math.sin(t0*Math.PI/2)*0.9,o1=Math.sin(t1*Math.PI/2)*0.9;
+        const y0=yA+(yB-yA)*t0,y1=yA+(yB-yA)*t1;wallQ(B2,s0[0]+nx*o0,s0[1]+nz*o0,s1[0]+nx*o0,s1[1]+nz*o0,y0,y1,y0,y1,nx,nz,1.0);
+        // la curva necesita la cara inclinada: aproximamos con dos alturas desplazadas
+        if(o1-o0>0.01)capPoly(B2,[[s0[0]+nx*o0,s0[1]+nz*o0],[s1[0]+nx*o0,s1[1]+nz*o0],[s1[0]+nx*o1,s1[1]+nz*o1],[s0[0]+nx*o1,s0[1]+nz*o1]],y1,1.0,true);}
+      MET.push({s0,s1,nx,nz,y0:yA,y1:yB});}}
   if(F>0&&!st.old)moldStrip(a,b,nx,nz,top-0.1,0.3,0.15,st.tint.map(v=>v*0.95));
   const n=Math.max(1,Math.round(L/3.3));const bay=L/n;const slabCol=new THREE.Color(st.slab).getHex();
   for(let f=0;f<F;f++){const fy=yb+gf+f*fh;const last=f===F-1&&F>3;
@@ -816,11 +916,12 @@ function lcFacade(rec,seg){const{a,b,nx,nz,L}=seg;const st=rec.st;const ux=(b[0]
       addInst('losaCorrida',mx,fy-0.1,mz,yaw,L-0.1,1,1.15,0,0,0,slabCol);const nr=Math.max(1,Math.round((L-0.4)/1.6)),rw=(L-0.4)/nr;
       if(det)for(let r=0;r<nr;r++){const t=0.2+(r+0.5)*rw;addInst('balcRailF',a[0]+ux*t,fy+0.08,a[1]+uz*t,yaw,rw,1.0,1.12,1);}}
     for(let k=0;k<n;k++){const t=(k+0.5)*bay;const x=a[0]+ux*t+nx*0.015,z=a[1]+uz*t+nz*0.015;const ww=Math.min(bay-0.7,st.balc==='cont'?1.6:1.25),wh=st.balc==='cont'?2.3:1.45;
-      const door=st.balc==='cont'||(st.balc==='glass')||Math.random()<0.4;const wy=door?fy+0.02:fy+0.9;const cell=Math.random()<0.6?pick([0,1,2,3,8,12]):(Math.random()*16)|0;
+      const door=st.balc!=='none'&&(st.balc==='cont'||(st.balc==='glass')||Math.random()<0.4);const wy=door?fy+0.02:fy+0.9;const cell=Math.random()<0.6?pick([0,1,2,3,8,12]):(Math.random()*16)|0;
       addInst('win',x,wy,z,yaw,ww,door?2.3:wh,1,cell,Math.random()<0.12?1:0);if(det)addInst('winFrame',x,wy,z,yaw,ww,door?2.3:wh,1,0,0,0,0xd8dadc);if(!det&&f>0)continue;
       if(st.balc==='ind'&&door&&!last){const bw=ww+0.5,bd=R(0.55,0.75);addInst('balcSlab',x,fy-0.02,z,yaw,bw,1,bd,0,0,0,slabCol);addInst('balcRail',x,fy+0.12,z,yaw,bw,1.0,bd,st.rail);}
       if(st.balc==='glass'&&!last){const bw=ww+0.6;addInst('balcSlab',x,fy-0.02,z,yaw,bw,1,1.0,0,0,0,slabCol);addInst('railGlass',x,fy+0.12,z,yaw,bw,1.0,0.98);addInst('railTop',x,fy+0.12,z,yaw,bw,1,0.98);}
       // toldo en muchos balcones (el mismo color en todo el edificio, como en Les Corts)
+      if(st.win==='box'&&!door){addInst('winFrame',x,wy,z,yaw,ww*1.15,wh*1.1,1.6,0,0,0,0x8a8d8f);}
       if(st.awn&&door&&Math.random()<st.awnP){const col=new THREE.Color(Math.random()<0.85?st.awn:pick(AWNCOL)).getHex();addInst('toldoB',x,fy+2.42,z,yaw,ww+0.25,1,st.balc==='cont'?1.05:0.8,0,0,0,col);}
       if(Math.random()<0.08)addInst('ac',x+ux*(ww/2+0.45)+nx*0.02,fy+1.7,z+uz*(ww/2+0.45)+nz*0.02,yaw);
       if(Math.random()<0.12)addInst('maceta',x+ux*R(-0.4,0.4)+nx*0.55,fy+0.12,z+uz*R(-0.4,0.4)+nz*0.55,0);
@@ -956,6 +1057,12 @@ function streetFurnitureLC(){
   {let cur=null,last=null;for(const k of KERB){if(!last||k.cid!==last.cid||Math.hypot(k.x-last.x,k.z-last.z)>2.6){if(cur&&cur.pts.length>6)CHAINS.push(cur);cur={pts:[],id:CHAINS.length};}k.ch=cur;k.i=cur.pts.length;cur.pts.push(k);last=k;}
     if(cur&&cur.pts.length>6)CHAINS.push(cur);
     for(const c of CHAINS){c.id=CHAINS.indexOf(c);const a=c.pts[0],b=c.pts[c.pts.length-1];c.loop=Math.hypot(a.x-b.x,a.z-b.z)<2.6;}}
+  // alcorques: el árbol del AMB queda en el centro de un hueco orientado como el bordillo
+  for(const t of TREES){const k=kerbNear(t.x,t.z,4);if(groundKind(t.x,t.z)!==3)continue;const ya=k?Math.atan2(k.ux,k.uz):0;const y=surfY(t.x,t.z);addInst('alcorqueQ',t.x,y,t.z,ya);if(hashN(t.x,t.z)<0.35)addInst('reixaQ',t.x,y-0.005,t.z,ya);}
+  // embornales cada ~22 m en la rigola y junto a los pasos
+  {let last=null;for(const k of KERB){if(last&&last.cid===k.cid&&Math.hypot(last.x-k.x,last.z-k.z)<(k.cwd<5?6:22))continue;if(focusD(k.x,k.z)>140)continue;const x=k.x+k.nx*(0.7+0.17),z=k.z+k.nz*(0.7+0.17);if(groundKind(x,z)!==2)continue;addInst('embornal',x,H(x,z)+0.03,z,Math.atan2(k.ux,k.uz));last=k;}}
+  // armarios eléctricos («pirulís») cerca de algunas esquinas
+  {let n=0;for(const k of KERB){if(k.cwd>2.5||k.cwd<1.6||focusD(k.x,k.z)>60||hashN(k.x*3,k.z*3)>0.12)continue;const x=k.x-k.nx*0.3,z=k.z-k.nz*0.3;if(!occFree(x,z,0.8))continue;addInst('armari',x,H(x,z),z,Math.atan2(-k.nx,-k.nz));addBoxV(x-0.25,x+0.25,z-0.25,z+0.25,H(x,z),H(x,z)+1.6);occAdd(x,z,0.8);n++;}}
   for(const t of TREES)occAdd(t.x,t.z,0.9);for(const l of WD.lamp)occAdd(l[0],l[2],0.5);
   // --- marquesinas de bus en Travessera (posiciones de las fotos) ---
   for(const [px,pz] of [[-57,16],[-26,-20],[52,-74],[96,-108]]){const k=kerbNear(px,pz,14,k=>k.trav&&k.sw>3.2);if(!k)continue;
@@ -1005,6 +1112,13 @@ function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
   buildVInst();for(const k in VTPL)needHi(VTPL[k]);buildMotosLC();
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];
+// alcorque de Les Corts: hueco cuadrado con marco de granito, tierra y a veces reja de fundición
+{const G=0xb8b3aa,S=0x4a3a2a;defInst('alcorqueQ',mkG([[bx(1.3,0.06,0.1,0,0.0,0.6),G],[bx(1.3,0.06,0.1,0,0.0,-0.6),G],[bx(0.1,0.06,1.1,0.6,0.0,0),G],[bx(0.1,0.06,1.1,-0.6,0.0,0),G],[bx(1.12,0.02,1.12,0,-0.06,0),S]]),paintMat,1,1,false);}
+{const tg=cTex(128,128,(g,w,h)=>{g.clearRect(0,0,w,h);g.strokeStyle='#2c2d2e';g.lineWidth=5;for(let i=6;i<w;i+=13){g.beginPath();g.moveTo(i,4);g.lineTo(i,h-4);g.stroke();}g.lineWidth=7;g.strokeRect(4,4,w-8,h-8);g.beginPath();g.arc(64,64,24,0,7);g.fillStyle='rgba(0,0,0,0)';g.clearRect(40,40,48,48);g.stroke();},{});
+  defInst('reixaQ',(()=>{const g=new THREE.PlaneGeometry(1.12,1.12);g.rotateX(-Math.PI/2);return g;})(),new THREE.MeshLambertMaterial({map:tg,transparent:true,alphaTest:0.4,side:THREE.DoubleSide}),1,1,false);}
+// embornal: reja de fundición en la rigola
+{const te=cTex(128,64,(g,w,h)=>{g.fillStyle='#2a2b2c';g.fillRect(0,0,w,h);g.fillStyle='#070707';for(let x=8;x<w-6;x+=10)g.fillRect(x,8,5,h-16);g.strokeStyle='#4a4b4c';g.lineWidth=4;g.strokeRect(2,2,w-4,h-4);},{});
+  defInst('embornal',(()=>{const g=new THREE.PlaneGeometry(0.85,0.38);g.rotateX(-Math.PI/2);return g;})(),new THREE.MeshLambertMaterial({map:te,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-6}),1,1,false);}
 {const B=0x9a4a32,G=0x2e4a36;const p=[[bx(2.04,0.5,0.24,0,0.25,0),B],[bx(2.08,0.05,0.28,0,0.52,0),0xb8b0a4],[bx(2.04,0.04,0.04,0,0.62,0),G],[bx(2.04,0.04,0.04,0,1.95,0),G]];for(let i=0;i<14;i++)p.push([bx(0.022,1.4,0.022,-0.95+i*0.146,1.27,0),G]);defInst('vallaPark',mkG(p),paintMat,1,1,false);}
 defInst('pilarObra',mkG([[bx(0.42,2.2,0.42,0,1.1,0),0x9a4a32],[bx(0.5,0.08,0.5,0,2.24,0),0xb8b0a4]]),paintMat,1,1,false);
 // Vallespir junto al parque: calle escolar pacificada (jardineras de madera y bancos donde antes se aparcaba)
@@ -1152,7 +1266,7 @@ function buildFacade(lot,seg,units){const{a,b,nx,nz}=seg;const L=Math.hypot(b[0]
 const FACADES=[];
 // ---------- unidades de planta baja: portal, local (persiana / cristal / roto / tapiado), garaje ----------
 function buildUnit(lot,seg,u,ux,uz,L){const{a,nx,nz}=seg;const yb=lot.yb;const yaw=Math.atan2(nx,nz);const mid=(u.u0+u.u1)/2;const cx=a[0]+ux*mid,cz=a[1]+uz*mid;const w=u.u1-u.u0;
-  if(u.kind==='shop'&&u.shop&&!u.shop.brand)realShop(u,cx,cz,ux,uz,nx,nz,w);
+  if(u.kind==='shop'&&u.shop&&!u.shop.brand)realShop(u,cx,cz,ux,uz,nx,nz,w);if(u.kind==='shop'&&u.shop&&u.shop.noSign&&u.shop.signIdx===undefined&&u.state==='glass'&&focusD(cx,cz)<32)u.state=Math.random()<0.5?'dark':'closed';
   const sign=(idx,y)=>{if(idx===undefined)return;{const sw=Math.min(w*0.85,3.4);addInst('shopSign',cx+nx*0.08,y,cz+nz*0.08,yaw,sw,sw/4,1,idx);}};
   if(u.kind==='passage'){}
   else if(u.kind==='portal'){fillQuad('wood_dark',a,ux,uz,nx,nz,u.u0,u.u1,yb,yb+u.y1,0.34);// portal de madera doble
@@ -3131,7 +3245,7 @@ setTimeout(async()=>{try{await loadWorldData();buildWorld();buildLootGrid();setL
 // ---- ganchos de depuración (solo con ?shot=1) ----
 if(DEBUG.has('shot')){window.__T={VOL,SIGNIDX,trySever,get DYN(){return DYN},setHour:h=>{gameMin=Math.floor(gameMin/1440)*1440+h*60;},addWound,SHOPS,physStep,driveBones,carInterior,chunks,BLOCKS,spray,makeCar,moveCar,get poiUsed(){return POIUSED.size},get signN(){return signN},THREE,scene,camera,rig,renderer,P,G,S,BELT,H_,BASES,SHOPS,LOOT,DOORS,PANES,cars,INST,surfY,collide,insideVol,begin,hands,gripBySide,setVR:v=>{inVR=v;},keys,pressed,IN,
   get started(){return started},get modelsReady(){return modelsReady},get leftHold(){return leftHold},spawnChar,hitChar,doInteract,findInteract,vrGun,vrBat,beltMags,leftMag,setGame:m=>{gameMin=m},get gameMin(){return gameMin},
-  applyDoor,TPL,poseHand,gl,viewModel,VTPL,MOTOS,makeMoto,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
+  applyDoor,TPL,poseHand,gl,viewModel,BLD,BCOL,VTPL,MOTOS,makeMoto,activateCar,vToggleDoor,needHi,get VACTIVE(){return VACTIVE},CHAINS,KERB,updateBody,get body(){return body},setupHands,applyImp,enterPhys,despawn,BLOCKS,VSTR,HSTR,toast};
   window.__ready=()=>texDone>=texPending&&modelsReady;}
 
 // =====================================================================
