@@ -35,6 +35,18 @@ MATS.darkglass=pbr(new THREE.MeshStandardMaterial({color:0x2a3036,roughness:0.06
 MATS.paint=new THREE.MeshLambertMaterial({map:texPaint,vertexColors:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
 const orthoTex=texLoader.load('data/ortho.jpg');orthoTex.colorSpace=THREE.SRGBColorSpace;orthoTex.anisotropy=4;
 MATS.ortho=pbr(new THREE.MeshStandardMaterial({map:orthoTex,vertexColors:true,roughness:0.95,metalness:0}));
+// terreno de parques y solares: césped y sauló mezclados según la ortofoto (máscara data/terra.png: R = sauló, G = brillo)
+const terraMask=texLoader.load('data/terra.png');terraMask.colorSpace=THREE.NoColorSpace;terraMask.wrapS=terraMask.wrapT=THREE.ClampToEdgeWrapping;
+MATS.terra=(()=>{const m=photoMat('grass',{ns:0.9,roughness:0.97});const tS=ltex('saulo_diff.jpg'),tSN=ltex('saulo_nor.jpg',false);TEXM.terra=2.2;const us=1/2.2;
+  m.onBeforeCompile=sh=>{sh.uniforms.tSand={value:tS};sh.uniforms.tSandN={value:tSN};sh.uniforms.tMask={value:terraMask};sh.uniforms.uUs={value:us};
+    sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`
+      vec2 wxz=vMapUv/uUs;vec2 mu=vec2((wxz.x+350.69)/701.38,1.0-(wxz.y+234.8)/469.6);vec4 mk=texture2D(tMask,mu);
+      vec3 gC=texture2D(map,vMapUv).rgb;vec3 gC2=texture2D(map,vMapUv*0.31+vec2(0.37,0.11)).rgb;gC=mix(gC,gC2,0.4);
+      vec3 sC=texture2D(tSand,vMapUv*0.9).rgb;vec3 sC2=texture2D(tSand,vMapUv*0.23+vec2(0.5,0.2)).rgb;sC=mix(sC,sC2,0.35);sC=mix(vec3(dot(sC,vec3(0.3,0.59,0.11))),sC,0.42)*vec3(1.42,1.36,1.24);
+      float n=texture2D(tSand,vMapUv*0.05).r;float w=smoothstep(0.32,0.68,mk.r+(n-0.45)*0.35);
+      diffuseColor.rgb*=mix(gC,sC,w)*clamp(mk.g*1.25,0.8,1.15);`)
+      .replace('void main() {','uniform sampler2D tSand;uniform sampler2D tSandN;uniform sampler2D tMask;uniform float uUs;\nvoid main() {');};
+  m.customProgramCacheKey=()=>'terra1';return m;})();
 const OU=(x,z)=>[(x+350.69)/701.38,1-(z+234.8)/469.6];// uv de la ortofoto (flipY de three)
 // ---------- suelo ----------
 function triInto(mat,A,B,C,nUp,uvf,dy=0){const cx=(A[0]+B[0]+C[0])/3,cz=(A[2]+B[2]+C[2])/3;const b=bufOf(cx,cz,mat);
@@ -49,7 +61,7 @@ function buildGroundLC(){const us=US('asphalt'),up=US('panot4'),ug=US('granite')
       if(Math.abs(ny/l)>0.5){TINT=[0.97,0.96,0.94];for(const t of subdivNear(A,B,C))triInto('panot4',...t.map(q=>[q[0],q[1]+raiseAt(q[0],q[2]),q[2]]),true,q=>[q[0]*up,q[2]*up]);}
       else{TINT=[0.92,0.91,0.89];triInto('granite',...[A,B,C].map(q=>[q[0],q[1]+KERBH,q[2]]),false,(q,n)=>{const s=Math.abs(n[0])>Math.abs(n[2])?q[2]:q[0];return[s*ug,q[1]*ug];});}}TINT=[1,1,1];}
   {const {V,f}=M(WD.terreny);for(let i=0;i<f.length;i+=3){const A=V(f[i]),B=V(f[i+1]),C=V(f[i+2]);const cx=(A[0]+B[0]+C[0])/3,cz=(A[2]+B[2]+C[2])/3;const k=groundKind(cx,cz);const inOld=B365.old&&insidePoly(cx,cz,B365.old);if(k===2||k===3||inOld){if(inOld&&k!==2){TINT=[0.97,0.96,0.94];for(const t of subdivNear(A,B,C))triInto('panot4',...t.map(q=>[q[0],q[1]+raiseAt(q[0],q[2]),q[2]]),true,q=>[q[0]*up,q[2]*up]);TINT=[1,1,1];}continue;}
-      triInto('ortho',...[A,B,C].map(q=>[q[0],q[1]+KERBH,q[2]]),true,q=>OU(q[0],q[2]),-0.03);}}
+      {const ut=US('terra');TINT=[1,1,1];triInto('terra',...[A,B,C].map(q=>[q[0],q[1]+KERBH,q[2]]),true,q=>[q[0]*ut,q[2]*ut],-0.03);}}}
   buildKerbs();
   // suelo lejano (fuera de la hoja): asfalto plano
   {const g=new THREE.PlaneGeometry(2400,2400);g.rotateX(-Math.PI/2);const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x4a4a48}));m.position.y=-4;scene.add(m);}}

@@ -116,7 +116,13 @@ Hecho (segunda vuelta, noche 18→19-nov):
 - Motos reales: Derbi DS-50 y dos Vespas; la Derbi gira el manillar de verdad.
 - Gente de complexiones distintas (más anchos/estrechos), sentados bien en los bancos.
 - Coches lejanos rehechos (cristales, pilotos, ruedas).
+Hecho (19-nov):
+- Esquina Travessera 261 / Vallespir 203 rehecha con fotos: planta baja de granito retranqueada (acera de 17 panots en Vallespir), chaflán del 365 con terraza, vuelo de viviendas, quiosco de elPeriódico.
+- Marquesinas mirando a la calzada con mupis retroiluminados.
+- Desert Eagle y rifle AWP con recarga manual (cerrojo, cargador, dos manos, mira telescópica).
+- Parques y solares: césped y sauló según la ortofoto (texturas CC0 de Poly Haven).
 Pendiente:
+- Pipicán y detalles de parques cuando lleguen tus fotos. Manos con uñas (el modelo no viene con esqueleto). Poder tocar/agarrar todos los elementos.
 - Ningún modelo VW trae la palanca como pieza separada (Golf/ID.3/Tiguan 2025 llevan el selector en el volante o el salpicadero): he puesto un selector DSG nuevo (P-R-N-D) en la consola.
 - Más motos de tu lista (nmax, Ola, MT-09…) muy pesadas: reducirlas. Fachadas aún más fieles (colores y volúmenes de cada edificio).
 - Versión lejana de los coches (se ve "derretida" de cerca, pero solo se ve a más de 13 m).
