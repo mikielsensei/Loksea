@@ -970,6 +970,10 @@ function streetFurnitureLC(){
     const x=k.x+k.nx*1.6,z=k.z+k.nz*1.6;if(groundKind(x,z)!==2)continue;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);last=[k.x,k.z];
     if(Math.random()<0.72){addInst('jardiFusta',x,y,z,ya+Math.PI/2);solidBox(x,z,1.25,0.55,ya+Math.PI/2,y,y+0.75);}else{addInst('jardiGroc',x,y,z,ya+Math.PI/2);solidBox(x,z,0.85,0.5,ya+Math.PI/2,y,y+0.6);}occAdd(x,z,1.6);
     if(Math.random()<0.45){const bx2=x+k.ux*1.9,bz2=z+k.uz*1.9,by=H(bx2,bz2),byaw=Math.atan2(-k.nx,-k.nz);addInst('banc',bx2,by,bz2,byaw);solidBox(bx2,bz2,0.95,0.3,byaw,by,by+0.5);occAdd(bx2,bz2,1);BENCHES.push({x:bx2,z:bz2,yaw:byaw,y:by+0.45,n:2});}}}
+  // --- vallas de parques y patios de escuela (Vallespir): murete de ladrillo, barrotes verdes y pilares de obra ---
+  {let n=0;for(const k of KERB){if(focusD(k.x,k.z)>60||k.cid===undefined)continue;if((k.i||0)%2)continue;const off=k.sw+0.05;const x=k.x-k.nx*off,z=k.z-k.nz*off;
+    if(groundKind(x-k.nx*0.6,z-k.nz*0.6)!==1||groundKind(x-k.nx*2.5,z-k.nz*2.5)!==1)continue;if(insideVol(x-k.nx*1.2,H(x,z)+1,z-k.nz*1.2))continue;
+    const y=H(x,z),ya=Math.atan2(k.ux,k.uz)+Math.PI/2;addInst('vallaPark',x,y,z,ya);if(n%3===0)addInst('pilarObra',x+k.ux,y,z+k.uz,ya);solidBox(x,z,1.05,0.12,ya,y,y+2);n++;}}
   // --- recorrido de cada bordillo: motos, bancos, papeleras, semáforos, terrazas ---
   let lastBin=new Map(),lastBench=new Map(),lastMoto=new Map(),semaf=new Set();
   for(const k of KERB){const id=k.cid;
@@ -1001,6 +1005,8 @@ function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
   buildVInst();for(const k in VTPL)needHi(VTPL[k]);buildMotosLC();
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];
+{const B=0x9a4a32,G=0x2e4a36;const p=[[bx(2.04,0.5,0.24,0,0.25,0),B],[bx(2.08,0.05,0.28,0,0.52,0),0xb8b0a4],[bx(2.04,0.04,0.04,0,0.62,0),G],[bx(2.04,0.04,0.04,0,1.95,0),G]];for(let i=0;i<14;i++)p.push([bx(0.022,1.4,0.022,-0.95+i*0.146,1.27,0),G]);defInst('vallaPark',mkG(p),paintMat,1,1,false);}
+defInst('pilarObra',mkG([[bx(0.42,2.2,0.42,0,1.1,0),0x9a4a32],[bx(0.5,0.08,0.5,0,2.24,0),0xb8b0a4]]),paintMat,1,1,false);
 // Vallespir junto al parque: calle escolar pacificada (jardineras de madera y bancos donde antes se aparcaba)
 const VALL_N=[[-30,-9],[9,66]];const VALL_E=[0.89,-0.46];
 const inVallN=(x,z)=>segD(x,z,VALL_N[0],VALL_N[1])<9;
@@ -1595,7 +1601,7 @@ function newRec(tpl){const model=SkeletonUtils.clone(tpl.scene);const inner=new 
 function spawnChar(type,x,z,o={}){if(!CHAR_TPLS.length)return null;const female=o.female!==undefined?o.female:Math.random()<0.45;
   const pool=(female?TPL_F:TPL_M).length?(female?TPL_F:TPL_M):CHAR_TPLS;const tpl=o.tpl||pick(pool);
   let h=H_.find(q=>!q.active&&q.tpl===tpl);if(!h){if(H_.length<MAXC)h=newRec(tpl);else{h=H_.find(q=>!q.active);if(!h)return null;}}
-  const height=(female?R(1.58,1.72):R(1.68,1.86));const s=height/h.tpl.height;h.s=s;h.inner.scale.setScalar(s);h.inner.quaternion.copy(h.tpl.qFix);h.inner.position.set(0,-h.tpl.minY*s,0);
+  const height=(female?R(1.58,1.72):R(1.68,1.86));const s=height/h.tpl.height;h.s=s;{const bw=type==='civil'?(o.build||(Math.random()<0.3?R(1.05,1.2):R(0.93,1.05))):1;h.inner.scale.set(s*bw,s,s*(1+(bw-1)*1.2));}h.inner.quaternion.copy(h.tpl.qFix);h.inner.position.set(0,-h.tpl.minY*s,0);
   const variant=o.variant!==undefined?o.variant:(Math.random()*4)|0;
   if(!h.woundU){h.woundU=Array.from({length:8},()=>new THREE.Vector4());h.woundT=new Float32Array(8);h.woundD=Array.from({length:8},()=>new V3());h.woundB=[];}for(const w of h.woundU)w.set(0,0,0,0);h.woundT.fill(-99);h.woundI=0;h.bleeds=[];if(h.severed){for(const k in h.bones)if(h.bones[k].scale.x<0.01)h.bones[k].scale.setScalar(1);h.severed=null;}
   for(const m of h.meshes){m.material=Array.isArray(m.userData.base)?m.userData.base.map(b=>charMat(b,type,variant,h.tpl,h)):charMat(m.userData.base,type,variant,h.tpl,h);}
@@ -3215,7 +3221,7 @@ function chainPt(ch,i,off,out){const n=ch.pts.length;const k=ch.pts[ch.loop?((i%
 const _cpt={x:0,z:0};
 // rasgos cercanos a cada punto de acera (bancos, tiendas, contenedores, terrazas)
 function civPrep(){for(const k of KERB)k.feat=null;const add=(x,z,f)=>{let best=null,bd=6;for(const c of CHAINS)for(const k of c.pts){const d=Math.hypot(k.x-x,k.z-z);if(d<bd){bd=d;best=k;}}if(best)(best.feat||(best.feat=[])).push(f);};
-  for(const b of BENCHES)for(let s=0;s<b.n;s++){const a=(s-(b.n-1)/2)*0.62;const ux=Math.cos(b.yaw),uz=-Math.sin(b.yaw);b.seats=b.seats||[];b.seats.push({x:b.x+ux*a,z:b.z+uz*a,yaw:b.yaw,y:b.y,used:null});}
+  for(const b of BENCHES)for(let s=0;s<b.n;s++){const a=(s-(b.n-1)/2)*0.62;const ux=Math.cos(b.yaw),uz=-Math.sin(b.yaw);const fx=-Math.sin(b.yaw)*0.1,fz=-Math.cos(b.yaw)*0.1;b.seats=b.seats||[];b.seats.push({x:b.x+ux*a+fx,z:b.z+uz*a+fz,yaw:b.yaw+Math.PI,y:b.y,used:null});}// el banco mira hacia su -z (el respaldo está en +z)
   for(const b of BENCHES)add(b.x,b.z,{t:'bench',o:b});for(const s of SHOPS)add(s.x,s.z,{t:'shop',o:s});for(const c of CONTS)add(c.x,c.z,{t:'cont',o:c});for(const t of TERR)add(t.x,t.z,{t:'terr',o:t});}
 function hourDensity(){const h=hourF();const pts=[[0,0.25],[2,0.12],[5,0.06],[7,0.45],[9,0.9],[12,1],[14,0.8],[16,0.75],[18,1],[20.5,0.95],[22,0.6],[24,0.25]];for(let i=1;i<pts.length;i++)if(h<=pts[i][0]){const a=pts[i-1],b=pts[i];return lerp(a[1],b[1],(h-a[0])/(b[0]-a[0]));}return 0.25;}
 const CIV_MAX=34;
@@ -3236,7 +3242,9 @@ function civSpawnNear(p,minR,maxR,first){// elige un punto de acera a la distanc
     // en una terraza tomando algo
     if(r<0.3&&hr>8&&hr<23.5){const free=TERR.filter(t=>t.seats.every(s=>!s.used)&&Math.hypot(t.x-p.x,t.z-p.z)>minR*0.6&&Math.hypot(t.x-p.x,t.z-p.z)<maxR);if(free.length){const t=pick(free);const n=RI(1,t.seats.length);let c=0;
         for(let j=0;j<n;j++){const s=t.seats[j];const kk=kerbNear(t.x,t.z,10);if(!kk)break;const h=civSpawnAt(kk);if(!h)break;civSit(h,s,'terr');h.civ.t=R(120,900);civItem(h,pick(['cup','beer','beer','cup',null]));c++;}if(c)return c;}}
-    const jog=r>=0.3&&r<0.38&&!night;const h=civSpawnAt(k,jog&&Math.random()<0.75?{kind:'sport'}:{});if(!h)return 0;const c=h.civ;
+    // sentado en un banco (leyendo el móvil, descansando)
+    if(r>=0.3&&r<0.38){const fb=BENCHES.filter(b=>b.seats&&b.seats.some(q=>!q.used)&&Math.hypot(b.x-p.x,b.z-p.z)>minR*0.6&&Math.hypot(b.x-p.x,b.z-p.z)<maxR);if(fb.length){const b=pick(fb);const q=b.seats.find(q=>!q.used);const kk=kerbNear(b.x,b.z,10);if(kk){const h=civSpawnAt(kk,{});if(h){civSit(h,q,'bench');if(Math.random()<0.5)civItem(h,'phone');return 1;}}}}
+    const jog=r>=0.36&&r<0.42&&!night;const h=civSpawnAt(k,jog&&Math.random()<0.75?{kind:'sport'}:{});if(!h)return 0;const c=h.civ;
     if(jog){c.r='correr';c.spd=R(2.5,3.2);c.lane=R(0.9,1.6);}
     else if(r<0.5){c.r='basura';civItem(h,'trash');}
     else if(r<0.62&&!night){civItem(h,'bag');}
@@ -3284,7 +3292,7 @@ function civilAI(h,dt,p){const c=h.civ;if(!c)return;c.t+=dt;
     // aprovechar lo que hay cerca
     if(kk.feat&&c.cool<=0&&!run)for(const f of kk.feat){
       if(f.t==='cont'&&c.r==='basura'){c.goal=f;c.gx=f.o.x;c.gz=f.o.z;c.st='go';c.t=0;break;}
-      if(f.t==='bench'&&Math.random()<0.18){const s=f.o.seats&&f.o.seats.find(s=>!s.used);if(s){c.goal={t:'bench',seat:s};c.gx=s.x+Math.sin(s.yaw)*0.35;c.gz=s.z+Math.cos(s.yaw)*0.35;c.st='go';c.t=0;break;}}
+      if(f.t==='bench'&&Math.random()<0.18){const s=f.o.seats&&f.o.seats.find(s=>!s.used);if(s){c.goal={t:'bench',seat:s};c.gx=s.x+Math.sin(s.yaw)*0.45;c.gz=s.z+Math.cos(s.yaw)*0.45;c.st='go';c.t=0;break;}}
       if(f.t==='terr'&&Math.random()<0.12&&hourF()>8){const s=f.o.seats.find(s=>!s.used);if(s){c.goal={t:'terr',seat:s};c.gx=s.x;c.gz=s.z;c.st='go';c.t=0;break;}}
       if(f.t==='shop'&&Math.random()<(h.itemK==='bag'?0.05:0.14)&&hourF()>8.5&&hourF()<21){c.goal=f;c.gx=f.o.x;c.gz=f.o.z;c.st='go';c.t=0;break;}
       if(f.t==='shop'&&Math.random()<0.08){c.goal={t:'window',fx:f.o.x-f.o.nx*3,fz:f.o.z-f.o.nz*3};c.gx=f.o.x+f.o.nx*0.6;c.gz=f.o.z+f.o.nz*0.6;c.st='go';c.t=0;break;}}

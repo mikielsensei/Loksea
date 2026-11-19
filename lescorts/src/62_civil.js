@@ -21,7 +21,7 @@ function chainPt(ch,i,off,out){const n=ch.pts.length;const k=ch.pts[ch.loop?((i%
 const _cpt={x:0,z:0};
 // rasgos cercanos a cada punto de acera (bancos, tiendas, contenedores, terrazas)
 function civPrep(){for(const k of KERB)k.feat=null;const add=(x,z,f)=>{let best=null,bd=6;for(const c of CHAINS)for(const k of c.pts){const d=Math.hypot(k.x-x,k.z-z);if(d<bd){bd=d;best=k;}}if(best)(best.feat||(best.feat=[])).push(f);};
-  for(const b of BENCHES)for(let s=0;s<b.n;s++){const a=(s-(b.n-1)/2)*0.62;const ux=Math.cos(b.yaw),uz=-Math.sin(b.yaw);b.seats=b.seats||[];b.seats.push({x:b.x+ux*a,z:b.z+uz*a,yaw:b.yaw,y:b.y,used:null});}
+  for(const b of BENCHES)for(let s=0;s<b.n;s++){const a=(s-(b.n-1)/2)*0.62;const ux=Math.cos(b.yaw),uz=-Math.sin(b.yaw);const fx=-Math.sin(b.yaw)*0.1,fz=-Math.cos(b.yaw)*0.1;b.seats=b.seats||[];b.seats.push({x:b.x+ux*a+fx,z:b.z+uz*a+fz,yaw:b.yaw+Math.PI,y:b.y,used:null});}// el banco mira hacia su -z (el respaldo está en +z)
   for(const b of BENCHES)add(b.x,b.z,{t:'bench',o:b});for(const s of SHOPS)add(s.x,s.z,{t:'shop',o:s});for(const c of CONTS)add(c.x,c.z,{t:'cont',o:c});for(const t of TERR)add(t.x,t.z,{t:'terr',o:t});}
 function hourDensity(){const h=hourF();const pts=[[0,0.25],[2,0.12],[5,0.06],[7,0.45],[9,0.9],[12,1],[14,0.8],[16,0.75],[18,1],[20.5,0.95],[22,0.6],[24,0.25]];for(let i=1;i<pts.length;i++)if(h<=pts[i][0]){const a=pts[i-1],b=pts[i];return lerp(a[1],b[1],(h-a[0])/(b[0]-a[0]));}return 0.25;}
 const CIV_MAX=34;
@@ -42,7 +42,9 @@ function civSpawnNear(p,minR,maxR,first){// elige un punto de acera a la distanc
     // en una terraza tomando algo
     if(r<0.3&&hr>8&&hr<23.5){const free=TERR.filter(t=>t.seats.every(s=>!s.used)&&Math.hypot(t.x-p.x,t.z-p.z)>minR*0.6&&Math.hypot(t.x-p.x,t.z-p.z)<maxR);if(free.length){const t=pick(free);const n=RI(1,t.seats.length);let c=0;
         for(let j=0;j<n;j++){const s=t.seats[j];const kk=kerbNear(t.x,t.z,10);if(!kk)break;const h=civSpawnAt(kk);if(!h)break;civSit(h,s,'terr');h.civ.t=R(120,900);civItem(h,pick(['cup','beer','beer','cup',null]));c++;}if(c)return c;}}
-    const jog=r>=0.3&&r<0.38&&!night;const h=civSpawnAt(k,jog&&Math.random()<0.75?{kind:'sport'}:{});if(!h)return 0;const c=h.civ;
+    // sentado en un banco (leyendo el móvil, descansando)
+    if(r>=0.3&&r<0.38){const fb=BENCHES.filter(b=>b.seats&&b.seats.some(q=>!q.used)&&Math.hypot(b.x-p.x,b.z-p.z)>minR*0.6&&Math.hypot(b.x-p.x,b.z-p.z)<maxR);if(fb.length){const b=pick(fb);const q=b.seats.find(q=>!q.used);const kk=kerbNear(b.x,b.z,10);if(kk){const h=civSpawnAt(kk,{});if(h){civSit(h,q,'bench');if(Math.random()<0.5)civItem(h,'phone');return 1;}}}}
+    const jog=r>=0.36&&r<0.42&&!night;const h=civSpawnAt(k,jog&&Math.random()<0.75?{kind:'sport'}:{});if(!h)return 0;const c=h.civ;
     if(jog){c.r='correr';c.spd=R(2.5,3.2);c.lane=R(0.9,1.6);}
     else if(r<0.5){c.r='basura';civItem(h,'trash');}
     else if(r<0.62&&!night){civItem(h,'bag');}
@@ -90,7 +92,7 @@ function civilAI(h,dt,p){const c=h.civ;if(!c)return;c.t+=dt;
     // aprovechar lo que hay cerca
     if(kk.feat&&c.cool<=0&&!run)for(const f of kk.feat){
       if(f.t==='cont'&&c.r==='basura'){c.goal=f;c.gx=f.o.x;c.gz=f.o.z;c.st='go';c.t=0;break;}
-      if(f.t==='bench'&&Math.random()<0.18){const s=f.o.seats&&f.o.seats.find(s=>!s.used);if(s){c.goal={t:'bench',seat:s};c.gx=s.x+Math.sin(s.yaw)*0.35;c.gz=s.z+Math.cos(s.yaw)*0.35;c.st='go';c.t=0;break;}}
+      if(f.t==='bench'&&Math.random()<0.18){const s=f.o.seats&&f.o.seats.find(s=>!s.used);if(s){c.goal={t:'bench',seat:s};c.gx=s.x+Math.sin(s.yaw)*0.45;c.gz=s.z+Math.cos(s.yaw)*0.45;c.st='go';c.t=0;break;}}
       if(f.t==='terr'&&Math.random()<0.12&&hourF()>8){const s=f.o.seats.find(s=>!s.used);if(s){c.goal={t:'terr',seat:s};c.gx=s.x;c.gz=s.z;c.st='go';c.t=0;break;}}
       if(f.t==='shop'&&Math.random()<(h.itemK==='bag'?0.05:0.14)&&hourF()>8.5&&hourF()<21){c.goal=f;c.gx=f.o.x;c.gz=f.o.z;c.st='go';c.t=0;break;}
       if(f.t==='shop'&&Math.random()<0.08){c.goal={t:'window',fx:f.o.x-f.o.nx*3,fz:f.o.z-f.o.nz*3};c.gx=f.o.x+f.o.nx*0.6;c.gz=f.o.z+f.o.nz*0.6;c.st='go';c.t=0;break;}}

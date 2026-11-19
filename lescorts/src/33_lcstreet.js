@@ -36,6 +36,10 @@ function streetFurnitureLC(){
     const x=k.x+k.nx*1.6,z=k.z+k.nz*1.6;if(groundKind(x,z)!==2)continue;const y=H(x,z);const ya=Math.atan2(k.ux,k.uz);last=[k.x,k.z];
     if(Math.random()<0.72){addInst('jardiFusta',x,y,z,ya+Math.PI/2);solidBox(x,z,1.25,0.55,ya+Math.PI/2,y,y+0.75);}else{addInst('jardiGroc',x,y,z,ya+Math.PI/2);solidBox(x,z,0.85,0.5,ya+Math.PI/2,y,y+0.6);}occAdd(x,z,1.6);
     if(Math.random()<0.45){const bx2=x+k.ux*1.9,bz2=z+k.uz*1.9,by=H(bx2,bz2),byaw=Math.atan2(-k.nx,-k.nz);addInst('banc',bx2,by,bz2,byaw);solidBox(bx2,bz2,0.95,0.3,byaw,by,by+0.5);occAdd(bx2,bz2,1);BENCHES.push({x:bx2,z:bz2,yaw:byaw,y:by+0.45,n:2});}}}
+  // --- vallas de parques y patios de escuela (Vallespir): murete de ladrillo, barrotes verdes y pilares de obra ---
+  {let n=0;for(const k of KERB){if(focusD(k.x,k.z)>60||k.cid===undefined)continue;if((k.i||0)%2)continue;const off=k.sw+0.05;const x=k.x-k.nx*off,z=k.z-k.nz*off;
+    if(groundKind(x-k.nx*0.6,z-k.nz*0.6)!==1||groundKind(x-k.nx*2.5,z-k.nz*2.5)!==1)continue;if(insideVol(x-k.nx*1.2,H(x,z)+1,z-k.nz*1.2))continue;
+    const y=H(x,z),ya=Math.atan2(k.ux,k.uz)+Math.PI/2;addInst('vallaPark',x,y,z,ya);if(n%3===0)addInst('pilarObra',x+k.ux,y,z+k.uz,ya);solidBox(x,z,1.05,0.12,ya,y,y+2);n++;}}
   // --- recorrido de cada bordillo: motos, bancos, papeleras, semáforos, terrazas ---
   let lastBin=new Map(),lastBench=new Map(),lastMoto=new Map(),semaf=new Set();
   for(const k of KERB){const id=k.cid;
@@ -67,6 +71,8 @@ function placeCarsLC(){if(!SPOTS)return;let n=0;const conts=[];
   buildVInst();for(const k in VTPL)needHi(VTPL[k]);buildMotosLC();
   console.log('coches aparcados',n,'contenedores',CONTS.length);}
 const CONTSET_LC=['resta','resta','organica','envasos','paper','vidre'];
+{const B=0x9a4a32,G=0x2e4a36;const p=[[bx(2.04,0.5,0.24,0,0.25,0),B],[bx(2.08,0.05,0.28,0,0.52,0),0xb8b0a4],[bx(2.04,0.04,0.04,0,0.62,0),G],[bx(2.04,0.04,0.04,0,1.95,0),G]];for(let i=0;i<14;i++)p.push([bx(0.022,1.4,0.022,-0.95+i*0.146,1.27,0),G]);defInst('vallaPark',mkG(p),paintMat,1,1,false);}
+defInst('pilarObra',mkG([[bx(0.42,2.2,0.42,0,1.1,0),0x9a4a32],[bx(0.5,0.08,0.5,0,2.24,0),0xb8b0a4]]),paintMat,1,1,false);
 // Vallespir junto al parque: calle escolar pacificada (jardineras de madera y bancos donde antes se aparcaba)
 const VALL_N=[[-30,-9],[9,66]];const VALL_E=[0.89,-0.46];
 const inVallN=(x,z)=>segD(x,z,VALL_N[0],VALL_N[1])<9;

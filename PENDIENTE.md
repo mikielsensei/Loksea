@@ -110,9 +110,14 @@ Hecho (primer try, 18-nov):
 - Coches: VW Golf, Passat, ID.3, Tiguan y Jetta (modelos que pasaste). Lejos: versión ligera; a <13 m: modelo completo con interior, puertas y maletero que se abren con la mano (grip en la maneta), volante del propio modelo.
 - Vecinos (26 modelos: complexiones, oficina, deporte, sanitaria, reparto): pasean por las aceras, cruzan por los pasos esperando, corren, entran en tiendas, se sientan en bancos y terrazas a beber, charlan en corrillos y se ríen, tiran la basura al contenedor, miran el móvil, llaman. Si les pegas, huyen.
 - Día/noche con cúmulos, viento con ráfagas en las copas, farolas encendidas de noche.
+Hecho (segunda vuelta, noche 18→19-nov):
+- Rótulos reales colocados donde salen en tus fotos (Mercat de les Corts, SPAR, Lidl, Calvet, Flex, Vivahogar, Marmota, Aural, Rayo Optics, Mont-rodon, Clarel, Kutxabank, La Sirena, Ciurana, 365, Levaduramadre, Sport Center, Asia Market, Sabadell, BBVA, GAES, Granier…). Locales lejanos con escaparate oscuro (sin interior) para ahorrar.
+- Vallespir junto al parque como calle escolar: sin coches, jardineras de madera y amarillas con bancos, valla del parque con murete y pilares de ladrillo.
+- Motos reales: Derbi DS-50 y dos Vespas; la Derbi gira el manillar de verdad.
+- Gente de complexiones distintas (más anchos/estrechos), sentados bien en los bancos.
+- Coches lejanos rehechos (cristales, pilotos, ruedas).
 Pendiente:
 - Ningún modelo VW trae la palanca como pieza separada (Golf/ID.3/Tiguan 2025 llevan el selector en el volante o el salpicadero): he puesto un selector DSG nuevo (P-R-N-D) en la consola.
-- Motos reales (nmax, Vespa, etc.) con manillar que gira de verdad: ahora siguen las motos propias.
-- Rótulos reales de los comercios de Travessera y Vallespir (Mercat, Lidl, Calvet, Rayo Optics, Aural, Ciurana…), fachadas fieles a las fotos.
+- Más motos de tu lista (nmax, Ola, MT-09…) muy pesadas: reducirlas. Fachadas aún más fieles (colores y volúmenes de cada edificio).
 - Versión lejana de los coches (se ve "derretida" de cerca, pero solo se ve a más de 13 m).
 - Rendimiento en las Quest: ~0,9 M triángulos y ~520 draw calls en la Travessera; si va a tirones, bajar distancia de visión.
